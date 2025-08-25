@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { orderStageMovementService } from './orderStageMovementService';
@@ -46,8 +47,8 @@ export const bulkOrderMovementService = {
           .eq('id', orderId)
           .single();
 
-        if (fetchError) {
-          errors.push(`Failed to fetch order ${orderId}: ${fetchError.message}`);
+        if (fetchError || !currentOrder) {
+          errors.push(`Failed to fetch order ${orderId}: ${fetchError?.message || 'Order not found'}`);
           failedCount++;
           continue;
         }
