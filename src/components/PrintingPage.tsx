@@ -7,7 +7,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import ShippingLabelPreview from './ShippingLabelPreview';
 import { toast } from 'sonner';
-import PrintingFilters from './PrintingFilters';
+import { PrintingFilters } from './PrintingFilters';
+import { Database } from '@/integrations/supabase/types';
+
+type OrderRow = Database['public']['Tables']['orders']['Row'];
 
 interface Order {
   id: string;
@@ -63,7 +66,23 @@ const PrintingPage = () => {
         console.error('Error fetching orders:', error);
         toast.error('Failed to load orders');
       } else {
-        setOrders(data || []);
+        // Transform the data to match our Order interface
+        const transformedOrders: Order[] = (data || []).map((order: OrderRow) => ({
+          id: order.id,
+          order_number: order.order_number,
+          customer_name: order.customer_name,
+          customer_email: order.customer_email || undefined,
+          customer_phone: order.customer_phone || undefined,
+          shipping_address: order.shipping_address || undefined,
+          total: Number(order.total),
+          items: order.items,
+          line_items: Array.isArray(order.line_items) ? order.line_items : [],
+          tracking_number: order.tracking_number || undefined,
+          carrier: order.carrier || undefined,
+          status: order.status,
+          created_at: order.created_at,
+        }));
+        setOrders(transformedOrders);
       }
     } finally {
       setLoading(false);

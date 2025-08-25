@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Dashboard } from '@/components/Dashboard';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { AnalyticsPage } from '@/components/AnalyticsPage';
 import SettingsPage from '@/components/SettingsPage';
-import { PrintingPage } from '@/components/PrintingPage';
+import PrintingPage from '@/components/PrintingPage';
 import { PackingPage } from '@/components/PackingPage';
 import TrackingPage from '@/components/TrackingPage';
 import OrdersPage from '@/components/OrdersPage';
