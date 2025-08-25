@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -72,7 +71,8 @@ const GeneralSettings = () => {
         });
       }
     } catch (error: any) {
-      toast.error('Failed to load company settings: ' + error.message);
+      console.error('Error fetching company settings:', error);
+      toast.error('Failed to load company settings');
     } finally {
       setLoading(false);
     }
@@ -96,7 +96,8 @@ const GeneralSettings = () => {
       if (error) throw error;
       toast.success('Company settings saved successfully!');
     } catch (error: any) {
-      toast.error('Failed to save settings: ' + error.message);
+      console.error('Error saving company settings:', error);
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }

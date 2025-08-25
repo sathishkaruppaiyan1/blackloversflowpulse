@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, UserPlus } from 'lucide-react';
+import { Trash2, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -61,7 +61,8 @@ const UserSettings = () => {
       if (error) throw error;
       setUserRoles((data || []) as UserRole[]);
     } catch (error: any) {
-      toast.error('Failed to load user roles: ' + error.message);
+      console.error('Error fetching user roles:', error);
+      toast.error('Failed to load user roles');
     } finally {
       setLoading(false);
     }
@@ -82,7 +83,8 @@ const UserSettings = () => {
       setInviteRole('staff');
       setDialogOpen(false);
     } catch (error: any) {
-      toast.error('Failed to send invitation: ' + error.message);
+      console.error('Error inviting user:', error);
+      toast.error('Failed to send invitation');
     }
   };
 
@@ -100,7 +102,8 @@ const UserSettings = () => {
       toast.success('User role updated successfully!');
       fetchUserRoles();
     } catch (error: any) {
-      toast.error('Failed to update user role: ' + error.message);
+      console.error('Error updating user role:', error);
+      toast.error('Failed to update user role');
     }
   };
 
@@ -115,7 +118,8 @@ const UserSettings = () => {
       toast.success('User removed successfully!');
       fetchUserRoles();
     } catch (error: any) {
-      toast.error('Failed to remove user: ' + error.message);
+      console.error('Error removing user:', error);
+      toast.error('Failed to remove user');
     }
   };
 

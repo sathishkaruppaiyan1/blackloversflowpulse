@@ -50,7 +50,8 @@ const CourierSettings = () => {
       if (error) throw error;
       setCouriers((data || []) as Courier[]);
     } catch (error: any) {
-      toast.error('Failed to load couriers: ' + error.message);
+      console.error('Error fetching couriers:', error);
+      toast.error('Failed to load couriers');
     } finally {
       setLoading(false);
     }
@@ -93,7 +94,8 @@ const CourierSettings = () => {
       resetForm();
       fetchCouriers();
     } catch (error: any) {
-      toast.error('Failed to save courier: ' + error.message);
+      console.error('Error saving courier:', error);
+      toast.error('Failed to save courier');
     }
   };
 
@@ -108,7 +110,8 @@ const CourierSettings = () => {
       toast.success('Courier deleted successfully!');
       fetchCouriers();
     } catch (error: any) {
-      toast.error('Failed to delete courier: ' + error.message);
+      console.error('Error deleting courier:', error);
+      toast.error('Failed to delete courier');
     }
   };
 
@@ -126,7 +129,8 @@ const CourierSettings = () => {
       toast.success(`Courier ${isActive ? 'activated' : 'deactivated'} successfully!`);
       fetchCouriers();
     } catch (error: any) {
-      toast.error('Failed to update courier status: ' + error.message);
+      console.error('Error updating courier status:', error);
+      toast.error('Failed to update courier status');
     }
   };
 
