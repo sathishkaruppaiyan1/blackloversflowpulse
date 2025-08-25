@@ -34,31 +34,76 @@ const PrintingPage = () => {
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [allOrdersSelected, setAllOrdersSelected] = useState(false);
   const [filters, setFilters] = useState({
-    status: 'all',
-    dateRange: { from: null, to: null },
+    search: "",
+    date: "",
+    status: "all",
+    filterType: "all",
+    product: "all",
+    color: "all",
+    size: "all",
+  });
+  const [sort, setSort] = useState({
+    field: "date",
+    direction: "desc"
   });
   const { user } = useAuth();
 
+  // Extract unique values for filter options
+  const getUniqueProducts = () => {
+    const products = new Set<string>();
+    orders.forEach(order => {
+      if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items.forEach(item => {
+          if (item.name) products.add(item.name);
+        });
+      }
+    });
+    return Array.from(products);
+  };
+
+  const getUniqueColors = () => {
+    // This would depend on your data structure
+    // For now, returning some common colors
+    return ['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', 'Pink', 'Purple'];
+  };
+
+  const getUniqueSizes = () => {
+    // This would depend on your data structure
+    // For now, returning some common sizes
+    return ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  };
+
   useEffect(() => {
     fetchOrders();
-  }, [filters, user]);
+  }, [filters, sort, user]);
 
   const fetchOrders = async () => {
     setLoading(true);
     try {
       let query = supabase
         .from('orders')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
+      // Apply filters
       if (filters.status !== 'all') {
         query = query.eq('status', filters.status);
       }
 
-      if (filters.dateRange.from && filters.dateRange.to) {
-        query = query.gte('created_at', filters.dateRange.from.toISOString());
-        query = query.lte('created_at', filters.dateRange.to.toISOString());
+      if (filters.date) {
+        const startDate = new Date(filters.date);
+        const endDate = new Date(filters.date);
+        endDate.setHours(23, 59, 59, 999);
+        query = query.gte('created_at', startDate.toISOString());
+        query = query.lte('created_at', endDate.toISOString());
       }
+
+      // Apply search filter
+      if (filters.search) {
+        query = query.or(`order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_phone.ilike.%${filters.search}%`);
+      }
+
+      // Apply sorting
+      query = query.order('created_at', { ascending: sort.direction === 'asc' });
 
       const { data, error } = await query;
 
@@ -82,7 +127,17 @@ const PrintingPage = () => {
           status: order.status,
           created_at: order.created_at,
         }));
-        setOrders(transformedOrders);
+        
+        // Apply additional client-side filters
+        let filteredOrders = transformedOrders;
+        
+        if (filters.product !== 'all') {
+          filteredOrders = filteredOrders.filter(order => 
+            order.line_items?.some(item => item.name === filters.product)
+          );
+        }
+
+        setOrders(filteredOrders);
       }
     } finally {
       setLoading(false);
@@ -91,6 +146,10 @@ const PrintingPage = () => {
 
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
+  };
+
+  const handleSortChange = (newSort: any) => {
+    setSort(newSort);
   };
 
   const handleSelectOrder = (orderId: string) => {
@@ -287,7 +346,13 @@ const PrintingPage = () => {
           <CardTitle>Print Shipping Labels</CardTitle>
         </CardHeader>
         <CardContent>
-          <PrintingFilters onChange={handleFilterChange} />
+          <PrintingFilters 
+            onFilterChange={handleFilterChange}
+            onSortChange={handleSortChange}
+            products={getUniqueProducts()}
+            colors={getUniqueColors()}
+            sizes={getUniqueSizes()}
+          />
         </CardContent>
       </Card>
 
