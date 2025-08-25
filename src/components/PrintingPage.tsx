@@ -181,143 +181,176 @@ const PrintingPage = () => {
       if (order) {
         const printWindow = window.open('', '_blank');
         if (printWindow) {
-          // Render the ShippingLabelPreview component to a string
           const componentString = `
             <html>
               <head>
                 <title>Shipping Label - Order #${order.order_number}</title>
                 <style>
-                  body { font-family: Arial, sans-serif; }
+                  body { 
+                    font-family: Arial, sans-serif; 
+                    margin: 0; 
+                    padding: 20px; 
+                    background: white; 
+                  }
+                  .container { 
+                    max-width: 800px; 
+                    margin: 0 auto; 
+                    border: 2px solid #000; 
+                    padding: 20px; 
+                  }
+                  .header { 
+                    text-align: center; 
+                    border-bottom: 2px solid #000; 
+                    padding-bottom: 20px; 
+                    margin-bottom: 20px; 
+                  }
+                  .section { 
+                    margin-bottom: 20px; 
+                  }
+                  .section-title { 
+                    font-weight: bold; 
+                    font-size: 16px; 
+                    margin-bottom: 10px; 
+                    text-transform: uppercase; 
+                  }
+                  .address-grid { 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr; 
+                    gap: 30px; 
+                  }
+                  .address-box { 
+                    border: 1px solid #ccc; 
+                    padding: 15px; 
+                    background: #f9f9f9; 
+                  }
+                  .product-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 10px; 
+                  }
+                  .product-table th, .product-table td { 
+                    border: 1px solid #ccc; 
+                    padding: 8px; 
+                    text-align: left; 
+                  }
+                  .product-table th { 
+                    background: #f0f0f0; 
+                    font-weight: bold; 
+                  }
+                  .status-badge { 
+                    display: inline-block; 
+                    padding: 4px 12px; 
+                    background: #007bff; 
+                    color: white; 
+                    border-radius: 4px; 
+                    font-size: 12px; 
+                    text-transform: uppercase; 
+                  }
                   @media print {
                     body { -webkit-print-color-adjust: exact; }
+                    .container { border: 2px solid #000; }
                   }
                 </style>
               </head>
               <body>
-                <div id="print-root"></div>
+                <div class="container">
+                  <div class="header">
+                    <h1 style="margin: 0; font-size: 24px;">SHIPPING LABEL</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 14px;">Order #${order.order_number}</p>
+                    <div style="margin-top: 10px;">
+                      <span class="status-badge">Status: ${order.status}</span>
+                    </div>
+                  </div>
+
+                  <div class="section">
+                    <div class="section-title">Shipping Information</div>
+                    <div class="address-grid">
+                      <div>
+                        <strong>FROM:</strong>
+                        <div class="address-box">
+                          <div><strong>Your Company</strong></div>
+                          <div>Your Company Address</div>
+                          <div>City, State, PIN Code</div>
+                          <div>Phone: +91 XXXXXXXXXX</div>
+                        </div>
+                      </div>
+                      <div>
+                        <strong>TO:</strong>
+                        <div class="address-box">
+                          <div><strong>${order.customer_name}</strong></div>
+                          <div>${order.shipping_address || 'Address not provided'}</div>
+                          ${order.customer_phone ? `<div><strong>Phone:</strong> ${order.customer_phone}</div>` : ''}
+                          ${order.customer_email ? `<div><strong>Email:</strong> ${order.customer_email}</div>` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="section">
+                    <div class="section-title">Product Details</div>
+                    <table class="product-table">
+                      <thead>
+                        <tr>
+                          <th>Product Name</th>
+                          <th>SKU</th>
+                          <th>Variation</th>
+                          <th>Qty</th>
+                          <th>Price (₹)</th>
+                          <th>Total (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${order.line_items && order.line_items.length > 0 ? 
+                          order.line_items.map(item => `
+                            <tr>
+                              <td>${item.name || 'N/A'}</td>
+                              <td>${item.sku || 'N/A'}</td>
+                              <td>${item.variation || 'N/A'}</td>
+                              <td>${item.quantity || 1}</td>
+                              <td>₹${((item.price || 0)).toFixed(2)}</td>
+                              <td>₹${((item.total || 0)).toFixed(2)}</td>
+                            </tr>
+                          `).join('') : 
+                          `<tr>
+                            <td colspan="6" style="text-align: center;">
+                              ${order.items} item(s) - Total: ₹${order.total.toFixed(2)}
+                            </td>
+                          </tr>`
+                        }
+                      </tbody>
+                      <tfoot>
+                        <tr style="font-weight: bold; background: #f0f0f0;">
+                          <td colspan="5" style="text-align: right;">Grand Total:</td>
+                          <td>₹${order.total.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                  ${(order.tracking_number || order.carrier) ? `
+                    <div class="section">
+                      <div class="section-title">Tracking Information</div>
+                      <div class="address-box">
+                        ${order.carrier ? `<div><strong>Carrier:</strong> ${order.carrier}</div>` : ''}
+                        ${order.tracking_number ? `<div><strong>Tracking Number:</strong> ${order.tracking_number}</div>` : ''}
+                      </div>
+                    </div>
+                  ` : ''}
+
+                  <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ccc;">
+                    <p style="margin: 0; font-size: 12px; color: #666;">
+                      Thank you for your business! Handle with care.
+                    </p>
+                  </div>
+                </div>
+
                 <script>
-                  function renderReactComponent() {
-                    const root = document.getElementById('print-root');
-                    root.innerHTML = \`<div class="w-full max-w-4xl mx-auto p-6 bg-white border-2 border-gray-300 print:border-none print:shadow-none">
-                      {/* Header */}
-                      <div class="text-center mb-6 pb-4 border-b-2 border-gray-200">
-                        <h1 class="text-2xl font-bold text-gray-800">SHIPPING LABEL</h1>
-                        <p class="text-sm text-gray-600 mt-1">Order #${order.order_number}</p>
-                      </div>
-
-                      {/* From and To Addresses */}
-                      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                        {/* FROM Address */}
-                        <div class="space-y-3">
-                          <div class="flex items-center gap-2 mb-3">
-                            <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 text-white" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
-                            </div>
-                            <h2 class="text-lg font-semibold text-gray-800">FROM</h2>
-                          </div>
-                          
-                          <div class="bg-gray-50 p-4 rounded-lg border">
-                            <div class="font-semibold text-gray-800 mb-2">
-                              Your Company
-                            </div>
-                            <div class="text-sm text-gray-600 whitespace-pre-line">
-                              Street address\\nCity, State Postal Code\\nCountry
-                            </div>
-                            <div class="text-sm text-gray-600 mt-2">
-                              Phone: +1 234 567 8900
-                            </div>
-                            <div class="text-sm text-gray-600">
-                              Email: company@example.com
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* TO Address */}
-                        <div class="space-y-3">
-                          <div class="flex items-center gap-2 mb-3">
-                            <div class="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 text-white" viewBox="0 0 16 16"><path d="M11 1a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-2zm-3 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2H6zM2 1a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2H2z"/></svg>
-                            </div>
-                            <h2 class="text-lg font-semibold text-gray-800">TO</h2>
-                          </div>
-                          
-                          <div class="bg-gray-50 p-4 rounded-lg border">
-                            <div class="font-semibold text-gray-800 mb-2">
-                              ${order.customer_name}
-                            </div>
-                            <div class="text-sm text-gray-600 whitespace-pre-line mb-2">
-                              ${order.shipping_address ? order.shipping_address.replace(/,\\s*/g, '\\n') : 'No shipping address provided'}
-                            </div>
-                            <div class="text-sm text-gray-600">
-                              Phone: ${order.customer_phone || 'N/A'}
-                            </div>
-                            <div class="text-sm text-gray-600">
-                              Email: ${order.customer_email || 'N/A'}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Order Details */}
-                      <div class="mb-6">
-                        <div class="flex items-center gap-2 mb-3">
-                          <div class="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="w-4 h-4 text-white" viewBox="0 0 16 16"><path d="M1 2a.5.5 0 0 0-.5.5v12a.5.5 0 0 0 .5.5h14a.5.5 0 0 0 .5-.5v-12a.5.5 0 0 0-.5-.5H1zm14 1H2v11h12V3zm-2.5 2a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h5zm0 3a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h5zm0 3a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-5a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h5z"/></svg>
-                          </div>
-                          <h2 class="text-lg font-semibold text-gray-800">PRODUCTS</h2>
-                        </div>
-                        
-                        <div class="bg-gray-50 p-4 rounded-lg border">
-                          <div class="grid grid-cols-3 gap-4 text-sm font-medium text-gray-700 mb-2 pb-2 border-b border-gray-200">
-                            <span>Items</span>
-                            <span>Quantity</span>
-                            <span>Total</span>
-                          </div>
-                          
-                          ${order.line_items && order.line_items.length > 0 ? order.line_items.map((item, index) => `
-                            <div key=\${index} class="grid grid-cols-3 gap-4 text-sm text-gray-600 py-1">
-                              <span>\${item.name}</span>
-                              <span>\${item.quantity}</span>
-                              <span>$\${(item.total || 0).toFixed(2)}</span>
-                            </div>
-                          `).join('') : `
-                            <div class="text-sm text-gray-600">
-                              \${order.items} item(s) - Total: $\${order.total.toFixed(2)}
-                            </div>
-                          `}
-                        </div>
-                      </div>
-
-                      {/* Tracking Information */}
-                      ${(order.tracking_number || order.carrier) ? `
-                        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                          <h3 class="font-semibold text-blue-800 mb-2">Tracking Information</h3>
-                          <div class="space-y-1 text-sm text-blue-700">
-                            ${order.carrier ? `
-                              <div>
-                                <span class="font-medium">Carrier:</span> \${order.carrier}
-                              </div>
-                            ` : ''}
-                            ${order.tracking_number ? `
-                              <div>
-                                <span class="font-medium">Tracking Number:</span> \${order.tracking_number}
-                              </div>
-                            ` : ''}
-                          </div>
-                        </div>
-                      ` : ''}
-
-                      {/* Footer */}
-                      <div class="text-center pt-4 border-t-2 border-gray-200">
-                        <p class="text-xs text-gray-500">
-                          Thank you for your business! Handle with care.
-                        </p>
-                      </div>
-                    </div>\`;
+                  window.onload = function() {
                     window.print();
-                    window.onafterprint = function(){ window.close()};
-                  }
-                  window.onload = renderReactComponent;
+                    window.onafterprint = function() { 
+                      window.close(); 
+                    };
+                  };
                 </script>
               </body>
             </html>
@@ -330,7 +363,6 @@ const PrintingPage = () => {
       }
     });
 
-    // Optionally, clear selected orders after printing
     setSelectedOrders([]);
     setAllOrdersSelected(false);
   };
@@ -362,7 +394,7 @@ const PrintingPage = () => {
             <CardTitle>Orders</CardTitle>
             <Button onClick={handlePrint} disabled={selectedOrders.length === 0}>
               <Printer className="w-4 h-4 mr-2" />
-              Print Selected
+              Print Selected Labels
             </Button>
           </div>
         </CardHeader>
@@ -391,13 +423,16 @@ const PrintingPage = () => {
                       Customer
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Total
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                      Total (₹)
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
                       Items
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Order Status
                     </th>
                     <th className="px-6 py-3 bg-gray-50"></th>
                   </tr>
@@ -420,7 +455,10 @@ const PrintingPage = () => {
                         {order.customer_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        ${order.total.toFixed(2)}
+                        {order.customer_phone || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        ₹{order.total.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {order.items}

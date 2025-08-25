@@ -18,6 +18,7 @@ interface Order {
   line_items?: any[];
   tracking_number?: string;
   carrier?: string;
+  status: string;
 }
 
 interface CompanySettings {
@@ -106,6 +107,11 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) =>
       <div className="text-center mb-6 pb-4 border-b-2 border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">SHIPPING LABEL</h1>
         <p className="text-sm text-gray-600 mt-1">Order #{order.order_number}</p>
+        <div className="mt-2">
+          <Badge className="text-xs px-3 py-1">
+            Status: {order.status}
+          </Badge>
+        </div>
       </div>
 
       {/* From and To Addresses */}
@@ -157,47 +163,66 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) =>
             </div>
             {order.customer_phone && (
               <div className="text-sm text-gray-600">
-                Phone: {order.customer_phone}
+                <span className="font-medium">Phone:</span> {order.customer_phone}
               </div>
             )}
             {order.customer_email && (
               <div className="text-sm text-gray-600">
-                Email: {order.customer_email}
+                <span className="font-medium">Email:</span> {order.customer_email}
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Order Details */}
+      {/* Product Details */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
             <Package className="w-4 h-4 text-white" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-800">PRODUCTS</h2>
+          <h2 className="text-lg font-semibold text-gray-800">PRODUCT DETAILS</h2>
         </div>
         
-        <div className="bg-gray-50 p-4 rounded-lg border">
-          <div className="grid grid-cols-3 gap-4 text-sm font-medium text-gray-700 mb-2 pb-2 border-b border-gray-200">
-            <span>Items</span>
-            <span>Quantity</span>
-            <span>Total</span>
-          </div>
-          
-          {order.line_items && order.line_items.length > 0 ? (
-            order.line_items.map((item: any, index: number) => (
-              <div key={index} className="grid grid-cols-3 gap-4 text-sm text-gray-600 py-1">
-                <span>{item.name}</span>
-                <span>{item.quantity}</span>
-                <span>${(item.total || 0).toFixed(2)}</span>
-              </div>
-            ))
-          ) : (
-            <div className="text-sm text-gray-600">
-              {order.items} item(s) - Total: ${order.total.toFixed(2)}
-            </div>
-          )}
+        <div className="bg-gray-50 p-4 rounded-lg border overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 font-medium text-gray-700">Product Name</th>
+                <th className="text-left py-2 font-medium text-gray-700">SKU</th>
+                <th className="text-left py-2 font-medium text-gray-700">Variation</th>
+                <th className="text-left py-2 font-medium text-gray-700">Qty</th>
+                <th className="text-right py-2 font-medium text-gray-700">Price (₹)</th>
+                <th className="text-right py-2 font-medium text-gray-700">Total (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.line_items && order.line_items.length > 0 ? (
+                order.line_items.map((item: any, index: number) => (
+                  <tr key={index} className="border-b border-gray-100">
+                    <td className="py-2 text-gray-600">{item.name || 'N/A'}</td>
+                    <td className="py-2 text-gray-600">{item.sku || 'N/A'}</td>
+                    <td className="py-2 text-gray-600">{item.variation || 'N/A'}</td>
+                    <td className="py-2 text-gray-600">{item.quantity || 1}</td>
+                    <td className="py-2 text-gray-600 text-right">₹{((item.price || 0)).toFixed(2)}</td>
+                    <td className="py-2 text-gray-600 text-right">₹{((item.total || 0)).toFixed(2)}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="py-4 text-center text-gray-600">
+                    {order.items} item(s) - Total: ₹{order.total.toFixed(2)}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-300 font-semibold">
+                <td colSpan={5} className="py-2 text-right text-gray-800">Grand Total:</td>
+                <td className="py-2 text-right text-gray-800">₹{order.total.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
 
