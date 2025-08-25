@@ -88,7 +88,7 @@ const PrintingPage = () => {
     let filtered = [...orders];
 
     // Apply product filter
-    if (filters.product) {
+    if (filters.product && filters.product !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
           item.name.toLowerCase().includes(filters.product.toLowerCase())
@@ -97,7 +97,7 @@ const PrintingPage = () => {
     }
 
     // Apply color filter
-    if (filters.color) {
+    if (filters.color && filters.color !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
           item.color?.toLowerCase().includes(filters.color.toLowerCase())
@@ -106,10 +106,19 @@ const PrintingPage = () => {
     }
 
     // Apply size filter
-    if (filters.size) {
+    if (filters.size && filters.size !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
           item.size?.toLowerCase().includes(filters.size.toLowerCase())
+        )
+      );
+    }
+
+    // Apply variation filter
+    if (filters.variation && filters.variation !== 'any') {
+      filtered = filtered.filter(order => 
+        order.line_items?.some(item => 
+          item.variation?.toLowerCase().includes(filters.variation.toLowerCase())
         )
       );
     }

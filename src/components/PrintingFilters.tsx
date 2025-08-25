@@ -29,10 +29,10 @@ interface PrintingFiltersProps {
 export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChange, totalOrders }) => {
   const [filters, setFilters] = useState<FilterOptions>({
     filterType: 'contains',
-    product: '',
-    color: '',
-    size: '',
-    variation: '',
+    product: 'any',
+    color: 'any',
+    size: 'any',
+    variation: 'any',
     sortOrder: 'newest',
     orderDate: undefined,
   });
@@ -46,10 +46,10 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
   const clearFilters = () => {
     const clearedFilters: FilterOptions = {
       filterType: 'contains',
-      product: '',
-      color: '',
-      size: '',
-      variation: '',
+      product: 'any',
+      color: 'any',
+      size: 'any',
+      variation: 'any',
       sortOrder: 'newest',
       orderDate: undefined,
     };
@@ -103,7 +103,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
                 <SelectValue placeholder="Any Product" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any Product</SelectItem>
+                <SelectItem value="any">Any Product</SelectItem>
                 <SelectItem value="hakoba">Hakoba midi</SelectItem>
                 <SelectItem value="cotton">Cotton frocks</SelectItem>
                 <SelectItem value="mahe">Mahe space saree</SelectItem>
@@ -122,7 +122,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
                 <SelectValue placeholder="Any color" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any color</SelectItem>
+                <SelectItem value="any">Any color</SelectItem>
                 <SelectItem value="wine">Wine</SelectItem>
                 <SelectItem value="maroon">Maroon wine</SelectItem>
                 <SelectItem value="black">Black</SelectItem>
@@ -142,7 +142,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
                 <SelectValue placeholder="Any size" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any size</SelectItem>
+                <SelectItem value="any">Any size</SelectItem>
                 <SelectItem value="S">S</SelectItem>
                 <SelectItem value="M">M</SelectItem>
                 <SelectItem value="L">L</SelectItem>
@@ -162,7 +162,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
                 <SelectValue placeholder="Any Variation" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any Variation</SelectItem>
+                <SelectItem value="any">Any Variation</SelectItem>
                 <SelectItem value="750g">750g</SelectItem>
                 <SelectItem value="1kg">1kg</SelectItem>
                 <SelectItem value="regular">Regular</SelectItem>
