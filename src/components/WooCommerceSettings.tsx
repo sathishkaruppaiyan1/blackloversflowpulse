@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -16,13 +17,14 @@ interface WooCommerceSettings {
 
 const WooCommerceSettings = () => {
   const [settings, setSettings] = useState<WooCommerceSettings>({
-    store_url: 'https://resellers.blacklovers.in/',
-    consumer_key: 'ck_c58d5b4fc9361f3c1ab2cf90c277daee29f8a417',
-    consumer_secret: 'cs_9c8b5e8ee7a9ee9d9e3aa426159574ec97cc8e0d'
+    store_url: 'https://perfectcollections.shop/',
+    consumer_key: 'ck_187643b70bb06f371d16c9af4b770bdda4604c64',
+    consumer_secret: 'cs_456200c01da8ffa1e91911d417b7ce6342474d3e'
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -78,6 +80,7 @@ const WooCommerceSettings = () => {
       if (error) throw error;
 
       toast.success('WooCommerce settings saved successfully!');
+      setTestResult(null); // Clear previous test results
     } catch (error: any) {
       toast.error('Failed to save settings: ' + error.message);
     } finally {
@@ -89,8 +92,16 @@ const WooCommerceSettings = () => {
     if (!user) return;
 
     setTesting(true);
+    setTestResult(null);
+    
     try {
-      console.log('Testing WooCommerce connection...');
+      console.log('🧪 Testing WooCommerce connection...');
+      console.log('Settings:', {
+        store_url: settings.store_url,
+        consumer_key: settings.consumer_key.substring(0, 10) + '...',
+        consumer_secret: settings.consumer_secret.substring(0, 10) + '...'
+      });
+
       const { data, error } = await supabase.functions.invoke('fetch-woocommerce-orders', {
         body: {
           store_url: settings.store_url,
@@ -99,29 +110,56 @@ const WooCommerceSettings = () => {
         }
       });
 
+      console.log('Edge function response:', { data, error });
+
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('❌ Edge function error:', error);
+        setTestResult({
+          success: false,
+          message: `Connection test failed: ${error.message}`,
+          details: error
+        });
         toast.error(`Connection test failed: ${error.message}`);
         return;
       }
 
       if (data?.error) {
-        console.error('WooCommerce API error:', data.error);
+        console.error('❌ WooCommerce API error:', data.error);
+        setTestResult({
+          success: false,
+          message: data.error,
+          details: data.details,
+          suggestions: data.suggestions,
+          status_code: data.status_code
+        });
         toast.error(`WooCommerce API Error: ${data.error}`);
-        if (data.suggestions?.length > 0) {
-          console.log('Suggestions:', data.suggestions);
-        }
         return;
       }
 
       if (data?.orders) {
-        toast.success(`Connection successful! Found ${data.orders.length} orders`);
-        console.log('Test successful:', data);
+        const orderCount = data.orders.length;
+        setTestResult({
+          success: true,
+          message: `Connection successful! Found ${orderCount} orders`,
+          orderCount
+        });
+        toast.success(`Connection successful! Found ${orderCount} orders`);
+        console.log('✅ Test successful:', data);
       } else {
+        setTestResult({
+          success: true,
+          message: 'Connection successful but no orders found',
+          orderCount: 0
+        });
         toast.info('Connection successful but no orders found');
       }
     } catch (error: any) {
-      console.error('Unexpected error during connection test:', error);
+      console.error('💥 Unexpected error during connection test:', error);
+      setTestResult({
+        success: false,
+        message: `Unexpected error: ${error.message}`,
+        details: error
+      });
       toast.error(`Unexpected error: ${error.message}`);
     } finally {
       setTesting(false);
@@ -133,6 +171,7 @@ const WooCommerceSettings = () => {
       ...prev,
       [field]: value
     }));
+    setTestResult(null); // Clear test results when settings change
   };
 
   if (loading) {
@@ -180,6 +219,36 @@ const WooCommerceSettings = () => {
             onChange={(e) => handleInputChange('consumer_secret', e.target.value)}
           />
         </div>
+
+        {testResult && (
+          <Alert className={testResult.success ? 'border-green-500' : 'border-red-500'}>
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className={testResult.success ? 'text-green-700' : 'text-red-700'}>
+                  {testResult.message}
+                </p>
+                {testResult.details && (
+                  <details className="text-sm">
+                    <summary className="cursor-pointer">Show details</summary>
+                    <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                      {JSON.stringify(testResult.details, null, 2)}
+                    </pre>
+                  </details>
+                )}
+                {testResult.suggestions && (
+                  <div className="text-sm">
+                    <p className="font-medium">Suggestions:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {testResult.suggestions.map((suggestion: string, index: number) => (
+                        <li key={index}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex gap-2">
           <Button 
