@@ -14,7 +14,236 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      completed_orders: {
+        Row: {
+          completed_at: string
+          created_at: string
+          id: string
+          order_data: Json
+          original_order_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          order_data: Json
+          original_order_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          order_data?: Json
+          original_order_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      interakt_settings: {
+        Row: {
+          api_key: string
+          base_url: string
+          created_at: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          base_url?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      order_stage_movements: {
+        Row: {
+          created_at: string
+          from_stage: string | null
+          id: string
+          moved_at: string
+          moved_by_user_id: string | null
+          notes: string | null
+          order_id: string
+          to_stage: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          moved_at?: string
+          moved_by_user_id?: string | null
+          notes?: string | null
+          order_id: string
+          to_stage: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          from_stage?: string | null
+          id?: string
+          moved_at?: string
+          moved_by_user_id?: string | null
+          notes?: string | null
+          order_id?: string
+          to_stage?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_stage_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          carrier: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          delivered_at: string | null
+          id: string
+          items: number
+          line_items: Json | null
+          order_number: string
+          packed_at: string | null
+          printed_at: string | null
+          reseller_name: string | null
+          reseller_number: string | null
+          shipped_at: string | null
+          shipping_address: string | null
+          status: string
+          total: number
+          tracking_number: string | null
+          updated_at: string
+          user_id: string
+          woo_order_id: string | null
+        }
+        Insert: {
+          carrier?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          delivered_at?: string | null
+          id?: string
+          items?: number
+          line_items?: Json | null
+          order_number: string
+          packed_at?: string | null
+          printed_at?: string | null
+          reseller_name?: string | null
+          reseller_number?: string | null
+          shipped_at?: string | null
+          shipping_address?: string | null
+          status?: string
+          total?: number
+          tracking_number?: string | null
+          updated_at?: string
+          user_id: string
+          woo_order_id?: string | null
+        }
+        Update: {
+          carrier?: string | null
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          delivered_at?: string | null
+          id?: string
+          items?: number
+          line_items?: Json | null
+          order_number?: string
+          packed_at?: string | null
+          printed_at?: string | null
+          reseller_name?: string | null
+          reseller_number?: string | null
+          shipped_at?: string | null
+          shipping_address?: string | null
+          status?: string
+          total?: number
+          tracking_number?: string | null
+          updated_at?: string
+          user_id?: string
+          woo_order_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      woocommerce_settings: {
+        Row: {
+          consumer_key: string
+          consumer_secret: string
+          created_at: string
+          id: string
+          store_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          consumer_key: string
+          consumer_secret: string
+          created_at?: string
+          id?: string
+          store_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          consumer_key?: string
+          consumer_secret?: string
+          created_at?: string
+          id?: string
+          store_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
