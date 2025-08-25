@@ -67,7 +67,7 @@ const GeneralSettings = () => {
           country: data.country || '',
           phone: data.phone || '',
           email: data.email || '',
-          default_label_format: data.default_label_format || 'A4'
+          default_label_format: (data.default_label_format as 'A4' | 'A5') || 'A4'
         });
       }
     } catch (error: any) {

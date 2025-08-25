@@ -59,7 +59,14 @@ const UserSettings = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUserRoles(data || []);
+      
+      // Type assertion with proper validation
+      const typedData = (data || []).map(item => ({
+        ...item,
+        role: item.role as 'admin' | 'staff'
+      }));
+      
+      setUserRoles(typedData);
     } catch (error: any) {
       console.error('Error fetching user roles:', error);
       toast.error('Failed to load user roles');
