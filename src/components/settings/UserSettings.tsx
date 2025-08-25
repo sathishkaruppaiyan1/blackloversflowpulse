@@ -41,7 +41,7 @@ const UserSettings = () => {
   const fetchCurrentUserRole = async () => {
     try {
       const { data, error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .select('role')
         .eq('user_id', user?.id)
         .single();
@@ -57,7 +57,7 @@ const UserSettings = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .select(`
           id,
           user_id,
@@ -99,7 +99,7 @@ const UserSettings = () => {
   const updateUserRole = async (userId: string, newRole: 'admin' | 'staff') => {
     try {
       const { error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .update({ 
           role: newRole,
           assigned_by: user?.id
@@ -117,7 +117,7 @@ const UserSettings = () => {
   const removeUser = async (userId: string) => {
     try {
       const { error } = await supabase
-        .from('user_roles')
+        .from('user_roles' as any)
         .delete()
         .eq('user_id', userId);
 

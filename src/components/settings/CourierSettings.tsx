@@ -42,7 +42,7 @@ const CourierSettings = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('couriers')
+        .from('couriers' as any)
         .select('*')
         .eq('user_id', user?.id)
         .order('name');
@@ -65,7 +65,7 @@ const CourierSettings = () => {
     try {
       if (editingCourier) {
         const { error } = await supabase
-          .from('couriers')
+          .from('couriers' as any)
           .update({
             name: formData.name.trim(),
             tracking_url: formData.tracking_url.trim(),
@@ -78,7 +78,7 @@ const CourierSettings = () => {
         toast.success('Courier updated successfully!');
       } else {
         const { error } = await supabase
-          .from('couriers')
+          .from('couriers' as any)
           .insert({
             user_id: user.id,
             name: formData.name.trim(),
@@ -100,7 +100,7 @@ const CourierSettings = () => {
   const deleteCourier = async (courierId: string) => {
     try {
       const { error } = await supabase
-        .from('couriers')
+        .from('couriers' as any)
         .delete()
         .eq('id', courierId);
 
@@ -115,7 +115,7 @@ const CourierSettings = () => {
   const toggleCourierStatus = async (courierId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
-        .from('couriers')
+        .from('couriers' as any)
         .update({ 
           is_active: isActive,
           updated_at: new Date().toISOString()

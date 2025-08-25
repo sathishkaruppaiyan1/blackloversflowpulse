@@ -4,28 +4,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 const ProfileSettings = () => {
-  const [profile, setProfile] = useState({
-    full_name: '',
-    email: ''
-  });
-  const [passwords, setPasswords] = useState({
-    current: '',
-    new: '',
-    confirm: ''
-  });
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
+      setEmail(user.email || '');
       fetchProfile();
     }
   }, [user]);
@@ -35,16 +31,15 @@ const ProfileSettings = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('full_name')
         .eq('user_id', user?.id)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') throw error;
 
-      setProfile({
-        full_name: data?.full_name || '',
-        email: user?.email || ''
-      });
+      if (data) {
+        setFullName(data.full_name || '');
+      }
     } catch (error: any) {
       toast.error('Failed to load profile: ' + error.message);
     } finally {
@@ -52,7 +47,7 @@ const ProfileSettings = () => {
     }
   };
 
-  const updateProfile = async () => {
+  const saveProfile = async () => {
     if (!user) return;
 
     setSaving(true);
@@ -61,7 +56,7 @@ const ProfileSettings = () => {
         .from('profiles')
         .upsert({
           user_id: user.id,
-          full_name: profile.full_name.trim(),
+          full_name: fullName.trim(),
           updated_at: new Date().toISOString()
         }, {
           onConflict: 'user_id'
@@ -76,31 +71,38 @@ const ProfileSettings = () => {
     }
   };
 
-  const updatePassword = async () => {
-    if (passwords.new !== passwords.confirm) {
+  const changePassword = async () => {
+    if (!newPassword || !confirmPassword) {
+      toast.error('Please fill in all password fields');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
       toast.error('New passwords do not match');
       return;
     }
 
-    if (passwords.new.length < 6) {
+    if (newPassword.length < 6) {
       toast.error('Password must be at least 6 characters long');
       return;
     }
 
-    setUpdatingPassword(true);
+    setChangingPassword(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        password: passwords.new
+        password: newPassword
       });
 
       if (error) throw error;
-      
+
       toast.success('Password updated successfully!');
-      setPasswords({ current: '', new: '', confirm: '' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (error: any) {
       toast.error('Failed to update password: ' + error.message);
     } finally {
-      setUpdatingPassword(false);
+      setChangingPassword(false);
     }
   };
 
@@ -114,7 +116,7 @@ const ProfileSettings = () => {
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
           <CardDescription>
-            Update your personal information and account settings
+            Update your personal information
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -122,27 +124,27 @@ const ProfileSettings = () => {
             <Label htmlFor="full_name">Full Name</Label>
             <Input
               id="full_name"
-              value={profile.full_name}
-              onChange={(e) => setProfile(prev => ({ ...prev, full_name: e.target.value }))}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="Your full name"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              value={profile.email}
+              value={email}
               disabled
-              className="bg-muted"
+              className="bg-gray-50"
             />
             <p className="text-sm text-muted-foreground">
-              Email cannot be changed. Contact support if needed.
+              Email cannot be changed from this interface
             </p>
           </div>
 
-          <Button onClick={updateProfile} disabled={saving}>
+          <Button onClick={saveProfile} disabled={saving} className="w-full">
             {saving ? 'Saving...' : 'Save Profile'}
           </Button>
         </CardContent>
@@ -152,7 +154,7 @@ const ProfileSettings = () => {
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
           <CardDescription>
-            Update your account password for security
+            Update your account password
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -161,22 +163,20 @@ const ProfileSettings = () => {
             <Input
               id="current_password"
               type="password"
-              value={passwords.current}
-              onChange={(e) => setPasswords(prev => ({ ...prev, current: e.target.value }))}
-              placeholder="Enter current password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              placeholder="Enter your current password"
             />
           </div>
-
-          <Separator />
 
           <div className="space-y-2">
             <Label htmlFor="new_password">New Password</Label>
             <Input
               id="new_password"
               type="password"
-              value={passwords.new}
-              onChange={(e) => setPasswords(prev => ({ ...prev, new: e.target.value }))}
-              placeholder="Enter new password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Enter your new password"
             />
           </div>
 
@@ -185,17 +185,14 @@ const ProfileSettings = () => {
             <Input
               id="confirm_password"
               type="password"
-              value={passwords.confirm}
-              onChange={(e) => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
-              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm your new password"
             />
           </div>
 
-          <Button 
-            onClick={updatePassword} 
-            disabled={updatingPassword || !passwords.new || !passwords.confirm}
-          >
-            {updatingPassword ? 'Updating...' : 'Update Password'}
+          <Button onClick={changePassword} disabled={changingPassword} className="w-full">
+            {changingPassword ? 'Changing Password...' : 'Change Password'}
           </Button>
         </CardContent>
       </Card>
