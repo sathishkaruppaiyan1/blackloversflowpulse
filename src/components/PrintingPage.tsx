@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,25 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import ShippingLabelPreview from './ShippingLabelPreview';
 import { toast } from 'sonner';
 import { PrintingFilters } from './PrintingFilters';
-import { Database } from '@/integrations/supabase/types';
-
-type OrderRow = Database['public']['Tables']['orders']['Row'];
-
-interface Order {
-  id: string;
-  order_number: string;
-  customer_name: string;
-  customer_email?: string;
-  customer_phone?: string;
-  shipping_address?: string;
-  total: number;
-  items: number;
-  line_items?: any[];
-  tracking_number?: string;
-  carrier?: string;
-  status: string;
-  created_at: string;
-}
+import { useWooCommerceOrders } from '@/hooks/useWooCommerceOrders';
+import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
 
 interface CompanySettings {
   company_name: string;
@@ -41,8 +25,7 @@ interface CompanySettings {
 }
 
 const PrintingPage = () => {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orders, loading, fetchOrdersFromWooCommerce } = useWooCommerceOrders();
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [allOrdersSelected, setAllOrdersSelected] = useState(false);
   const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
@@ -60,6 +43,7 @@ const PrintingPage = () => {
     direction: "desc"
   });
   const { user } = useAuth();
+  const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>([]);
 
   // Extract unique values for filter options
   const getUniqueProducts = () => {
@@ -111,9 +95,56 @@ const PrintingPage = () => {
   };
 
   useEffect(() => {
-    fetchOrders();
     fetchCompanySettings();
-  }, [filters, sort, user]);
+    // Fetch orders from WooCommerce when component mounts
+    if (user) {
+      fetchOrdersFromWooCommerce();
+    }
+  }, [user, fetchOrdersFromWooCommerce]);
+
+  useEffect(() => {
+    // Apply filters to orders
+    let filtered = [...orders];
+    
+    // Apply search filter
+    if (filters.search) {
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(filters.search.toLowerCase()) ||
+        order.customer_name.toLowerCase().includes(filters.search.toLowerCase()) ||
+        order.customer_phone?.toLowerCase().includes(filters.search.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      filtered = filtered.filter(order => order.status === filters.status);
+    }
+
+    // Apply date filter
+    if (filters.date) {
+      const filterDate = new Date(filters.date);
+      filtered = filtered.filter(order => {
+        const orderDate = new Date(order.created_at);
+        return orderDate.toDateString() === filterDate.toDateString();
+      });
+    }
+
+    // Apply product filter
+    if (filters.product !== 'all') {
+      filtered = filtered.filter(order => 
+        order.line_items?.some(item => item.name === filters.product)
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      const aValue = new Date(a.created_at).getTime();
+      const bValue = new Date(b.created_at).getTime();
+      return sort.direction === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    setFilteredOrders(filtered);
+  }, [orders, filters, sort]);
 
   const fetchCompanySettings = async () => {
     if (!user) return;
@@ -145,73 +176,6 @@ const PrintingPage = () => {
     }
   };
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('orders')
-        .select('*');
-
-      // Apply filters
-      if (filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.date) {
-        const startDate = new Date(filters.date);
-        const endDate = new Date(filters.date);
-        endDate.setHours(23, 59, 59, 999);
-        query = query.gte('created_at', startDate.toISOString());
-        query = query.lte('created_at', endDate.toISOString());
-      }
-
-      // Apply search filter
-      if (filters.search) {
-        query = query.or(`order_number.ilike.%${filters.search}%,customer_name.ilike.%${filters.search}%,customer_phone.ilike.%${filters.search}%`);
-      }
-
-      // Apply sorting
-      query = query.order('created_at', { ascending: sort.direction === 'asc' });
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching orders:', error);
-        toast.error('Failed to load orders');
-      } else {
-        // Transform the data to match our Order interface
-        const transformedOrders: Order[] = (data || []).map((order: OrderRow) => ({
-          id: order.id,
-          order_number: order.order_number,
-          customer_name: order.customer_name,
-          customer_email: order.customer_email || undefined,
-          customer_phone: order.customer_phone || undefined,
-          shipping_address: order.shipping_address || undefined,
-          total: Number(order.total),
-          items: order.items,
-          line_items: Array.isArray(order.line_items) ? order.line_items : [],
-          tracking_number: order.tracking_number || undefined,
-          carrier: order.carrier || undefined,
-          status: order.status,
-          created_at: order.created_at,
-        }));
-        
-        // Apply additional client-side filters
-        let filteredOrders = transformedOrders;
-        
-        if (filters.product !== 'all') {
-          filteredOrders = filteredOrders.filter(order => 
-            order.line_items?.some(item => item.name === filters.product)
-          );
-        }
-
-        setOrders(filteredOrders);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleFilterChange = (newFilters: any) => {
     setFilters(newFilters);
   };
@@ -232,7 +196,7 @@ const PrintingPage = () => {
     if (allOrdersSelected) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(orders.map((order) => order.id));
+      setSelectedOrders(filteredOrders.map((order) => order.id));
     }
     setAllOrdersSelected(!allOrdersSelected);
   };
@@ -245,7 +209,7 @@ const PrintingPage = () => {
 
     // Open a new window with the ShippingLabelPreview for each selected order
     selectedOrders.forEach(async (orderId) => {
-      const order = orders.find((o) => o.id === orderId);
+      const order = filteredOrders.find((o) => o.id === orderId);
       if (order) {
         const printWindow = window.open('', '_blank');
         if (printWindow) {
@@ -374,16 +338,16 @@ const PrintingPage = () => {
                       <tbody>
                         ${order.line_items && order.line_items.length > 0 ? 
                           order.line_items.map(item => {
-                            const productName = item.name || item.product_name || 'Product Name Not Available';
-                            const sku = item.sku || item.product_sku || item.meta_data?.find(m => m.key === '_sku')?.value || 'N/A';
+                            const productName = item.name || 'Product Name Not Available';
+                            const sku = item.sku || 'N/A';
                             const variation = item.variation_id && item.variation_id > 0 
                               ? (item.meta_data?.filter(m => m.key?.startsWith('pa_') || m.display_key?.includes('Variation'))
                                   .map(m => `${m.display_key || m.key}: ${m.display_value || m.value}`)
                                   .join(', ') || 'Standard') 
                               : 'Standard';
                             const quantity = item.quantity || 1;
-                            const price = parseFloat(item.price || item.subtotal || 0) / quantity;
-                            const total = parseFloat(item.total || item.subtotal || (price * quantity));
+                            const price = parseFloat(item.price || '0');
+                            const total = parseFloat(item.total || '0');
                             
                             return `
                               <tr>
@@ -454,7 +418,7 @@ const PrintingPage = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center p-8">Loading orders...</div>;
+    return <div className="flex justify-center p-8">Loading orders from WooCommerce...</div>;
   }
 
   return (
@@ -477,17 +441,31 @@ const PrintingPage = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Orders</CardTitle>
-            <Button onClick={handlePrint} disabled={selectedOrders.length === 0}>
-              <Printer className="w-4 h-4 mr-2" />
-              Print Selected Labels
-            </Button>
+            <CardTitle>Orders ({filteredOrders.length})</CardTitle>
+            <div className="flex gap-2">
+              <Button 
+                onClick={fetchOrdersFromWooCommerce} 
+                disabled={loading}
+                variant="outline"
+              >
+                <Package className="w-4 h-4 mr-2" />
+                Sync from WooCommerce
+              </Button>
+              <Button onClick={handlePrint} disabled={selectedOrders.length === 0}>
+                <Printer className="w-4 h-4 mr-2" />
+                Print Selected Labels ({selectedOrders.length})
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No orders found.
+              No orders found. {!loading && (
+                <Button onClick={fetchOrdersFromWooCommerce} variant="outline" className="ml-2">
+                  Sync Orders from WooCommerce
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -512,10 +490,13 @@ const PrintingPage = () => {
                       Phone
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Total (₹)
+                      Shipping Address
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Items
+                      Products
+                    </th>
+                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                      Total (₹)
                     </th>
                     <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
                       Order Status
@@ -524,7 +505,7 @@ const PrintingPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {orders.map((order) => (
+                  {filteredOrders.map((order) => (
                     <tr key={order.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <input
@@ -543,11 +524,32 @@ const PrintingPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {order.customer_phone || 'N/A'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        ₹{order.total.toFixed(2)}
+                      <td className="px-6 py-4 max-w-xs truncate">
+                        {order.shipping_address || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {order.items}
+                        <div className="text-sm">
+                          {order.line_items && order.line_items.length > 0 ? (
+                            <div>
+                              {order.line_items.slice(0, 2).map((item, index) => (
+                                <div key={index} className="text-xs">
+                                  {item.name} ({item.quantity}x)
+                                  {item.sku && <span className="text-gray-500"> - {item.sku}</span>}
+                                </div>
+                              ))}
+                              {order.line_items.length > 2 && (
+                                <div className="text-xs text-gray-500">
+                                  +{order.line_items.length - 2} more items
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">{order.items} items</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        ₹{order.total.toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge
