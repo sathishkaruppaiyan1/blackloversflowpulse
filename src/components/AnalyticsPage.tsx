@@ -6,7 +6,6 @@ import { useWooCommerceOrders } from "@/hooks/useWooCommerceOrders";
 import { useCompletedOrders } from "@/hooks/useCompletedOrders";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, Pie } from "recharts";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useMemo } from "react";
 
 const chartConfig = {
@@ -42,7 +41,6 @@ export const AnalyticsPage = () => {
   const analytics = useMemo(() => {
     const totalOrders = orders.length;
     const completedOrdersCount = orders.filter(order => ['delivered', 'completed'].includes(order.stage)).length;
-    const activeResellers = [...new Set(orders.filter(order => order.reseller_name).map(order => order.reseller_name))].length;
     
     // Calculate average processing time
     const completedOrdersWithTimes = orders.filter(order => 
@@ -88,59 +86,12 @@ export const AnalyticsPage = () => {
       });
     }
 
-    // Reseller performance - with proper phone number and product info handling
-    const resellerPerformance = orders
-      .filter(order => order.reseller_name)
-      .reduce((acc, order) => {
-        const reseller = order.reseller_name!;
-        if (!acc[reseller]) {
-          acc[reseller] = {
-            name: reseller,
-            totalOrders: 0,
-            completedOrders: 0,
-            totalRevenue: 0,
-            customerPhone: order.customer_phone || 'Not provided',
-            productName: order.product_name || 'Product',
-            productVariation: order.product_variation || 'Standard'
-          };
-        }
-        acc[reseller].totalOrders += 1;
-        acc[reseller].totalRevenue += order.total;
-        
-        // Update with latest order info if current order has better data
-        if (order.customer_phone && order.customer_phone !== 'N/A') {
-          acc[reseller].customerPhone = order.customer_phone;
-        }
-        if (order.product_name) {
-          acc[reseller].productName = order.product_name;
-        }
-        if (order.product_variation) {
-          acc[reseller].productVariation = order.product_variation;
-        }
-        
-        if (['delivered', 'completed'].includes(order.stage)) {
-          acc[reseller].completedOrders += 1;
-        }
-        return acc;
-      }, {} as Record<string, any>);
-
-    const resellerData = Object.values(resellerPerformance)
-      .map((reseller: any) => ({
-        ...reseller,
-        completionRate: reseller.totalOrders > 0 
-          ? Math.round((reseller.completedOrders / reseller.totalOrders) * 100)
-          : 0
-      }))
-      .sort((a: any, b: any) => b.totalRevenue - a.totalRevenue);
-
     return {
       totalOrders,
       completedOrdersCount,
-      activeResellers,
       avgProcessTime,
       pieData,
       last7Days,
-      resellerData,
       completionRate: totalOrders > 0 ? Math.round((completedOrdersCount / totalOrders) * 100) : 0
     };
   }, [orders]);
@@ -154,7 +105,7 @@ export const AnalyticsPage = () => {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -178,19 +129,6 @@ export const AnalyticsPage = () => {
                 <div className="text-sm text-muted-foreground">Completed Orders</div>
               </div>
               <CheckCircle className="w-8 h-8 text-green-600 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold text-blue-600">
-                  {loading ? "..." : analytics.activeResellers}
-                </div>
-                <div className="text-sm text-muted-foreground">Active Resellers</div>
-              </div>
-              <Users className="w-8 h-8 text-blue-600 opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -320,7 +258,7 @@ export const AnalyticsPage = () => {
                   style={{ width: `${analytics.completionRate}%` }}
                 ></div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-primary">{analytics.totalOrders}</div>
                   <div className="text-sm text-muted-foreground">Total Orders</div>
@@ -333,72 +271,12 @@ export const AnalyticsPage = () => {
                   <div className="text-2xl font-bold text-orange-600">{analytics.avgProcessTime}h</div>
                   <div className="text-sm text-muted-foreground">Avg Time</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">{analytics.activeResellers}</div>
-                  <div className="text-sm text-muted-foreground">Resellers</div>
-                </div>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
               <p>No completion data available. Connect to WooCommerce to see completion analytics.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Reseller Performance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Reseller Performance</CardTitle>
-          <CardDescription>
-            Top performing resellers with customer and product information
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50 animate-pulse" />
-              <p>Loading reseller data...</p>
-            </div>
-          ) : analytics.resellerData.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Reseller Name</TableHead>
-                  <TableHead>Customer Phone</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead>Variant</TableHead>
-                  <TableHead className="text-center">Total Orders</TableHead>
-                  <TableHead className="text-center">Completed</TableHead>
-                  <TableHead className="text-center">Completion Rate</TableHead>
-                  <TableHead className="text-right">Total Revenue</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analytics.resellerData.map((reseller: any) => (
-                  <TableRow key={reseller.name}>
-                    <TableCell className="font-medium">{reseller.name}</TableCell>
-                    <TableCell>{reseller.customerPhone}</TableCell>
-                    <TableCell>{reseller.productName}</TableCell>
-                    <TableCell>{reseller.productVariation}</TableCell>
-                    <TableCell className="text-center">{reseller.totalOrders}</TableCell>
-                    <TableCell className="text-center">{reseller.completedOrders}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={reseller.completionRate >= 80 ? "default" : "secondary"}>
-                        {reseller.completionRate}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">₹{reseller.totalRevenue.toLocaleString()}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No reseller data available. Orders with reseller information will appear here.</p>
             </div>
           )}
         </CardContent>
