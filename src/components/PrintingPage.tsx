@@ -114,12 +114,26 @@ const PrintingPage = () => {
       );
     }
 
-    // Apply variation filter
+    // Apply variation filter - check against variation_id or create combined variation from available properties
     if (filters.variation && filters.variation !== 'any') {
       filtered = filtered.filter(order => 
-        order.line_items?.some(item => 
-          item.variation?.toLowerCase().includes(filters.variation.toLowerCase())
-        )
+        order.line_items?.some(item => {
+          // Check variation_id if it exists
+          if (item.variation_id && item.variation_id.toString().includes(filters.variation)) {
+            return true;
+          }
+          // Check against weight or other meta properties
+          if (item.weight?.toLowerCase().includes(filters.variation.toLowerCase())) {
+            return true;
+          }
+          // Check meta_data for variation information
+          if (item.meta_data && Array.isArray(item.meta_data)) {
+            return item.meta_data.some(meta => 
+              meta.value?.toString().toLowerCase().includes(filters.variation.toLowerCase())
+            );
+          }
+          return false;
+        })
       );
     }
 
