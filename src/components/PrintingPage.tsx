@@ -9,6 +9,8 @@ import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerc
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { PrintingFilters } from './PrintingFilters';
 import { PrintingOrderCard } from './PrintingOrderCard';
 
@@ -26,6 +28,9 @@ const PrintingPage = () => {
   // Selection state
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadProcessingOrders = async () => {
     if (!user) {
@@ -86,6 +91,22 @@ const PrintingPage = () => {
 
   const handleFiltersChange = (filters: any) => {
     let filtered = [...orders];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(order => 
+        order.order_number.toLowerCase().includes(query) ||
+        order.customer_name.toLowerCase().includes(query) ||
+        order.customer_phone?.toLowerCase().includes(query) ||
+        order.customer_email?.toLowerCase().includes(query) ||
+        order.shipping_address?.toLowerCase().includes(query) ||
+        order.line_items?.some(item => 
+          item.name.toLowerCase().includes(query) ||
+          item.sku?.toLowerCase().includes(query)
+        )
+      );
+    }
 
     // Apply product filter
     if (filters.product && filters.product !== 'any') {
@@ -196,6 +217,11 @@ const PrintingPage = () => {
     }
   }, [user]);
 
+  // Apply filters when search query changes
+  useEffect(() => {
+    handleFiltersChange({});
+  }, [searchQuery]);
+
   // Calculate pagination
   const totalOrders = filteredOrders.length;
   const totalPages = Math.ceil(totalOrders / pageSize);
@@ -257,6 +283,21 @@ const PrintingPage = () => {
       {/* Smart Filtering */}
       <PrintingFilters onFiltersChange={handleFiltersChange} totalOrders={totalOrders} />
 
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search by order number, customer name, phone, email, address, product name, or SKU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Orders Section */}
       <Card>
         <CardHeader>
@@ -302,6 +343,33 @@ const PrintingPage = () => {
             </div>
           ) : (
             <div className="space-y-0">
+              {/* Table Header */}
+              <div className="bg-gray-50 border-b border-gray-200">
+                <div className="p-4">
+                  <div className="grid grid-cols-12 gap-4 items-center">
+                    <div className="col-span-2">
+                      <div className="font-semibold text-sm text-gray-700">Order Number</div>
+                      <div className="text-xs text-gray-500">Customer</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="font-semibold text-sm text-gray-700">Product Details</div>
+                      <div className="text-xs text-gray-500">Variations</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="font-semibold text-sm text-gray-700">Order Info</div>
+                      <div className="text-xs text-gray-500">Weight / Amount / Date</div>
+                    </div>
+                    <div className="col-span-4">
+                      <div className="font-semibold text-sm text-gray-700">Shipping Address</div>
+                      <div className="text-xs text-gray-500">Customer Contact</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="font-semibold text-sm text-gray-700 text-right">Actions</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {/* Order Cards */}
               {paginatedOrders.map((order) => (
                 <PrintingOrderCard
                   key={order.id}
@@ -318,51 +386,149 @@ const PrintingPage = () => {
       </Card>
 
       {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Show:</span>
-            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-              <SelectTrigger className="w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5">5</SelectItem>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="20">20</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <span className="text-sm text-muted-foreground">orders per page</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              Showing {startIndex + 1}-{Math.min(endIndex, totalOrders)} of {totalOrders} orders
-            </span>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-3 py-1 text-sm">
-                {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+      {totalOrders > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              {/* Left side - Page size selector and info */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Show:</span>
+                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <span className="text-sm text-muted-foreground">orders per page</span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Showing {totalOrders === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, totalOrders)} of {totalOrders} orders
+                  {searchQuery && (
+                    <span className="ml-2 text-blue-600">
+                      (filtered by "{searchQuery}")
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Right side - Pagination controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage === 1}
+                    className="hidden sm:flex"
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">Previous</span>
+                  </Button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePageChange(pageNum)}
+                          className="w-10 h-8"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                    
+                    {totalPages > 5 && currentPage < totalPages - 2 && (
+                      <>
+                        <span className="px-2">...</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handlePageChange(totalPages)}
+                          className="w-10 h-8"
+                        >
+                          {totalPages}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    <span className="hidden sm:inline mr-1">Next</span>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(totalPages)}
+                    disabled={currentPage === totalPages}
+                    className="hidden sm:flex"
+                  >
+                    Last
+                  </Button>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
+            
+            {/* Quick jump to page */}
+            {totalPages > 10 && (
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+                <span className="text-sm text-muted-foreground">Go to page:</span>
+                <Input
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  placeholder="Page"
+                  className="w-20 h-8"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      const pageNum = parseInt((e.target as HTMLInputElement).value);
+                      if (pageNum >= 1 && pageNum <= totalPages) {
+                        handlePageChange(pageNum);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+                <span className="text-sm text-muted-foreground">of {totalPages}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );
