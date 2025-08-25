@@ -38,7 +38,7 @@ const UserSettings = () => {
   const checkUserRole = async () => {
     try {
       const { data, error } = await supabase
-        .from('user_roles' as any)
+        .from('user_roles')
         .select('role')
         .eq('user_id', user?.id)
         .maybeSingle();
@@ -54,12 +54,12 @@ const UserSettings = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('user_roles' as any)
+        .from('user_roles')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUserRoles((data || []) as UserRole[]);
+      setUserRoles(data || []);
     } catch (error: any) {
       console.error('Error fetching user roles:', error);
       toast.error('Failed to load user roles');
@@ -91,7 +91,7 @@ const UserSettings = () => {
   const updateUserRole = async (userId: string, newRole: 'admin' | 'staff') => {
     try {
       const { error } = await supabase
-        .from('user_roles' as any)
+        .from('user_roles')
         .update({ 
           role: newRole,
           updated_at: new Date().toISOString()
@@ -110,7 +110,7 @@ const UserSettings = () => {
   const removeUser = async (userId: string) => {
     try {
       const { error } = await supabase
-        .from('user_roles' as any)
+        .from('user_roles')
         .delete()
         .eq('user_id', userId);
 

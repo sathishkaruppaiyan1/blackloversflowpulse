@@ -42,13 +42,13 @@ const CourierSettings = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('couriers' as any)
+        .from('couriers')
         .select('*')
         .eq('user_id', user?.id)
         .order('name');
 
       if (error) throw error;
-      setCouriers((data || []) as Courier[]);
+      setCouriers(data || []);
     } catch (error: any) {
       console.error('Error fetching couriers:', error);
       toast.error('Failed to load couriers');
@@ -66,7 +66,7 @@ const CourierSettings = () => {
     try {
       if (editingCourier) {
         const { error } = await supabase
-          .from('couriers' as any)
+          .from('couriers')
           .update({
             name: formData.name.trim(),
             tracking_url: formData.tracking_url.trim(),
@@ -79,7 +79,7 @@ const CourierSettings = () => {
         toast.success('Courier updated successfully!');
       } else {
         const { error } = await supabase
-          .from('couriers' as any)
+          .from('couriers')
           .insert({
             user_id: user.id,
             name: formData.name.trim(),
@@ -102,7 +102,7 @@ const CourierSettings = () => {
   const deleteCourier = async (courierId: string) => {
     try {
       const { error } = await supabase
-        .from('couriers' as any)
+        .from('couriers')
         .delete()
         .eq('id', courierId);
 
@@ -118,7 +118,7 @@ const CourierSettings = () => {
   const toggleCourierStatus = async (courierId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
-        .from('couriers' as any)
+        .from('couriers')
         .update({ 
           is_active: isActive,
           updated_at: new Date().toISOString()

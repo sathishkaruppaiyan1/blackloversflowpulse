@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_settings: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          company_name: string | null
+          country: string | null
+          created_at: string
+          default_label_format: string | null
+          email: string | null
+          id: string
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          default_label_format?: string | null
+          email?: string | null
+          id?: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          company_name?: string | null
+          country?: string | null
+          created_at?: string
+          default_label_format?: string | null
+          email?: string | null
+          id?: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       completed_orders: {
         Row: {
           completed_at: string
@@ -37,6 +88,39 @@ export type Database = {
           id?: string
           order_data?: Json
           original_order_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      couriers: {
+        Row: {
+          created_at: string
+          example_number: string | null
+          id: string
+          is_active: boolean
+          name: string
+          tracking_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          example_number?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          tracking_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          example_number?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          tracking_url?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -209,6 +293,30 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
           updated_at?: string
           user_id?: string
         }

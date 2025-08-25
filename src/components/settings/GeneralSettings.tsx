@@ -49,7 +49,7 @@ const GeneralSettings = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('company_settings' as any)
+        .from('company_settings')
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
@@ -84,7 +84,7 @@ const GeneralSettings = () => {
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('company_settings' as any)
+        .from('company_settings')
         .upsert({
           user_id: user.id,
           ...settings,

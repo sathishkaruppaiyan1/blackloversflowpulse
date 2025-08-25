@@ -59,7 +59,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) =>
   const fetchCompanySettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('company_settings' as any)
+        .from('company_settings')
         .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
