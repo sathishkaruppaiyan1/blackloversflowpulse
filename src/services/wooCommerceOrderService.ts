@@ -356,9 +356,9 @@ export const wooCommerceOrderService = {
       .eq('id', orderId)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !currentOrder) {
       console.error('Error fetching current order:', fetchError);
-      throw fetchError;
+      throw fetchError || new Error('Order not found');
     }
 
     const previousStage = currentOrder.status;
@@ -389,9 +389,9 @@ export const wooCommerceOrderService = {
       .select('*')
       .single();
 
-    if (error) {
+    if (error || !data) {
       console.error('Error updating order stage:', error);
-      throw error;
+      throw error || new Error('Failed to update order');
     }
 
     // Store order in completed_orders when it reaches shipped or delivered stage
@@ -449,9 +449,9 @@ export const wooCommerceOrderService = {
       .eq('id', orderId)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !order) {
       console.error('Error fetching order for item update:', fetchError);
-      throw fetchError;
+      throw fetchError || new Error('Order not found');
     }
 
     const lineItems = Array.isArray(order.line_items) ? (order.line_items as unknown as WooCommerceOrderItem[]) : [];
@@ -484,9 +484,9 @@ export const wooCommerceOrderService = {
       .eq('id', orderId)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !currentOrder) {
       console.error('Error fetching current order for tracking:', fetchError);
-      throw fetchError;
+      throw fetchError || new Error('Order not found');
     }
 
     const previousStage = currentOrder.status;
@@ -505,9 +505,9 @@ export const wooCommerceOrderService = {
       .select('*')
       .single();
 
-    if (error) {
+    if (error || !data) {
       console.error('❌ Error updating tracking in database:', error);
-      throw error;
+      throw error || new Error('Failed to update tracking');
     }
 
     // Store order in completed_orders since it's now shipped
@@ -594,9 +594,9 @@ export const wooCommerceOrderService = {
       .eq('id', orderId)
       .single();
 
-    if (fetchError) {
+    if (fetchError || !order) {
       console.error('Error fetching order for bulk pack:', fetchError);
-      throw fetchError;
+      throw fetchError || new Error('Order not found');
     }
 
     const lineItems = Array.isArray(order.line_items) ? (order.line_items as unknown as WooCommerceOrderItem[]) : [];
