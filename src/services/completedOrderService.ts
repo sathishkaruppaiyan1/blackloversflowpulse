@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
 
@@ -40,10 +41,6 @@ export const completedOrderService = {
         throw error;
       }
 
-      if (!data) {
-        throw new Error('Failed to update completed order - no data returned');
-      }
-
       console.log(`✅ Successfully updated completed order: ${data.id}`);
       return data as CompletedOrder;
     }
@@ -63,10 +60,6 @@ export const completedOrderService = {
     if (error) {
       console.error('Error storing completed order:', error);
       throw error;
-    }
-
-    if (!data) {
-      throw new Error('Failed to store completed order - no data returned');
     }
 
     console.log(`✅ Successfully stored completed order: ${data.id}`);

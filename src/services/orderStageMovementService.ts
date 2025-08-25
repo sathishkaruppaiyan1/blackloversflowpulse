@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -45,10 +46,6 @@ export const orderStageMovementService = {
     if (error) {
       console.error('Error recording stage movement:', error);
       throw error;
-    }
-
-    if (!data) {
-      throw new Error('Failed to record stage movement - no data returned');
     }
 
     console.log(`Successfully recorded stage movement: ${data.id}`);
