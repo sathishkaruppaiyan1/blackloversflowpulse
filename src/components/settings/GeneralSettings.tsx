@@ -21,7 +21,6 @@ interface CompanySettings {
   phone: string;
   email: string;
   default_label_format: 'A4' | 'A5';
-  show_reseller_info: boolean;
 }
 
 const GeneralSettings = () => {
@@ -35,8 +34,7 @@ const GeneralSettings = () => {
     country: '',
     phone: '',
     email: '',
-    default_label_format: 'A4',
-    show_reseller_info: false
+    default_label_format: 'A4'
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,8 +68,7 @@ const GeneralSettings = () => {
           country: data.country || '',
           phone: data.phone || '',
           email: data.email || '',
-          default_label_format: data.default_label_format || 'A4',
-          show_reseller_info: data.show_reseller_info || false
+          default_label_format: data.default_label_format || 'A4'
         });
       }
     } catch (error: any) {
@@ -105,7 +102,7 @@ const GeneralSettings = () => {
     }
   };
 
-  const handleInputChange = (field: keyof CompanySettings, value: string | boolean) => {
+  const handleInputChange = (field: keyof CompanySettings, value: string) => {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
 
@@ -242,15 +239,6 @@ const GeneralSettings = () => {
                 <SelectItem value="A5">A5 (148 × 210 mm)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="show_reseller_info"
-              checked={settings.show_reseller_info}
-              onCheckedChange={(checked) => handleInputChange('show_reseller_info', checked)}
-            />
-            <Label htmlFor="show_reseller_info">Show reseller information on labels</Label>
           </div>
         </CardContent>
       </Card>

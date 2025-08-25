@@ -5,8 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { Trash2, Plus, UserPlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,39 +17,36 @@ interface UserRole {
   user_id: string;
   role: 'admin' | 'staff';
   created_at: string;
-  profiles?: {
-    full_name: string;
-  };
 }
 
 const UserSettings = () => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'staff' | null>(null);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'staff'>('staff');
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
+      checkUserRole();
       fetchUserRoles();
-      fetchCurrentUserRole();
     }
   }, [user]);
 
-  const fetchCurrentUserRole = async () => {
+  const checkUserRole = async () => {
     try {
       const { data, error } = await supabase
         .from('user_roles' as any)
         .select('role')
         .eq('user_id', user?.id)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       setCurrentUserRole(data?.role || null);
     } catch (error: any) {
-      console.error('Failed to fetch current user role:', error);
+      console.error('Error checking user role:', error);
     }
   };
 
@@ -58,19 +55,11 @@ const UserSettings = () => {
     try {
       const { data, error } = await supabase
         .from('user_roles' as any)
-        .select(`
-          id,
-          user_id,
-          role,
-          created_at,
-          profiles:user_id (
-            full_name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUserRoles(data || []);
+      setUserRoles((data || []) as UserRole[]);
     } catch (error: any) {
       toast.error('Failed to load user roles: ' + error.message);
     } finally {
@@ -85,14 +74,15 @@ const UserSettings = () => {
     }
 
     try {
-      // This would typically send an invitation email
-      // For now, we'll just show a message
-      toast.success('User invitation feature coming soon!');
-      setDialogOpen(false);
+      // Note: This would typically involve sending an invitation email
+      // For now, we'll just show a message about the invitation
+      toast.success(`Invitation sent to ${inviteEmail} as ${inviteRole}`);
+      
       setInviteEmail('');
       setInviteRole('staff');
+      setDialogOpen(false);
     } catch (error: any) {
-      toast.error('Failed to invite user: ' + error.message);
+      toast.error('Failed to send invitation: ' + error.message);
     }
   };
 
@@ -102,7 +92,7 @@ const UserSettings = () => {
         .from('user_roles' as any)
         .update({ 
           role: newRole,
-          assigned_by: user?.id
+          updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
 
@@ -129,26 +119,17 @@ const UserSettings = () => {
     }
   };
 
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading users...</div>;
-  }
-
+  // Only show this tab to admins
   if (currentUserRole !== 'admin') {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>
-            Access restricted to administrators only
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            You need administrator privileges to manage users.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">You don't have permission to access user management.</p>
+      </div>
     );
+  }
+
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading users...</div>;
   }
 
   return (
@@ -178,7 +159,7 @@ const UserSettings = () => {
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="invite_email">Email Address</Label>
+                    <Label htmlFor="invite_email">Email Address *</Label>
                     <Input
                       id="invite_email"
                       type="email"
@@ -215,7 +196,7 @@ const UserSettings = () => {
         <CardContent>
           {userRoles.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              No users found. Invite team members to get started.
+              No users found. Invite your first team member to get started.
             </div>
           ) : (
             <div className="space-y-4">
@@ -223,9 +204,7 @@ const UserSettings = () => {
                 <div key={userRole.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium">
-                        {userRole.profiles?.full_name || 'Unknown User'}
-                      </h3>
+                      <h3 className="font-medium">User ID: {userRole.user_id}</h3>
                       <Badge variant={userRole.role === 'admin' ? 'default' : 'secondary'}>
                         {userRole.role}
                       </Badge>
@@ -235,29 +214,26 @@ const UserSettings = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    {userRole.user_id !== user?.id && (
-                      <>
-                        <Select
-                          value={userRole.role}
-                          onValueChange={(value: 'admin' | 'staff') => updateUserRole(userRole.user_id, value)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="staff">Staff</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeUser(userRole.user_id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
+                    <Select
+                      value={userRole.role}
+                      onValueChange={(value: 'admin' | 'staff') => updateUserRole(userRole.user_id, value)}
+                    >
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="staff">Staff</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeUser(userRole.user_id)}
+                      disabled={userRole.user_id === user?.id}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               ))}

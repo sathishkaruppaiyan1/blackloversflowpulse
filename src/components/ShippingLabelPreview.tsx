@@ -1,8 +1,11 @@
+
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Printer, Package, Phone, MapPin, User } from "lucide-react";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface OrderItem {
   name?: string;
@@ -14,8 +17,6 @@ interface OrderItem {
 interface OrderData {
   id?: string;
   customer?: string;
-  reseller?: string;
-  reseller_number?: string;
   amount?: string;
   address?: string;
   city?: string;
@@ -24,6 +25,19 @@ interface OrderData {
   status?: string;
   items?: OrderItem[];
   orderId?: string;
+}
+
+interface CompanySettings {
+  company_name: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  phone: string;
+  email: string;
+  default_label_format: 'A4' | 'A5';
 }
 
 interface ShippingLabelPreviewProps {
@@ -40,6 +54,32 @@ export const ShippingLabelPreview = ({
   onPrintComplete 
 }: ShippingLabelPreviewProps) => {
   const barcodeRef = useRef<SVGSVGElement>(null);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
+  const { user } = useAuth();
+
+  // Load company settings
+  useEffect(() => {
+    const fetchCompanySettings = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('company_settings' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+        setCompanySettings(data);
+      } catch (error) {
+        console.error('Error fetching company settings:', error);
+      }
+    };
+
+    if (user) {
+      fetchCompanySettings();
+    }
+  }, [user]);
 
   // Centralized barcode text generation to ensure consistency
   const getBarcodeText = () => {
@@ -63,20 +103,15 @@ export const ShippingLabelPreview = ({
     const generateBarcode = async () => {
       if (barcodeRef.current && orderData) {
         try {
-          // Dynamically import JsBarcode
           const JsBarcode = (await import('jsbarcode')).default;
           const barcodeText = getBarcodeText();
           const config = getBarcodeConfig();
           
-          // Clear any existing content
           barcodeRef.current.innerHTML = '';
-          
-          // Generate barcode with consistent settings for preview
           JsBarcode(barcodeRef.current, barcodeText, config);
 
         } catch (error) {
           console.error('Error generating barcode:', error);
-          // Fallback: show text if barcode fails
           if (barcodeRef.current) {
             barcodeRef.current.innerHTML = `<text x="50%" y="50%" text-anchor="middle" dy=".3em" font-family="monospace" font-size="12">${getBarcodeText()}</text>`;
           }
@@ -85,35 +120,47 @@ export const ShippingLabelPreview = ({
     };
 
     if (isOpen && orderData) {
-      // Add small delay to ensure DOM is ready
       setTimeout(generateBarcode, 100);
     }
   }, [isOpen, orderData]);
 
-  const updateOrderStatus = async () => {
-    // This function can be implemented to update order status after printing
-    console.log('Order printed, updating status...');
-  };
-
   const handlePrint = async () => {
     console.log('🖨️ Print button clicked, starting print process...');
     
-    // Create a new window for printing
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       console.log('✅ Print window opened successfully');
       
-      // Use the same barcode text generation logic as preview
       const barcodeText = getBarcodeText();
       const barcodeConfig = getBarcodeConfig();
       
-      // Build print content with proper variable interpolation and consistent barcode config
+      const fromAddress = companySettings ? {
+        name: companySettings.company_name || 'Your Company',
+        line1: companySettings.address_line1 || '',
+        line2: companySettings.address_line2 || '',
+        city: companySettings.city || '',
+        state: companySettings.state || '',
+        postal: companySettings.postal_code || '',
+        country: companySettings.country || '',
+        phone: companySettings.phone || '',
+        email: companySettings.email || ''
+      } : {
+        name: 'Your Company',
+        line1: '123 Business Street',
+        line2: 'Suite 100',
+        city: 'Business City',
+        state: 'State',
+        postal: '12345',
+        country: 'Country',
+        phone: '+1 234 567 8900',
+        email: 'info@company.com'
+      };
+
       const printContent = `<!DOCTYPE html>
 <html>
 <head>
   <title>Shipping Label - ${barcodeText}</title>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-
   <style>
     body { 
       font-family: Arial, sans-serif; 
@@ -161,7 +208,7 @@ export const ShippingLabelPreview = ({
       border-radius: 50%;
       margin-right: 8px;
     }
-    .to-label {
+    .to-label, .from-label {
       font-weight: bold;
       font-size: 14px;
     }
@@ -206,7 +253,7 @@ export const ShippingLabelPreview = ({
       flex: 1;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-center;
       border: none;
     }
     .footer strong {
@@ -244,18 +291,23 @@ export const ShippingLabelPreview = ({
         <div class="red-dot"></div>
         <span class="to-label">TO:</span>
       </div>
-      <div class="customer-name">${orderData?.customer || 'TEST K'}</div>
-      <div class="address">${orderData?.address || '064, D8-3F AVADH RUTURAJ TEXTILE HUB BRTS'}</div>
-      <div class="address">${orderData?.city || ''}</div>
-      <div class="address">${orderData?.country || 'India'}</div>
-      <div class="phone"><strong>Ph:</strong> ${orderData?.phone || '+919994901826'}</div>
+      <div class="customer-name">${orderData?.customer || 'Customer Name'}</div>
+      <div class="address">${orderData?.address || 'Customer Address'}</div>
+      <div class="address">${orderData?.city || 'City'}</div>
+      <div class="address">${orderData?.country || 'Country'}</div>
+      <div class="phone"><strong>Ph:</strong> ${orderData?.phone || 'Phone Number'}</div>
     </div>
     
     <div class="section from-section">
       <div class="section-title">FROM:</div>
       <div class="section-content">
-        <div><strong>${orderData?.reseller || 'sathish'}</strong></div>
-        <div><strong>Number:</strong> ${orderData?.reseller_number || '08939048873'}</div>
+        <div><strong>${fromAddress.name}</strong></div>
+        <div>${fromAddress.line1}</div>
+        ${fromAddress.line2 ? `<div>${fromAddress.line2}</div>` : ''}
+        <div>${fromAddress.city}, ${fromAddress.state} ${fromAddress.postal}</div>
+        <div>${fromAddress.country}</div>
+        <div><strong>Ph:</strong> ${fromAddress.phone}</div>
+        <div><strong>Email:</strong> ${fromAddress.email}</div>
       </div>
     </div>
     
@@ -264,36 +316,33 @@ export const ShippingLabelPreview = ({
       <div class="section-content">
         ${orderData?.items?.map(item => `
           <div class="product-item">
-            • <strong>${item.name || 'New'}</strong> 
-            ${item.variant ? `- ${item.variant}` : '- Blue'} 
-            ${item.size ? `/ ${item.size}` : '/ Various'} 
+            • <strong>${item.name || 'Product'}</strong> 
+            ${item.variant ? `- ${item.variant}` : ''} 
+            ${item.size ? `/ ${item.size}` : ''} 
             (Qty: ${item.quantity || 1})
           </div>
         `).join('') || `
-          <div class="product-item">• <strong>New</strong> - Blue - blue / / Various (Qty: 1)</div>
+          <div class="product-item">• <strong>Product</strong> - Variant / Size (Qty: 1)</div>
         `}
       </div>
     </div>
     
     <div class="footer">
-      <strong>PARCEL OPENING VIDEO is MUST For raising complaints</strong>
+      <strong>Handle with Care - Thank you for your business!</strong>
     </div>
   </div>
 
   <script>
     console.log('🔧 Print page loaded, initializing barcode generation...');
     
-    // Store barcode text and config as variables
     var BARCODE_TEXT = "${barcodeText}";
     var BARCODE_CONFIG = ${JSON.stringify(barcodeConfig)};
     
-    // Function to trigger print
     function triggerPrint() {
       console.log('🖨️ Triggering print dialog...');
       try {
         window.print();
         console.log('✅ Print dialog opened');
-        // Close window after print (with delay to ensure print completes)
         setTimeout(() => {
           console.log('🚪 Closing print window...');
           window.close();
@@ -304,14 +353,12 @@ export const ShippingLabelPreview = ({
       }
     }
     
-    // Generate barcode after page loads
     window.onload = function() {
       console.log('📄 Window loaded, checking for JsBarcode...');
       
       if (window.JsBarcode) {
         console.log('✅ JsBarcode loaded, generating barcode...');
         try {
-          // Generate barcode with EXACT same settings as preview for consistency
           JsBarcode("#barcode-print", BARCODE_TEXT, BARCODE_CONFIG);
           console.log('✅ Barcode generated successfully');
         } catch (error) {
@@ -321,11 +368,9 @@ export const ShippingLabelPreview = ({
         console.error('❌ JsBarcode not loaded');
       }
       
-      // Trigger print after barcode generation (with increased delay for reliability)
       setTimeout(triggerPrint, 500);
     };
     
-    // Fallback: if window.onload doesn't fire, try with DOMContentLoaded
     document.addEventListener('DOMContentLoaded', function() {
       console.log('📄 DOM content loaded');
       if (!window.onload) {
@@ -338,7 +383,6 @@ export const ShippingLabelPreview = ({
       }
     });
     
-    // Additional fallback: ensure print happens even if barcode fails
     setTimeout(() => {
       console.log('⏰ Fallback timer: ensuring print happens...');
       triggerPrint();
@@ -352,7 +396,6 @@ export const ShippingLabelPreview = ({
         printWindow.document.close();
         console.log('✅ Print content written to window');
         
-        // Call the print complete callback
         if (onPrintComplete) {
           onPrintComplete(orderData?.orderId);
         }
@@ -367,6 +410,28 @@ export const ShippingLabelPreview = ({
   };
 
   if (!orderData) return null;
+
+  const fromAddress = companySettings ? {
+    name: companySettings.company_name || 'Your Company',
+    line1: companySettings.address_line1 || '',
+    line2: companySettings.address_line2 || '',
+    city: companySettings.city || '',
+    state: companySettings.state || '',
+    postal: companySettings.postal_code || '',
+    country: companySettings.country || '',
+    phone: companySettings.phone || '',
+    email: companySettings.email || ''
+  } : {
+    name: 'Your Company',
+    line1: '123 Business Street',
+    line2: 'Suite 100',
+    city: 'Business City',
+    state: 'State',
+    postal: '12345',
+    country: 'Country',
+    phone: '+1 234 567 8900',
+    email: 'info@company.com'
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -393,40 +458,45 @@ export const ShippingLabelPreview = ({
               <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
               <span className="font-bold text-sm">TO:</span>
             </div>
-            <div className="font-bold text-lg uppercase mb-2">{orderData.customer || 'TEST K'}</div>
+            <div className="font-bold text-lg uppercase mb-2">{orderData.customer || 'Customer Name'}</div>
             <div className="text-sm leading-tight space-y-0.5">
-              <div>{orderData.address || '064, D8-3F AVADH RUTURAJ TEXTILE HUB BRTS'}</div>
-              <div>{orderData.city || ''}</div>
-              <div>{orderData.country || 'India'}</div>
-              <div className="mt-2"><strong>Ph:</strong> {orderData.phone || '+919994901826'}</div>
+              <div>{orderData.address || 'Customer Address'}</div>
+              <div>{orderData.city || 'City'}</div>
+              <div>{orderData.country || 'Country'}</div>
+              <div className="mt-2"><strong>Ph:</strong> {orderData.phone || 'Phone Number'}</div>
             </div>
           </div>
 
-          {/* FROM Section Only */}
-          <div className="border-b-2 border-black p-3" style={{ height: '80px' }}>
+          {/* FROM Section */}
+          <div className="border-b-2 border-black p-3" style={{ height: '120px' }}>
             <div className="font-bold text-sm mb-2">FROM:</div>
-            <div className="text-sm">
-              <div className="font-bold">{orderData.reseller || 'sathish'}</div>
-              <div><strong>Number:</strong> {orderData.reseller_number || '08939048873'}</div>
+            <div className="text-sm leading-tight space-y-0.5">
+              <div className="font-bold">{fromAddress.name}</div>
+              <div>{fromAddress.line1}</div>
+              {fromAddress.line2 && <div>{fromAddress.line2}</div>}
+              <div>{fromAddress.city}, {fromAddress.state} {fromAddress.postal}</div>
+              <div>{fromAddress.country}</div>
+              <div><strong>Ph:</strong> {fromAddress.phone}</div>
+              <div><strong>Email:</strong> {fromAddress.email}</div>
             </div>
           </div>
 
           {/* Products Section */}
-          <div className="border-b-2 border-black p-3" style={{ height: '144px' }}>
+          <div className="border-b-2 border-black p-3" style={{ height: '104px' }}>
             <div className="font-bold text-sm mb-2">PRODUCTS:</div>
-            <div className="text-sm leading-tight overflow-y-auto" style={{ maxHeight: '104px' }}>
+            <div className="text-sm leading-tight overflow-y-auto" style={{ maxHeight: '64px' }}>
               {orderData.items && orderData.items.length > 0 ? (
                 orderData.items.map((item, index) => (
                   <div key={index} className="mb-1">
-                    • <strong>{item.name || 'New'}</strong>
-                    {item.variant ? ` - ${item.variant}` : ' - Blue'}
-                    {item.size ? ` / ${item.size}` : ' / Various'}
+                    • <strong>{item.name || 'Product'}</strong>
+                    {item.variant ? ` - ${item.variant}` : ''}
+                    {item.size ? ` / ${item.size}` : ''}
                     {` (Qty: ${item.quantity || 1})`}
                   </div>
                 ))
               ) : (
                 <div className="mb-1">
-                  • <strong>New</strong> - Blue - blue / / Various (Qty: 1)
+                  • <strong>Product</strong> - Variant / Size (Qty: 1)
                 </div>
               )}
             </div>
@@ -434,7 +504,7 @@ export const ShippingLabelPreview = ({
           
           {/* Footer */}
           <div className="p-3 text-center flex-1 flex items-center justify-center">
-            <div className="font-bold text-xs">PARCEL OPENING VIDEO is MUST For raising complaints</div>
+            <div className="font-bold text-xs">Handle with Care - Thank you for your business!</div>
           </div>
         </div>
 

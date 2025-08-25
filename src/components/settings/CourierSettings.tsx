@@ -48,7 +48,7 @@ const CourierSettings = () => {
         .order('name');
 
       if (error) throw error;
-      setCouriers(data || []);
+      setCouriers((data || []) as Courier[]);
     } catch (error: any) {
       toast.error('Failed to load couriers: ' + error.message);
     } finally {
