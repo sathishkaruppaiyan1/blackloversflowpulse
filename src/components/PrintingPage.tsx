@@ -11,6 +11,16 @@ import { toast } from 'sonner';
 import { PrintingFilters } from './PrintingFilters';
 import { useWooCommerceOrders } from '@/hooks/useWooCommerceOrders';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface CompanySettings {
   company_name: string;
@@ -44,6 +54,27 @@ const PrintingPage = () => {
   });
   const { user } = useAuth();
   const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [paginatedOrders, setPaginatedOrders] = useState<WooCommerceOrder[]>([]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredOrders.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  // Update paginated orders when filteredOrders, currentPage, or pageSize changes
+  useEffect(() => {
+    const paginated = filteredOrders.slice(startIndex, endIndex);
+    setPaginatedOrders(paginated);
+  }, [filteredOrders, currentPage, pageSize, startIndex, endIndex]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
 
   // Extract unique values for filter options
   const getUniqueProducts = () => {
@@ -96,7 +127,6 @@ const PrintingPage = () => {
 
   useEffect(() => {
     fetchCompanySettings();
-    // Fetch orders from WooCommerce when component mounts
     if (user) {
       fetchOrdersFromWooCommerce();
     }
@@ -196,7 +226,7 @@ const PrintingPage = () => {
     if (allOrdersSelected) {
       setSelectedOrders([]);
     } else {
-      setSelectedOrders(filteredOrders.map((order) => order.id));
+      setSelectedOrders(paginatedOrders.map((order) => order.id));
     }
     setAllOrdersSelected(!allOrdersSelected);
   };
@@ -417,6 +447,49 @@ const PrintingPage = () => {
     setAllOrdersSelected(false);
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (newPageSize: string) => {
+    setPageSize(parseInt(newPageSize));
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      const start = Math.max(1, currentPage - 2);
+      const end = Math.min(totalPages, start + maxVisiblePages - 1);
+      
+      if (start > 1) {
+        pages.push(1);
+        if (start > 2) {
+          pages.push('ellipsis-start');
+        }
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      if (end < totalPages) {
+        if (end < totalPages - 1) {
+          pages.push('ellipsis-end');
+        }
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   if (loading) {
     return <div className="flex justify-center p-8">Loading orders from WooCommerce...</div>;
   }
@@ -441,7 +514,25 @@ const PrintingPage = () => {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Orders ({filteredOrders.length})</CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle>Orders ({filteredOrders.length})</CardTitle>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show:</span>
+                <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">per page</span>
+              </div>
+            </div>
             <div className="flex gap-2">
               <Button 
                 onClick={fetchOrdersFromWooCommerce} 
@@ -468,112 +559,169 @@ const PrintingPage = () => {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        className="rounded text-blue-500 focus:ring-blue-500"
-                        checked={allOrdersSelected}
-                        onChange={handleSelectAllOrders}
-                      />
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Order #
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Phone
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Shipping Address
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Products
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Total (₹)
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Order Status
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50"></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead>
+                    <tr>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
                         <input
                           type="checkbox"
                           className="rounded text-blue-500 focus:ring-blue-500"
-                          checked={selectedOrders.includes(order.id)}
-                          onChange={() => handleSelectOrder(order.id)}
+                          checked={allOrdersSelected}
+                          onChange={handleSelectAllOrders}
                         />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {order.order_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {order.customer_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {order.customer_phone || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 max-w-xs truncate">
-                        {order.shipping_address || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          {order.line_items && order.line_items.length > 0 ? (
-                            <div>
-                              {order.line_items.slice(0, 2).map((item, index) => (
-                                <div key={index} className="text-xs">
-                                  {item.name} ({item.quantity}x)
-                                  {item.sku && <span className="text-gray-500"> - {item.sku}</span>}
-                                </div>
-                              ))}
-                              {order.line_items.length > 2 && (
-                                <div className="text-xs text-gray-500">
-                                  +{order.line_items.length - 2} more items
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">{order.items} items</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        ₹{order.total.toFixed(2)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge
-                          variant={
-                            order.status === 'processing'
-                              ? 'secondary'
-                              : order.status === 'completed'
-                              ? 'default'
-                              : 'outline'
-                          }
-                        >
-                          {order.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        {selectedOrders.includes(order.id) && (
-                          <Check className="w-5 h-5 text-green-500 mx-auto" />
-                        )}
-                      </td>
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Order #
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Phone
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Shipping Address
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Products
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Total (₹)
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                        Order Status
+                      </th>
+                      <th className="px-6 py-3 bg-gray-50"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {paginatedOrders.map((order) => (
+                      <tr key={order.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            className="rounded text-blue-500 focus:ring-blue-500"
+                            checked={selectedOrders.includes(order.id)}
+                            onChange={() => handleSelectOrder(order.id)}
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.order_number}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.customer_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {order.customer_phone || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 max-w-xs truncate">
+                          {order.shipping_address || 'N/A'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm">
+                            {order.line_items && order.line_items.length > 0 ? (
+                              <div>
+                                {order.line_items.slice(0, 2).map((item, index) => (
+                                  <div key={index} className="text-xs">
+                                    {item.name} ({item.quantity}x)
+                                    {item.sku && <span className="text-gray-500"> - {item.sku}</span>}
+                                  </div>
+                                ))}
+                                {order.line_items.length > 2 && (
+                                  <div className="text-xs text-gray-500">
+                                    +{order.line_items.length - 2} more items
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500">{order.items} items</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          ₹{order.total.toFixed(2)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge
+                            variant={
+                              order.status === 'processing'
+                                ? 'secondary'
+                                : order.status === 'completed'
+                                ? 'default'
+                                : 'outline'
+                            }
+                          >
+                            {order.status}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          {selectedOrders.includes(order.id) && (
+                            <Check className="w-5 h-5 text-green-500 mx-auto" />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1} to {Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length} orders
+                  </div>
+                  
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) handlePageChange(currentPage - 1);
+                          }}
+                          className={currentPage <= 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                      
+                      {generatePageNumbers().map((pageNum, index) => (
+                        <PaginationItem key={index}>
+                          {pageNum === 'ellipsis-start' || pageNum === 'ellipsis-end' ? (
+                            <PaginationEllipsis />
+                          ) : (
+                            <PaginationLink
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                handlePageChange(pageNum as number);
+                              }}
+                              isActive={currentPage === pageNum}
+                              className="cursor-pointer"
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          )}
+                        </PaginationItem>
+                      ))}
+                      
+                      <PaginationItem>
+                        <PaginationNext 
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage < totalPages) handlePageChange(currentPage + 1);
+                          }}
+                          className={currentPage >= totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
