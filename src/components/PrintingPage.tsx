@@ -28,11 +28,24 @@ interface Order {
   created_at: string;
 }
 
+interface CompanySettings {
+  company_name: string;
+  address_line1: string;
+  address_line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  phone: string;
+  email: string;
+}
+
 const PrintingPage = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
   const [allOrdersSelected, setAllOrdersSelected] = useState(false);
+  const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null);
   const [filters, setFilters] = useState({
     search: "",
     date: "",
@@ -62,20 +75,75 @@ const PrintingPage = () => {
   };
 
   const getUniqueColors = () => {
-    // This would depend on your data structure
-    // For now, returning some common colors
-    return ['Red', 'Blue', 'Green', 'Black', 'White', 'Yellow', 'Pink', 'Purple'];
+    const colors = new Set<string>();
+    orders.forEach(order => {
+      if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items.forEach(item => {
+          if (item.meta_data && Array.isArray(item.meta_data)) {
+            item.meta_data.forEach((meta: any) => {
+              if (meta.key && (meta.key.includes('color') || meta.key.includes('Color') || meta.key === 'pa_color')) {
+                colors.add(meta.display_value || meta.value);
+              }
+            });
+          }
+        });
+      }
+    });
+    return Array.from(colors).filter(color => color && color.trim());
   };
 
   const getUniqueSizes = () => {
-    // This would depend on your data structure
-    // For now, returning some common sizes
-    return ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+    const sizes = new Set<string>();
+    orders.forEach(order => {
+      if (order.line_items && Array.isArray(order.line_items)) {
+        order.line_items.forEach(item => {
+          if (item.meta_data && Array.isArray(item.meta_data)) {
+            item.meta_data.forEach((meta: any) => {
+              if (meta.key && (meta.key.includes('size') || meta.key.includes('Size') || meta.key === 'pa_size')) {
+                sizes.add(meta.display_value || meta.value);
+              }
+            });
+          }
+        });
+      }
+    });
+    return Array.from(sizes).filter(size => size && size.trim());
   };
 
   useEffect(() => {
     fetchOrders();
+    fetchCompanySettings();
   }, [filters, sort, user]);
+
+  const fetchCompanySettings = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching company settings:', error);
+      } else if (data) {
+        setCompanySettings({
+          company_name: data.company_name || 'Your Company',
+          address_line1: data.address_line1 || '',
+          address_line2: data.address_line2 || '',
+          city: data.city || '',
+          state: data.state || '',
+          postal_code: data.postal_code || '',
+          country: data.country || '',
+          phone: data.phone || '',
+          email: data.email || ''
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -230,8 +298,9 @@ const PrintingPage = () => {
                   }
                   .product-table th, .product-table td { 
                     border: 1px solid #ccc; 
-                    padding: 8px; 
+                    padding: 10px 8px; 
                     text-align: left; 
+                    vertical-align: top;
                   }
                   .product-table th { 
                     background: #f0f0f0; 
@@ -268,10 +337,13 @@ const PrintingPage = () => {
                       <div>
                         <strong>FROM:</strong>
                         <div class="address-box">
-                          <div><strong>Your Company</strong></div>
-                          <div>Your Company Address</div>
-                          <div>City, State, PIN Code</div>
-                          <div>Phone: +91 XXXXXXXXXX</div>
+                          <div><strong>${companySettings?.company_name || 'Your Company'}</strong></div>
+                          <div>${companySettings?.address_line1 || 'Company Address Line 1'}</div>
+                          ${companySettings?.address_line2 ? `<div>${companySettings.address_line2}</div>` : ''}
+                          <div>${companySettings?.city || 'City'}, ${companySettings?.state || 'State'}, ${companySettings?.postal_code || 'PIN Code'}</div>
+                          <div>${companySettings?.country || 'Country'}</div>
+                          <div>Phone: ${companySettings?.phone || 'Phone Number'}</div>
+                          ${companySettings?.email ? `<div>Email: ${companySettings.email}</div>` : ''}
                         </div>
                       </div>
                       <div>
@@ -301,19 +373,33 @@ const PrintingPage = () => {
                       </thead>
                       <tbody>
                         ${order.line_items && order.line_items.length > 0 ? 
-                          order.line_items.map(item => `
-                            <tr>
-                              <td>${item.name || 'N/A'}</td>
-                              <td>${item.sku || 'N/A'}</td>
-                              <td>${item.variation || 'N/A'}</td>
-                              <td>${item.quantity || 1}</td>
-                              <td>₹${((item.price || 0)).toFixed(2)}</td>
-                              <td>₹${((item.total || 0)).toFixed(2)}</td>
-                            </tr>
-                          `).join('') : 
+                          order.line_items.map(item => {
+                            const productName = item.name || item.product_name || 'Product Name Not Available';
+                            const sku = item.sku || item.product_sku || item.meta_data?.find(m => m.key === '_sku')?.value || 'N/A';
+                            const variation = item.variation_id && item.variation_id > 0 
+                              ? (item.meta_data?.filter(m => m.key?.startsWith('pa_') || m.display_key?.includes('Variation'))
+                                  .map(m => `${m.display_key || m.key}: ${m.display_value || m.value}`)
+                                  .join(', ') || 'Standard') 
+                              : 'Standard';
+                            const quantity = item.quantity || 1;
+                            const price = parseFloat(item.price || item.subtotal || 0) / quantity;
+                            const total = parseFloat(item.total || item.subtotal || (price * quantity));
+                            
+                            return `
+                              <tr>
+                                <td style="font-weight: bold;">${productName}</td>
+                                <td>${sku}</td>
+                                <td style="font-size: 11px;">${variation}</td>
+                                <td style="text-align: center;">${quantity}</td>
+                                <td style="text-align: right;">₹${price.toFixed(2)}</td>
+                                <td style="text-align: right; font-weight: bold;">₹${total.toFixed(2)}</td>
+                              </tr>
+                            `;
+                          }).join('') : 
                           `<tr>
-                            <td colspan="6" style="text-align: center;">
-                              ${order.items} item(s) - Total: ₹${order.total.toFixed(2)}
+                            <td colspan="6" style="text-align: center; padding: 20px;">
+                              <em>${order.items} item(s) - Total: ₹${order.total.toFixed(2)}</em><br>
+                              <small style="color: #666;">Product details not available</small>
                             </td>
                           </tr>`
                         }
