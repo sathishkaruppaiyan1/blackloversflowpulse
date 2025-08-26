@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Package, MapPin, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import JsBarcode from 'jsbarcode';
 
 interface Order {
   id: string;
@@ -31,13 +31,15 @@ interface CompanySettings {
   country: string;
   phone: string;
   email: string;
+  default_label_format: 'A4' | 'A5' | 'thermal';
 }
 
 interface ShippingLabelPreviewProps {
   order: Order;
+  format?: 'A4' | 'A5' | 'thermal';
 }
 
-const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) => {
+const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, format: propFormat }) => {
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
     company_name: '',
     address_line1: '',
@@ -47,15 +49,40 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) =>
     postal_code: '',
     country: '',
     phone: '',
-    email: ''
+    email: '',
+    default_label_format: 'A4'
   });
   const { user } = useAuth();
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
+
+  const labelFormat = propFormat || companySettings.default_label_format;
 
   useEffect(() => {
     if (user) {
       fetchCompanySettings();
     }
   }, [user]);
+
+  useEffect(() => {
+    generateBarcode();
+  }, [order.order_number]);
+
+  const generateBarcode = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, order.order_number, {
+        format: "CODE128",
+        width: 2,
+        height: 50,
+        displayValue: true,
+        fontSize: 12,
+        margin: 5
+      });
+      setBarcodeDataUrl(canvas.toDataURL());
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+    }
+  };
 
   const fetchCompanySettings = async () => {
     try {
@@ -101,11 +128,179 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order }) =>
     return address.replace(/,\s*/g, '\n');
   };
 
+  // Thermal printer label (4x6 inch)
+  if (labelFormat === 'thermal') {
+    return (
+      <div className="w-full max-w-md mx-auto p-4 bg-white border border-gray-300 print:border-none" style={{ width: '4in', minHeight: '6in' }}>
+        {/* Header with Barcode */}
+        <div className="text-center mb-4">
+          <h1 className="text-lg font-bold mb-2">SHIPPING LABEL</h1>
+          {barcodeDataUrl && (
+            <div className="flex justify-center mb-2">
+              <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
+            </div>
+          )}
+          <p className="text-xs">Order #{order.order_number}</p>
+        </div>
+
+        {/* FROM Address - Compact */}
+        <div className="mb-3">
+          <div className="text-sm font-semibold mb-1">FROM:</div>
+          <div className="text-xs">
+            <div className="font-medium">{companySettings.company_name || 'Your Company'}</div>
+            <div>{companySettings.address_line1}</div>
+            {companySettings.address_line2 && <div>{companySettings.address_line2}</div>}
+            <div>{companySettings.city}, {companySettings.state} {companySettings.postal_code}</div>
+            <div>{companySettings.country}</div>
+            {companySettings.phone && <div>Ph: {companySettings.phone}</div>}
+          </div>
+        </div>
+
+        {/* TO Address - Prominent */}
+        <div className="mb-3 p-2 border border-gray-400">
+          <div className="text-sm font-semibold mb-1">SHIP TO:</div>
+          <div className="text-sm">
+            <div className="font-semibold">{order.customer_name}</div>
+            <div className="whitespace-pre-line">{formatShippingAddress(order.shipping_address)}</div>
+            {order.customer_phone && <div>Ph: {order.customer_phone}</div>}
+          </div>
+        </div>
+
+        {/* Product Summary */}
+        <div className="mb-3">
+          <div className="text-xs">
+            <div className="flex justify-between">
+              <span>Items: {order.items}</span>
+              <span>Total: ₹{order.total.toFixed(2)}</span>
+            </div>
+            {order.carrier && (
+              <div className="mt-1">
+                <span className="font-medium">Carrier:</span> {order.carrier}
+              </div>
+            )}
+            {order.tracking_number && (
+              <div>
+                <span className="font-medium">Tracking:</span> {order.tracking_number}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="text-center text-xs text-gray-600 mt-4">
+          Handle with care
+        </div>
+      </div>
+    );
+  }
+
+  // A5 Format
+  if (labelFormat === 'A5') {
+    return (
+      <div className="w-full max-w-2xl mx-auto p-4 bg-white border border-gray-300 print:border-none" style={{ width: '5.8in', minHeight: '8.3in' }}>
+        {/* Header */}
+        <div className="text-center mb-4 pb-3 border-b border-gray-200">
+          <h1 className="text-xl font-bold">SHIPPING LABEL</h1>
+          {barcodeDataUrl && (
+            <div className="flex justify-center my-3">
+              <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
+            </div>
+          )}
+          <p className="text-sm">Order #{order.order_number}</p>
+        </div>
+
+        {/* From and To Addresses */}
+        <div className="grid grid-cols-1 gap-4 mb-4">
+          {/* FROM Address */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                <MapPin className="w-3 h-3 text-white" />
+              </div>
+              <h2 className="font-semibold">FROM</h2>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border text-sm">
+              <div className="font-semibold mb-1">{companySettings.company_name || 'Your Company'}</div>
+              <div className="whitespace-pre-line text-xs">{formatAddress(companySettings) || 'Please configure company address in settings'}</div>
+              {companySettings.phone && <div className="text-xs mt-1">Phone: {companySettings.phone}</div>}
+            </div>
+          </div>
+
+          {/* TO Address */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                <User className="w-3 h-3 text-white" />
+              </div>
+              <h2 className="font-semibold">TO</h2>
+            </div>
+            <div className="bg-gray-50 p-3 rounded border">
+              <div className="font-semibold mb-1">{order.customer_name}</div>
+              <div className="text-sm whitespace-pre-line mb-1">{formatShippingAddress(order.shipping_address)}</div>
+              {order.customer_phone && <div className="text-xs">Phone: {order.customer_phone}</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Product Details - Compact */}
+        <div className="mb-4">
+          <h3 className="font-semibold mb-2 flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            PRODUCTS
+          </h3>
+          <div className="bg-gray-50 p-3 rounded border">
+            <div className="text-sm">
+              <div className="flex justify-between font-medium">
+                <span>Items: {order.items}</span>
+                <span>Total: ₹{order.total.toFixed(2)}</span>
+              </div>
+              {order.line_items && order.line_items.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {order.line_items.slice(0, 3).map((item: any, index: number) => (
+                    <div key={index} className="text-xs flex justify-between">
+                      <span>{item.name} (Qty: {item.quantity || 1})</span>
+                      <span>₹{((item.total || 0)).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  {order.line_items.length > 3 && (
+                    <div className="text-xs text-gray-600">... and {order.line_items.length - 3} more items</div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Tracking Information */}
+        {(order.tracking_number || order.carrier) && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
+            <h3 className="font-semibold text-blue-800 mb-1 text-sm">Tracking</h3>
+            <div className="text-xs text-blue-700">
+              {order.carrier && <div>Carrier: {order.carrier}</div>}
+              {order.tracking_number && <div>Tracking: {order.tracking_number}</div>}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="text-center text-xs text-gray-500 pt-3 border-t">
+          Thank you for your business! Handle with care.
+        </div>
+      </div>
+    );
+  }
+
+  // A4 Format (Default/Original)
   return (
     <div className="w-full max-w-4xl mx-auto p-6 bg-white border-2 border-gray-300 print:border-none print:shadow-none">
       {/* Header */}
       <div className="text-center mb-6 pb-4 border-b-2 border-gray-200">
         <h1 className="text-2xl font-bold text-gray-800">SHIPPING LABEL</h1>
+        {barcodeDataUrl && (
+          <div className="flex justify-center my-4">
+            <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
+          </div>
+        )}
         <p className="text-sm text-gray-600 mt-1">Order #{order.order_number}</p>
         <div className="mt-2">
           <Badge className="text-xs px-3 py-1">
