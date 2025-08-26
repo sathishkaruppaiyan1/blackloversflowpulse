@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import PackingSlipA4 from './PackingSlipA4';
-import PackingSlipA5 from './PackingSlipA5';
+import DisplayPackingSlipA4 from './display/DisplayPackingSlipA4';
+import DisplayPackingSlipA5 from './display/DisplayPackingSlipA5';
 import PrintPackingSlipA4 from './print/PrintPackingSlipA4';
 import PrintPackingSlipA5 from './print/PrintPackingSlipA5';
 import { Button } from '@/components/ui/button';
@@ -293,9 +293,17 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
     <div className="w-full">
       <div data-packing-slip-id={order.id}>
         {format === 'A5' ? (
-          <PackingSlipA5 order={order} />
+          <DisplayPackingSlipA5 
+            order={order} 
+            companySettings={companySettings}
+            barcodeDataUrl={barcodeDataUrl}
+          />
         ) : (
-          <PackingSlipA4 order={order} />
+          <DisplayPackingSlipA4 
+            order={order} 
+            companySettings={companySettings}
+            barcodeDataUrl={barcodeDataUrl}
+          />
         )}
       </div>
       
