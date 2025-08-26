@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,7 +112,7 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
     const parts = [
       settings.address_line1,
       settings.address_line2,
-      `${settings.city}, ${settings.postal_code}`,
+      `${settings.city} ${settings.postal_code}`,
       settings.state
     ].filter(Boolean);
     
@@ -141,56 +142,48 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
 
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white" style={{ width: '5.83in', minHeight: '8.27in' }}>
-      {/* Header Section - Compact */}
-      <div className="flex justify-between items-start mb-4">
-        {/* Left: Logo and title */}
+      {/* Header Section - Logo and Title on left, Order details on right */}
+      <div className="flex justify-between items-start mb-6">
+        {/* Left: Logo and Packing slip title */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 gradient-bg">
-            <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center">
-              <div className="w-6 h-6 bg-pink-500 rounded-full"></div>
+          <div className="w-16 h-16 rounded-full border-3 border-pink-500 flex items-center justify-center bg-white">
+            <div className="text-center">
+              <div className="text-pink-500 font-bold text-sm leading-tight">Perfect</div>
+              <div className="text-pink-500 text-xs">Collections</div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-navy-800" style={{ color: '#1e3a8a' }}>
-            Packing slip
-          </h1>
+          <h1 className="text-2xl font-bold text-gray-800">Packing slip</h1>
         </div>
 
-        {/* Right: Order info - Compact */}
+        {/* Right: Order info */}
         <div className="text-right text-sm">
           <div className="mb-1">
-            <span className="font-medium text-gray-600">Order No.: </span>
-            <span className="text-gray-900">{order.order_number}</span>
+            <span className="font-bold text-gray-800">Order No.: </span>
+            <span className="text-gray-700">{order.order_number}</span>
           </div>
           <div className="mb-1">
-            <span className="font-medium text-gray-600">Date: </span>
-            <span className="text-gray-900">{formatDate(order.order_date)}</span>
+            <span className="font-bold text-gray-800">Order Date: </span>
+            <span className="text-gray-700">{formatDate(order.order_date)}</span>
           </div>
           <div>
-            <span className="font-medium text-gray-600">Method: </span>
-            <span className="text-gray-900 text-xs">{order.shipping_method || 'Standard'}</span>
+            <span className="font-bold text-gray-800">Shipping Method: </span>
+            <span className="text-gray-700">{order.shipping_method || 'Shipping Cost'}</span>
           </div>
         </div>
       </div>
 
-      {/* Barcode Section - Smaller */}
-      {barcodeDataUrl && (
-        <div className="flex justify-center my-4">
-          <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
-        </div>
-      )}
-
-      {/* Address Section - Three Columns but Compact */}
-      <div className="grid grid-cols-3 gap-3 mb-6 text-xs">
+      {/* Address Section - Three Columns */}
+      <div className="grid grid-cols-3 gap-4 mb-6 text-xs">
         {/* From Address */}
         <div>
           <h3 className="font-bold text-gray-800 mb-2 text-sm">From</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-medium text-xs">{companySettings.company_name || 'Perfect Collections'}</div>
+            <div className="font-semibold text-xs">{companySettings.company_name || 'Perfect Collections'}</div>
             {formatAddress(companySettings).map((line, index) => (
               <div key={index} className="text-xs leading-tight">{line}</div>
             ))}
             {companySettings.phone && (
-              <div className="text-xs">{companySettings.phone}</div>
+              <div className="text-xs">+91 {companySettings.phone}</div>
             )}
           </div>
         </div>
@@ -199,12 +192,15 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
         <div>
           <h3 className="font-bold text-gray-800 mb-2 text-sm">Bill to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-medium text-xs">{order.customer_name}</div>
+            <div className="font-semibold text-xs">{order.customer_name}</div>
             {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
               <div key={index} className="text-xs leading-tight">{line}</div>
             ))}
+            {order.customer_email && (
+              <div className="text-xs">Email: {order.customer_email}</div>
+            )}
             {order.customer_phone && (
-              <div className="text-xs">{order.customer_phone}</div>
+              <div className="text-xs">Phone: {order.customer_phone}</div>
             )}
           </div>
         </div>
@@ -213,7 +209,7 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
         <div>
           <h3 className="font-bold text-gray-800 mb-2 text-sm">Ship to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-medium text-xs">{order.customer_name}</div>
+            <div className="font-semibold text-xs">{order.customer_name}</div>
             {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
               <div key={index} className="text-xs leading-tight">{line}</div>
             ))}
@@ -221,16 +217,16 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
         </div>
       </div>
 
-      {/* Product Table - Compact */}
+      {/* Product Table */}
       <div className="mb-6">
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="border-b-2 border-gray-300">
-              <th className="text-left py-2 px-1 font-semibold text-gray-800 w-8">S.No</th>
-              <th className="text-left py-2 px-1 font-semibold text-gray-800 w-12">Image</th>
-              <th className="text-left py-2 px-1 font-semibold text-gray-800">Product</th>
-              <th className="text-center py-2 px-1 font-semibold text-gray-800 w-16">Quantity</th>
-              <th className="text-right py-2 px-1 font-semibold text-gray-800 w-20">Total weight</th>
+              <th className="text-left py-2 px-1 font-bold text-gray-800 w-8">S.No</th>
+              <th className="text-left py-2 px-1 font-bold text-gray-800 w-12">Image</th>
+              <th className="text-left py-2 px-1 font-bold text-gray-800">Product</th>
+              <th className="text-center py-2 px-1 font-bold text-gray-800 w-16">Quantity</th>
+              <th className="text-right py-2 px-1 font-bold text-gray-800 w-20">Total weight</th>
             </tr>
           </thead>
           <tbody>
@@ -244,11 +240,9 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
                     </div>
                   </td>
                   <td className="py-2 px-1">
-                    <div className="font-medium text-gray-800 text-xs leading-tight">{item.name || 'Product Name'}</div>
+                    <div className="font-medium text-gray-800 text-xs leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
                     <div className="text-xs text-gray-600 mt-0.5 leading-tight">
-                      {item.variation && (
-                        <span>{item.variation}</span>
-                      )}
+                      {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
                     </div>
                   </td>
                   <td className="py-2 px-1 text-center text-gray-700">{item.quantity || 1}</td>
@@ -259,24 +253,29 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="py-4 text-center text-gray-600">
-                  <div className="font-medium text-xs">Sample - Anarkali Kurtis</div>
-                  <div className="text-xs mt-1">XL - 42</div>
+                <td className="py-2 px-1 text-gray-700">1</td>
+                <td className="py-2 px-1">
+                  <div className="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center">
+                    <div className="w-6 h-6 bg-gray-300 rounded"></div>
+                  </div>
+                </td>
+                <td className="py-2 px-1">
+                  <div className="font-medium text-gray-800 text-xs leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
+                  <div className="text-xs text-gray-600 mt-0.5 leading-tight">Measurements: XL - 42</div>
+                </td>
+                <td className="py-2 px-1 text-center text-gray-700">1</td>
+                <td className="py-2 px-1 text-right text-gray-700">0.5 kg</td>
+              </tr>
+            )}
+            {order.line_items && order.line_items.length > 6 && (
+              <tr>
+                <td colSpan={5} className="text-xs text-gray-600 py-2 text-center">
+                  ... and {order.line_items.length - 6} more items
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-        {order.line_items && order.line_items.length > 6 && (
-          <div className="text-xs text-gray-600 mt-2 text-center">
-            ... and {order.line_items.length - 6} more items
-          </div>
-        )}
-      </div>
-
-      {/* Footer - Compact */}
-      <div className="text-center text-xs text-gray-500 mt-8 pt-3 border-t border-gray-200">
-        Professional packing slip - Handle with care
       </div>
     </div>
   );

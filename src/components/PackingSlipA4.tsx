@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,7 +112,7 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
     const parts = [
       settings.address_line1,
       settings.address_line2,
-      `${settings.city}, ${settings.postal_code}`,
+      `${settings.city} ${settings.postal_code}`,
       settings.state
     ].filter(Boolean);
     
@@ -141,49 +142,38 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
 
   return (
     <div className="w-full max-w-4xl mx-auto p-8 bg-white" style={{ width: '8.27in', minHeight: '11.69in' }}>
-      {/* Header Section */}
-      <div className="flex justify-between items-start mb-6">
-        {/* Left: Logo placeholder and title */}
+      {/* Header Section - Logo and Title on left, Order details on right */}
+      <div className="flex justify-between items-start mb-8">
+        {/* Left: Logo and Packing slip title */}
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 gradient-bg">
-            <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <div className="w-8 h-8 bg-pink-500 rounded-full"></div>
+          <div className="w-20 h-20 rounded-full border-4 border-pink-500 flex items-center justify-center bg-white">
+            <div className="text-center">
+              <div className="text-pink-500 font-bold text-lg leading-tight">Perfect</div>
+              <div className="text-pink-500 text-xs">Collections</div>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-navy-800" style={{ color: '#1e3a8a' }}>
-            Packing slip
-          </h1>
+          <h1 className="text-4xl font-bold text-gray-800">Packing slip</h1>
         </div>
 
         {/* Right: Order information */}
         <div className="text-right">
           <div className="mb-2">
-            <span className="font-semibold text-gray-700">Order No.: </span>
-            <span className="text-gray-900">{order.order_number}</span>
+            <span className="font-bold text-gray-800">Order No.: </span>
+            <span className="text-gray-700">{order.order_number}</span>
           </div>
           <div className="mb-2">
-            <span className="font-semibold text-gray-700">Order Date: </span>
-            <span className="text-gray-900">{formatDate(order.order_date)}</span>
+            <span className="font-bold text-gray-800">Order Date: </span>
+            <span className="text-gray-700">{formatDate(order.order_date)}</span>
           </div>
           <div>
-            <span className="font-semibold text-gray-700">Shipping Method: </span>
-            <span className="text-gray-900">{order.shipping_method || 'Standard'}</span>
-            {order.shipping_cost && (
-              <span className="ml-2 text-gray-600">+ Shipping Cost</span>
-            )}
+            <span className="font-bold text-gray-800">Shipping Method: </span>
+            <span className="text-gray-700">{order.shipping_method || 'Shipping Cost'}</span>
           </div>
         </div>
       </div>
 
-      {/* Barcode Section */}
-      {barcodeDataUrl && (
-        <div className="flex justify-center my-6">
-          <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
-        </div>
-      )}
-
-      {/* Address Section - Three Columns */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
+      {/* Address Section - Three Columns exactly as in reference */}
+      <div className="grid grid-cols-3 gap-8 mb-8">
         {/* From Address */}
         <div>
           <h3 className="font-bold text-gray-800 mb-3 text-lg">From</h3>
@@ -193,7 +183,7 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
               <div key={index} className="text-sm">{line}</div>
             ))}
             {companySettings.phone && (
-              <div className="text-sm">{companySettings.phone}</div>
+              <div className="text-sm">+91 {companySettings.phone}</div>
             )}
           </div>
         </div>
@@ -207,10 +197,10 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
               <div key={index} className="text-sm">{line}</div>
             ))}
             {order.customer_email && (
-              <div className="text-sm">{order.customer_email}</div>
+              <div className="text-sm">Email: {order.customer_email}</div>
             )}
             {order.customer_phone && (
-              <div className="text-sm">{order.customer_phone}</div>
+              <div className="text-sm">Phone: {order.customer_phone}</div>
             )}
           </div>
         </div>
@@ -227,16 +217,16 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Product Table - Exact columns as in reference */}
       <div className="mb-8">
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b-2 border-gray-300">
-              <th className="text-left py-3 px-2 font-semibold text-gray-800 w-16">S.No</th>
-              <th className="text-left py-3 px-2 font-semibold text-gray-800 w-20">Image</th>
-              <th className="text-left py-3 px-2 font-semibold text-gray-800">Product</th>
-              <th className="text-center py-3 px-2 font-semibold text-gray-800 w-20">Quantity</th>
-              <th className="text-right py-3 px-2 font-semibold text-gray-800 w-32">Total weight</th>
+              <th className="text-left py-3 px-2 font-bold text-gray-800 w-16">S.No</th>
+              <th className="text-left py-3 px-2 font-bold text-gray-800 w-20">Image</th>
+              <th className="text-left py-3 px-2 font-bold text-gray-800">Product</th>
+              <th className="text-center py-3 px-2 font-bold text-gray-800 w-20">Quantity</th>
+              <th className="text-right py-3 px-2 font-bold text-gray-800 w-32">Total weight</th>
             </tr>
           </thead>
           <tbody>
@@ -250,14 +240,9 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
                     </div>
                   </td>
                   <td className="py-4 px-2">
-                    <div className="font-medium text-gray-800">{item.name || 'Product Name'}</div>
+                    <div className="font-medium text-gray-800">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
                     <div className="text-sm text-gray-600 mt-1">
-                      {item.variation && (
-                        <span>{item.variation}</span>
-                      )}
-                      {item.sku && (
-                        <span className="ml-2">SKU: {item.sku}</span>
-                      )}
+                      {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
                     </div>
                   </td>
                   <td className="py-4 px-2 text-center text-gray-700">{item.quantity || 1}</td>
@@ -268,19 +253,22 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-gray-600">
-                  <div className="font-medium">Sample Product - Anarkali Kurtis</div>
-                  <div className="text-sm mt-1">XL - 42</div>
+                <td className="py-4 px-2 text-gray-700">1</td>
+                <td className="py-4 px-2">
+                  <div className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                  </div>
                 </td>
+                <td className="py-4 px-2">
+                  <div className="font-medium text-gray-800">4434 - Anarkali Kurtis - XL - 42</div>
+                  <div className="text-sm text-gray-600 mt-1">Measurements: XL - 42</div>
+                </td>
+                <td className="py-4 px-2 text-center text-gray-700">1</td>
+                <td className="py-4 px-2 text-right text-gray-700">0.5 kg</td>
               </tr>
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Footer */}
-      <div className="text-center text-sm text-gray-500 mt-12 pt-4 border-t border-gray-200">
-        Professional packing slip template - Handle with care
       </div>
     </div>
   );
