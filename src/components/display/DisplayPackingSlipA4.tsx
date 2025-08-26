@@ -132,7 +132,7 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
               <div className="text-sm">Email: {order.customer_email}</div>
             )}
             {order.customer_phone && (
-              <div className="text-sm">Phone: {order.customer_phone}</div>
+              <div className="text-sm text-blue-600 font-semibold">Phone: {order.customer_phone}</div>
             )}
           </div>
         </div>

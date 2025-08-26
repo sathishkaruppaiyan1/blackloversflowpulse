@@ -66,6 +66,24 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
     return new Date(dateString).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   };
 
+  const getVariationDisplay = (item: any) => {
+    const variations = [];
+    if (item.size) variations.push(`Size: ${item.size}`);
+    if (item.color) variations.push(`Color: ${item.color}`);
+    if (item.weight) variations.push(`Weight: ${item.weight}kg`);
+    
+    // Check meta_data for additional variations
+    if (item.meta_data && Array.isArray(item.meta_data)) {
+      item.meta_data.forEach((meta: any) => {
+        if (meta.display_key && meta.display_value) {
+          variations.push(`${meta.display_key}: ${meta.display_value}`);
+        }
+      });
+    }
+    
+    return variations.length > 0 ? variations.join(', ') : 'XL - 42';
+  };
+
   return (
     <div style={{
       width: '5.83in',
@@ -195,7 +213,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               </div>
             )}
             {order.customer_phone && (
-              <div style={{ fontSize: '10px', color: '#374151', marginBottom: '1px' }}>
+              <div style={{ fontSize: '10px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
                 Phone: {order.customer_phone}
               </div>
             )}
@@ -295,11 +313,14 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     </div>
                   </td>
                   <td style={{ padding: '8px 4px' }}>
-                    <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '10px', lineHeight: '1.2', marginBottom: '2px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
+                      ₹{(item.total || item.price || 0).toFixed(2)}
+                    </div>
+                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '10px', lineHeight: '1.2', marginBottom: '2px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
-                      {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
+                      Measurements: {getVariationDisplay(item)}
                     </div>
                   </td>
                   <td style={{ padding: '8px 4px', textAlign: 'center', color: '#374151' }}>

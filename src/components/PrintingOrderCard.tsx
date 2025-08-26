@@ -31,8 +31,8 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
   };
 
   const formatAddress = (address?: string) => {
-    if (!address) return 'No address provided';
-    return address.length > 80 ? `${address.substring(0, 80)}...` : address;
+    if (!address) return ['No address provided'];
+    return address.split(',').map(line => line.trim());
   };
 
   const calculateTotalWeight = () => {
@@ -46,6 +46,16 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
     if (item.size) variations.push(`Size: ${item.size}`);
     if (item.color) variations.push(`Color: ${item.color}`);
     if (item.weight) variations.push(`Weight: ${item.weight}kg`);
+    
+    // Check meta_data for additional variations
+    if (item.meta_data && Array.isArray(item.meta_data)) {
+      item.meta_data.forEach((meta: any) => {
+        if (meta.display_key && meta.display_value) {
+          variations.push(`${meta.display_key}: ${meta.display_value}`);
+        }
+      });
+    }
+    
     return variations.length > 0 ? variations.join(', ') : 'Standard';
   };
 
@@ -71,10 +81,13 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
 
           {/* Product Details */}
           <div className="col-span-3">
-            <div className="space-y-1">
+            <div className="space-y-2">
               {order.line_items?.map((item: any, index: number) => (
                 <div key={index} className="text-xs">
-                  <div className="font-medium text-gray-800 truncate">
+                  <div className="font-bold text-gray-900 text-sm">
+                    ₹{(item.total || item.price || 0).toFixed(2)}
+                  </div>
+                  <div className="font-bold text-gray-800 truncate">
                     {item.name || 'Product Name'}
                   </div>
                   <div className="text-gray-600">
@@ -108,14 +121,16 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
             <div className="space-y-1 text-xs">
               <div className="flex items-start gap-1">
                 <MapPin className="h-3 w-3 mt-0.5 text-gray-500 flex-shrink-0" />
-                <span className="text-gray-700 leading-tight">
-                  {formatAddress(order.shipping_address)}
-                </span>
+                <div className="text-gray-700 leading-tight">
+                  {formatAddress(order.shipping_address).map((line, index) => (
+                    <div key={index}>{line}</div>
+                  ))}
+                </div>
               </div>
               {order.customer_phone && (
-                <div className="flex items-center gap-1 text-gray-600">
-                  <Phone className="h-3 w-3" />
-                  <span>{order.customer_phone}</span>
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-blue-500" />
+                  <span className="text-blue-600 font-medium">{order.customer_phone}</span>
                 </div>
               )}
               {order.customer_email && (
@@ -133,8 +148,7 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
               <DialogTrigger asChild>
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="text-xs px-2 py-1 h-auto"
+                  className="text-xs px-3 py-1 h-auto bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Printer className="h-3 w-3 mr-1" />
                   Print
