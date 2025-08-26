@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import PackingSlipTemplate from '@/components/PackingSlipTemplate';
 
 interface CompanySettings {
   company_name: string;
@@ -247,6 +248,23 @@ const GeneralSettings = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Packing Slip Template Preview */}
+      {(settings.default_label_format === 'A4' || settings.default_label_format === 'A5') && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Packing Slip Template Preview</CardTitle>
+            <CardDescription>
+              Preview of the {settings.default_label_format} packing slip template based on your selected format
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <PackingSlipTemplate format={settings.default_label_format} showPrintButton={false} />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Button onClick={saveSettings} disabled={saving} className="w-full">
         {saving ? 'Saving...' : 'Save Settings'}
