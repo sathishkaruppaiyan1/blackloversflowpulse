@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Printer, Package, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
+import { Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import PackingSlipTemplate from './PackingSlipTemplate';
 
@@ -13,7 +13,6 @@ interface PrintingOrderCardProps {
   isSelected: boolean;
   onSelect: (checked: boolean) => void;
   onPrint: () => void;
-  onMoveToPacking: () => void;
 }
 
 const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
@@ -21,9 +20,7 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
   isSelected,
   onSelect,
   onPrint,
-  onMoveToPacking,
 }) => {
-  const [labelFormat, setLabelFormat] = useState<'A4' | 'A5'>('A4');
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -73,9 +70,9 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
           </div>
 
           {/* Product Details */}
-          <div className="col-span-2">
+          <div className="col-span-3">
             <div className="space-y-1">
-              {order.line_items?.slice(0, 2).map((item: any, index: number) => (
+              {order.line_items?.map((item: any, index: number) => (
                 <div key={index} className="text-xs">
                   <div className="font-medium text-gray-800 truncate">
                     {item.name || 'Product Name'}
@@ -85,11 +82,6 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
                   </div>
                 </div>
               ))}
-              {order.line_items && order.line_items.length > 2 && (
-                <div className="text-xs text-gray-500">
-                  +{order.line_items.length - 2} more items
-                </div>
-              )}
             </div>
           </div>
 
@@ -112,7 +104,7 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
           </div>
 
           {/* Shipping Address + Contact */}
-          <div className="col-span-4">
+          <div className="col-span-5">
             <div className="space-y-1 text-xs">
               <div className="flex items-start gap-1">
                 <MapPin className="h-3 w-3 mt-0.5 text-gray-500 flex-shrink-0" />
@@ -136,18 +128,7 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="col-span-2 flex items-center justify-end gap-2">
-            <div className="flex items-center gap-1">
-              <select
-                value={labelFormat}
-                onChange={(e) => setLabelFormat(e.target.value as 'A4' | 'A5')}
-                className="text-xs border border-gray-300 rounded px-2 py-1"
-              >
-                <option value="A4">A4</option>
-                <option value="A5">A5</option>
-              </select>
-            </div>
-            
+          <div className="col-span-2 flex items-center justify-end">
             <Dialog>
               <DialogTrigger asChild>
                 <Button
@@ -162,20 +143,11 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <PackingSlipTemplate
                   order={order}
-                  format={labelFormat}
                   showPrintButton={true}
+                  onPrint={onPrint}
                 />
               </DialogContent>
             </Dialog>
-
-            <Button
-              size="sm"
-              onClick={onMoveToPacking}
-              className="text-xs px-2 py-1 h-auto bg-green-600 hover:bg-green-700"
-            >
-              <Package className="h-3 w-3 mr-1" />
-              Pack
-            </Button>
           </div>
         </div>
       </div>

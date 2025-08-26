@@ -72,19 +72,19 @@ const PrintingPage = () => {
     }
   };
 
-  const handlePrint = (order: WooCommerceOrder) => {
+  const handlePrint = async (order: WooCommerceOrder) => {
     console.log('Printing order:', order.order_number);
     toast.success(`Printing order ${order.order_number}`);
-  };
-
-  const handleBulkPrint = () => {
-    const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
-    console.log('Bulk printing orders:', selectedOrders.map(o => o.order_number));
-    toast.success(`Printing ${selectedOrders.length} selected orders`);
     
-    // Clear selection after printing
-    setSelectedOrderIds(new Set());
-    setSelectAll(false);
+    // Automatically move to packing stage after printing
+    try {
+      await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
+      await loadProcessingOrders();
+      toast.success(`Order ${order.order_number} moved to packing stage`);
+    } catch (error: any) {
+      console.error('Error moving order to packing:', error);
+      toast.error('Failed to move order to packing stage');
+    }
   };
 
   const moveToPackingStage = async (orderId: string) => {
@@ -97,6 +97,29 @@ const PrintingPage = () => {
       toast.error('Failed to move order to packing stage');
     }
   };
+
+  const handleBulkPrint = async () => {
+    const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
+    console.log('Bulk printing orders:', selectedOrders.map(o => o.order_number));
+    toast.success(`Printing ${selectedOrders.length} selected orders`);
+    
+    // Move all selected orders to packing stage after printing
+    try {
+      for (const order of selectedOrders) {
+        await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
+      }
+      await loadProcessingOrders();
+      toast.success(`Moved ${selectedOrders.length} orders to packing stage`);
+    } catch (error: any) {
+      console.error('Error moving orders to packing:', error);
+      toast.error('Failed to move some orders to packing stage');
+    }
+    
+    // Clear selection after printing
+    setSelectedOrderIds(new Set());
+    setSelectAll(false);
+  };
+
 
   const handleFiltersChange = (filters: any) => {
     let filtered = [...orders];
@@ -400,7 +423,6 @@ const PrintingPage = () => {
                   isSelected={selectedOrderIds.has(order.id)}
                   onSelect={(checked) => handleOrderSelect(order.id, checked)}
                   onPrint={() => handlePrint(order)}
-                  onMoveToPacking={() => moveToPackingStage(order.id)}
                 />
               ))}
             </div>

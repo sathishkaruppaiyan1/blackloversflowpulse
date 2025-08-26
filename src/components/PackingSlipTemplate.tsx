@@ -38,14 +38,14 @@ interface CompanySettings {
 
 interface PackingSlipTemplateProps {
   order?: Order;
-  format?: 'A4' | 'A5';
   showPrintButton?: boolean;
+  onPrint?: () => void;
 }
 
 const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({ 
   order: propOrder, 
-  format: propFormat,
-  showPrintButton = true 
+  showPrintButton = true,
+  onPrint
 }) => {
   const [defaultFormat, setDefaultFormat] = useState<'A4' | 'A5'>('A4');
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
@@ -91,7 +91,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   };
 
   const order = propOrder || sampleOrder;
-  const format = propFormat || defaultFormat;
+  const format = defaultFormat;
 
   useEffect(() => {
     if (user) {
@@ -105,11 +105,11 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
 
   // Listen for settings changes (including format changes)
   useEffect(() => {
-    if (!propFormat && user) {
+    if (user) {
       const interval = setInterval(fetchSettings, 3000); // Check every 3 seconds
       return () => clearInterval(interval);
     }
-  }, [user, propFormat]);
+  }, [user]);
 
   const fetchSettings = async () => {
     try {
@@ -273,9 +273,10 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           printWindow.print();
         }, 2000);
 
-        // Close window after printing
+        // Close window after printing and call onPrint callback
         printWindow.addEventListener('afterprint', () => {
           printWindow.close();
+          if (onPrint) onPrint();
         });
 
         // Clean up
@@ -362,25 +363,21 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
             >
               Print {format} Packing Slip
             </Button>
-            {!propFormat && (
-              <Button
-                onClick={() => {
-                  setLoading(true);
-                  fetchSettings();
-                }}
-                variant="outline"
-                size="sm"
-                className="text-xs"
-              >
-                Refresh Format
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                setLoading(true);
+                fetchSettings();
+              }}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+            >
+              Refresh Format
+            </Button>
           </div>
-          {!propFormat && (
-            <p className="text-xs text-gray-500">
-              Current format: {format} • Updates automatically every 3 seconds
-            </p>
-          )}
+          <p className="text-xs text-gray-500">
+            Current format: {format} • Updates automatically every 3 seconds
+          </p>
         </div>
       )}
     </div>
