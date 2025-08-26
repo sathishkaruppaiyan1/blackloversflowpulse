@@ -76,16 +76,17 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
       fontFamily: 'Arial, sans-serif',
       fontSize: '12px',
       lineHeight: '1.3',
-      color: '#000'
+      color: '#000',
+      boxSizing: 'border-box'
     }}>
-      {/* Header Section - Logo and Title on left, Order details on right */}
+      {/* Header Section */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: '24px'
       }}>
-        {/* Left: Logo and Packing slip title */}
+        {/* Left: Logo and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '64px',
@@ -95,7 +96,8 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            flexShrink: 0
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{
@@ -118,7 +120,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           }}>Packing slip</h1>
         </div>
 
-        {/* Right: Order info */}
+        {/* Right: Order Information */}
         <div style={{ textAlign: 'right', fontSize: '12px' }}>
           <div style={{ marginBottom: '4px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
@@ -130,7 +132,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           </div>
           <div>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Shipping Method: </span>
-            <span style={{ color: '#374151' }}>{order.shipping_method || 'Shipping Cost'}</span>
+            <span style={{ color: '#374151' }}>{order.shipping_method || 'Standard Shipping'}</span>
           </div>
         </div>
       </div>
@@ -157,7 +159,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               {companySettings.company_name || 'Perfect Collections'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.2' }}>
+              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
                 {line}
               </div>
             ))}
@@ -183,7 +185,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               {order.customer_name}
             </div>
             {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.2' }}>
+              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
                 {line}
               </div>
             ))}
@@ -214,7 +216,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               {order.customer_name}
             </div>
             {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.2' }}>
+              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
                 {line}
               </div>
             ))}
@@ -277,7 +279,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     <div style={{
                       width: '32px',
                       height: '32px',
-                      backgroundColor: '#e5e7eb',
+                      backgroundColor: '#f3f4f6',
                       borderRadius: '4px',
                       border: '1px solid #e5e7eb',
                       display: 'flex',
@@ -315,7 +317,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                   <div style={{
                     width: '32px',
                     height: '32px',
-                    backgroundColor: '#e5e7eb',
+                    backgroundColor: '#f3f4f6',
                     borderRadius: '4px',
                     border: '1px solid #e5e7eb',
                     display: 'flex',
@@ -352,6 +354,23 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Barcode Section */}
+      {barcodeDataUrl && (
+        <div style={{
+          textAlign: 'center',
+          marginTop: '24px'
+        }}>
+          <img 
+            src={barcodeDataUrl} 
+            alt={`Barcode for ${order.order_number}`} 
+            style={{ 
+              maxWidth: '250px',
+              height: 'auto'
+            }} 
+          />
+        </div>
+      )}
     </div>
   );
 };

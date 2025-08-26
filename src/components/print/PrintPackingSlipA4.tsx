@@ -76,16 +76,17 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
       fontFamily: 'Arial, sans-serif',
       fontSize: '14px',
       lineHeight: '1.4',
-      color: '#000'
+      color: '#000',
+      boxSizing: 'border-box'
     }}>
-      {/* Header Section - Logo and Title on left, Order details on right */}
+      {/* Header Section */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: '32px'
       }}>
-        {/* Left: Logo and Packing slip title */}
+        {/* Left: Logo and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
             width: '80px',
@@ -95,7 +96,8 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            flexShrink: 0
           }}>
             <div style={{ textAlign: 'center' }}>
               <div style={{
@@ -118,8 +120,8 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           }}>Packing slip</h1>
         </div>
 
-        {/* Right: Order information */}
-        <div style={{ textAlign: 'right' }}>
+        {/* Right: Order Information */}
+        <div style={{ textAlign: 'right', fontSize: '14px' }}>
           <div style={{ marginBottom: '8px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
             <span style={{ color: '#374151' }}>{order.order_number}</span>
@@ -130,12 +132,12 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           </div>
           <div>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Shipping Method: </span>
-            <span style={{ color: '#374151' }}>{order.shipping_method || 'Shipping Cost'}</span>
+            <span style={{ color: '#374151' }}>{order.shipping_method || 'Standard Shipping'}</span>
           </div>
         </div>
       </div>
 
-      {/* Address Section - Three Columns exactly as in reference */}
+      {/* Address Section - Three Columns */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
@@ -152,11 +154,11 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
             margin: '0 0 12px 0'
           }}>From</h3>
           <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
               {companySettings.company_name || 'Perfect Collections'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
@@ -178,11 +180,11 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
             margin: '0 0 12px 0'
           }}>Bill to</h3>
           <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
               {order.customer_name}
             </div>
             {formatBillingAddress(order.billing_address || order.shipping_address).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
@@ -209,11 +211,11 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
             margin: '0 0 12px 0'
           }}>Ship to</h3>
           <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+            <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
               {order.customer_name}
             </div>
             {formatShippingAddress(order.shipping_address).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
@@ -221,12 +223,13 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
         </div>
       </div>
 
-      {/* Product Table - Exact columns as in reference */}
+      {/* Product Table */}
       <div style={{ marginBottom: '32px' }}>
         <table style={{
           width: '100%',
           borderCollapse: 'collapse',
-          borderSpacing: '0'
+          borderSpacing: '0',
+          fontSize: '14px'
         }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #d1d5db' }}>
@@ -235,7 +238,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                 padding: '12px 8px',
                 fontWeight: 'bold',
                 color: '#1f2937',
-                width: '64px'
+                width: '60px'
               }}>S.No</th>
               <th style={{
                 textAlign: 'left',
@@ -262,7 +265,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                 padding: '12px 8px',
                 fontWeight: 'bold',
                 color: '#1f2937',
-                width: '128px'
+                width: '120px'
               }}>Total weight</th>
             </tr>
           </thead>
@@ -275,7 +278,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                     <div style={{
                       width: '48px',
                       height: '48px',
-                      backgroundColor: '#e5e7eb',
+                      backgroundColor: '#f3f4f6',
                       borderRadius: '4px',
                       border: '1px solid #e5e7eb',
                       display: 'flex',
@@ -294,7 +297,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                     <div style={{ fontWeight: '500', color: '#1f2937', marginBottom: '4px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
-                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.4' }}>
                       {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
                     </div>
                   </td>
@@ -313,7 +316,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                   <div style={{
                     width: '48px',
                     height: '48px',
-                    backgroundColor: '#e5e7eb',
+                    backgroundColor: '#f3f4f6',
                     borderRadius: '4px',
                     border: '1px solid #e5e7eb',
                     display: 'flex',
@@ -332,7 +335,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                   <div style={{ fontWeight: '500', color: '#1f2937', marginBottom: '4px' }}>
                     4434 - Anarkali Kurtis - XL - 42
                   </div>
-                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.4' }}>
                     Measurements: XL - 42
                   </div>
                 </td>
@@ -343,6 +346,23 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           </tbody>
         </table>
       </div>
+
+      {/* Barcode Section */}
+      {barcodeDataUrl && (
+        <div style={{
+          textAlign: 'center',
+          marginTop: '32px'
+        }}>
+          <img 
+            src={barcodeDataUrl} 
+            alt={`Barcode for ${order.order_number}`} 
+            style={{ 
+              maxWidth: '300px',
+              height: 'auto'
+            }} 
+          />
+        </div>
+      )}
     </div>
   );
 };
