@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { PrintingFilters } from './PrintingFilters';
-import { PrintingOrderCard } from './PrintingOrderCard';
+import PrintingOrderCard from './PrintingOrderCard';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
