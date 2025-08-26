@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -219,6 +220,13 @@ const PrintingPage = () => {
     setCurrentPage(1); // Reset to first page when filtering
   };
 
+  // Calculate pagination
+  const totalOrders = filteredOrders.length;
+  const totalPages = Math.ceil(totalOrders / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
   // Handle order selection
   const handleOrderSelect = (orderId: string, checked: boolean) => {
     const newSelectedIds = new Set(selectedOrderIds);
@@ -253,13 +261,6 @@ const PrintingPage = () => {
   useEffect(() => {
     handleFiltersChange({});
   }, [searchQuery]);
-
-  // Calculate pagination
-  const totalOrders = filteredOrders.length;
-  const totalPages = Math.ceil(totalOrders / pageSize);
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -336,7 +337,7 @@ const PrintingPage = () => {
                   <div className="flex items-start gap-3 flex-1">
                     <Checkbox
                       checked={selectedOrderIds.has(order.id)}
-                      onCheckedChange={(checked) => handleOrderSelect(order.id, checked)}
+                      onCheckedChange={(checked) => handleOrderSelect(order.id, Boolean(checked))}
                       className="mt-1"
                     />
                     
@@ -365,7 +366,7 @@ const PrintingPage = () => {
                         <div className="flex-shrink-0" style={{ width: '120px' }}>
                           <div className="text-sm font-medium text-gray-900 mb-1">Details:</div>
                           <div className="text-sm text-gray-600">
-                            {((order.line_items?.[0]?.weight || 0.5) * (order.line_items?.[0]?.quantity || 1)).toFixed(0)}g
+                            {((Number(order.line_items?.[0]?.weight) || 0.5) * (Number(order.line_items?.[0]?.quantity) || 1)).toFixed(0)}g
                           </div>
                           <div className="text-sm text-gray-600">
                             ₹{order.total.toFixed(0)}
