@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface Order {
@@ -77,14 +78,14 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
       lineHeight: '1.4',
       color: '#000'
     }}>
-      {/* Header Section */}
+      {/* Header Section - Logo and Title on left, Order details on right */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: '32px'
       }}>
-        {/* Left: Logo and Title */}
+        {/* Left: Logo and Packing slip title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
             width: '80px',
@@ -117,7 +118,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           }}>Packing slip</h1>
         </div>
 
-        {/* Right: Order Information */}
+        {/* Right: Order information */}
         <div style={{ textAlign: 'right' }}>
           <div style={{ marginBottom: '8px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
@@ -134,17 +135,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
         </div>
       </div>
 
-      {/* Barcode Section */}
-      {barcodeDataUrl && (
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '32px'
-        }}>
-          <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} style={{ maxWidth: '100%' }} />
-        </div>
-      )}
-
-      {/* Address Section - Three Columns */}
+      {/* Address Section - Three Columns exactly as in reference */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
@@ -230,7 +221,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
         </div>
       </div>
 
-      {/* Product Table */}
+      {/* Product Table - Exact columns as in reference */}
       <div style={{ marginBottom: '32px' }}>
         <table style={{
           width: '100%',

@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface Order {
@@ -77,14 +78,14 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
       lineHeight: '1.3',
       color: '#000'
     }}>
-      {/* Header Section - Compact */}
+      {/* Header Section - Logo and Title on left, Order details on right */}
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: '24px'
       }}>
-        {/* Left: Logo and Title */}
+        {/* Left: Logo and Packing slip title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
             width: '64px',
@@ -117,34 +118,24 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           }}>Packing slip</h1>
         </div>
 
-        {/* Right: Order Information - Compact */}
+        {/* Right: Order info */}
         <div style={{ textAlign: 'right', fontSize: '12px' }}>
           <div style={{ marginBottom: '4px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
             <span style={{ color: '#374151' }}>{order.order_number}</span>
           </div>
           <div style={{ marginBottom: '4px' }}>
-            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Date: </span>
+            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order Date: </span>
             <span style={{ color: '#374151' }}>{formatDate(order.order_date)}</span>
           </div>
           <div>
-            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Method: </span>
-            <span style={{ color: '#374151', fontSize: '11px' }}>{order.shipping_method || 'Shipping Cost'}</span>
+            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Shipping Method: </span>
+            <span style={{ color: '#374151' }}>{order.shipping_method || 'Shipping Cost'}</span>
           </div>
         </div>
       </div>
 
-      {/* Barcode Section - Smaller */}
-      {barcodeDataUrl && (
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '16px'
-        }}>
-          <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} style={{ maxWidth: '100%', height: 'auto' }} />
-        </div>
-      )}
-
-      {/* Address Section - Three Columns Compact */}
+      {/* Address Section - Three Columns */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr 1fr',
@@ -231,7 +222,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         </div>
       </div>
 
-      {/* Product Table - Compact */}
+      {/* Product Table */}
       <div style={{ marginBottom: '24px' }}>
         <table style={{
           width: '100%',
