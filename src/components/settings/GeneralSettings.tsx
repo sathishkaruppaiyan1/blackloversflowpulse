@@ -19,7 +19,7 @@ interface CompanySettings {
   country: string;
   phone: string;
   email: string;
-  default_label_format: 'A4' | 'A5' | 'thermal';
+  default_label_format: 'A4' | 'A5';
 }
 
 const GeneralSettings = () => {
@@ -222,7 +222,7 @@ const GeneralSettings = () => {
         <CardHeader>
           <CardTitle>Shipping Label Settings</CardTitle>
           <CardDescription>
-            Configure default settings for shipping labels and printing
+            Configure default settings for shipping labels
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -230,20 +230,16 @@ const GeneralSettings = () => {
             <Label htmlFor="default_label_format">Default Label Format</Label>
             <Select 
               value={settings.default_label_format} 
-              onValueChange={(value: 'A4' | 'A5' | 'thermal') => handleInputChange('default_label_format', value)}
+              onValueChange={(value: 'A4' | 'A5') => handleInputChange('default_label_format', value)}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="A4">A4 (210 × 297 mm) - Full Page</SelectItem>
-                <SelectItem value="A5">A5 (148 × 210 mm) - Half Page</SelectItem>
-                <SelectItem value="thermal">Thermal Printer (4" × 6")</SelectItem>
+                <SelectItem value="A4">A4 (210 × 297 mm)</SelectItem>
+                <SelectItem value="A5">A5 (148 × 210 mm)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Choose the default format for shipping labels. A4 for standard printers, A5 for compact labels, or Thermal for 4x6 thermal printers.
-            </p>
           </div>
         </CardContent>
       </Card>
