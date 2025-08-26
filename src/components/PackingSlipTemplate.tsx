@@ -171,98 +171,143 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
-    // Create a temporary container to render the print component
+    // Get the display content to copy for printing
+    const displayContent = document.querySelector(`[data-packing-slip-id="${order.id}"]`);
+    if (!displayContent) {
+      console.error('Could not find packing slip content to print');
+      printWindow.close();
+      return;
+    }
+
+    // Create a temporary container to render the print component with React
     const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.top = '-9999px';
+    tempDiv.style.left = '-9999px';
     document.body.appendChild(tempDiv);
 
-    // Render the appropriate print component
-    const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
-    
-    // Create React element and render to HTML
-    import('react-dom/server').then((ReactDOMServer) => {
+    // Dynamically import React DOM to render the print component
+    import('react-dom/client').then((ReactDOM) => {
+      const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
+      
+      // Create root and render the print component
+      const root = ReactDOM.createRoot(tempDiv);
       const printElement = React.createElement(PrintComponent, {
         order,
         companySettings,
         barcodeDataUrl
       });
 
-      const printHTML = ReactDOMServer.renderToString(printElement);
+      root.render(printElement);
 
-      const pageStyles = `
-        <style>
-          @page {
-            ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
-          }
-          
-          body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background: white;
-            color: black;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-          }
-          
-          img {
-            max-width: 100% !important;
-            height: auto !important;
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          
-          .print-hidden {
-            display: none !important;
-          }
-        </style>
-      `;
-
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Packing Slip - ${order.order_number}</title>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            ${pageStyles}
-          </head>
-          <body>
-            ${printHTML}
-          </body>
-        </html>
-      `);
-
-      printWindow.document.close();
-
-      // Wait for content to load, then print
+      // Wait a moment for rendering to complete, then extract HTML
       setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 1500);
+        const renderedHTML = tempDiv.innerHTML;
+        
+        const pageStyles = `
+          <style>
+            @page {
+              ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+            
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: Arial, sans-serif;
+              background: white;
+              color: black;
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+            }
+            
+            * {
+              -webkit-print-color-adjust: exact;
+              color-adjust: exact;
+              box-sizing: border-box;
+            }
+            
+            img {
+              max-width: 100% !important;
+              height: auto !important;
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            
+            .print-hidden {
+              display: none !important;
+            }
 
-      // Close window after printing
-      printWindow.addEventListener('afterprint', () => {
-        printWindow.close();
-      });
+            /* Ensure proper printing styles */
+            table {
+              page-break-inside: avoid;
+            }
+            
+            tr {
+              page-break-inside: avoid;
+            }
+          </style>
+        `;
 
-      // Clean up
-      document.body.removeChild(tempDiv);
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Packing Slip - ${order.order_number}</title>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              ${pageStyles}
+            </head>
+            <body>
+              ${renderedHTML}
+            </body>
+          </html>
+        `);
+
+        printWindow.document.close();
+
+        // Wait for content and images to load, then print
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+        }, 2000);
+
+        // Close window after printing
+        printWindow.addEventListener('afterprint', () => {
+          printWindow.close();
+        });
+
+        // Clean up
+        root.unmount();
+        document.body.removeChild(tempDiv);
+      }, 1000);
     }).catch((error) => {
-      console.error('Error loading ReactDOMServer:', error);
-      // Fallback: simple print without server-side rendering
-      simplePrint(printWindow);
+      console.error('Error loading ReactDOM:', error);
+      // Fallback: copy existing display content
+      fallbackPrint(printWindow, displayContent);
       document.body.removeChild(tempDiv);
     });
   };
 
-  const simplePrint = (printWindow: Window) => {
-    const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
-    const printHTML = `
-      <div id="print-root"></div>
-      <script>
-        // Fallback print method
-        window.print();
-      </script>
+  const fallbackPrint = (printWindow: Window, displayContent: Element) => {
+    const pageStyles = `
+      <style>
+        @page {
+          ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: Arial, sans-serif;
+          background: white;
+          color: black;
+        }
+        img {
+          max-width: 100% !important;
+          height: auto !important;
+        }
+      </style>
     `;
 
     printWindow.document.write(`
@@ -271,18 +316,18 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
         <head>
           <title>Packing Slip - ${order.order_number}</title>
           <meta charset="utf-8">
-          <style>
-            @page { ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'} }
-            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-          </style>
+          ${pageStyles}
         </head>
         <body>
-          ${printHTML}
+          ${displayContent.innerHTML}
         </body>
       </html>
     `);
     
     printWindow.document.close();
+    setTimeout(() => {
+      printWindow.print();
+    }, 1000);
   };
 
   if (loading) {

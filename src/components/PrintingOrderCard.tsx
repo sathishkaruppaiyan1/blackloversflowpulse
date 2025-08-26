@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Printer, Package, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
-import PrintableLabel from './PrintableLabel';
+import PackingSlipTemplate from './PackingSlipTemplate';
 
 interface PrintingOrderCardProps {
   order: WooCommerceOrder;
@@ -160,10 +160,10 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                <PrintableLabel
+                <PackingSlipTemplate
                   order={order}
                   format={labelFormat}
-                  onPrint={onPrint}
+                  showPrintButton={true}
                 />
               </DialogContent>
             </Dialog>
