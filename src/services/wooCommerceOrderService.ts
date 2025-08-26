@@ -53,6 +53,18 @@ export interface WooCommerceOrder {
   product_name?: string;
   product_variation?: string;
   line_items?: WooCommerceOrderItem[];
+  billing_address?: string;
+  billing_city?: string;
+  billing_state?: string;
+  billing_postcode?: string;
+  billing_country?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  shipping_postcode?: string;
+  shipping_country?: string;
+  order_date?: string;
+  payment_method?: string;
+  currency?: string;
 }
 
 const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
@@ -96,7 +108,19 @@ const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
     reseller_number: dbOrder.reseller_number,
     product_name: productName,
     product_variation: productVariation,
-    line_items: Array.isArray(dbOrder.line_items) ? (dbOrder.line_items as unknown as WooCommerceOrderItem[]) : []
+    line_items: Array.isArray(dbOrder.line_items) ? (dbOrder.line_items as unknown as WooCommerceOrderItem[]) : [],
+    billing_address: dbOrder.billing_address,
+    billing_city: dbOrder.billing_city,
+    billing_state: dbOrder.billing_state,
+    billing_postcode: dbOrder.billing_postcode,
+    billing_country: dbOrder.billing_country,
+    shipping_city: dbOrder.shipping_city,
+    shipping_state: dbOrder.shipping_state,
+    shipping_postcode: dbOrder.shipping_postcode,
+    shipping_country: dbOrder.shipping_country,
+    order_date: dbOrder.order_date,
+    payment_method: dbOrder.payment_method,
+    currency: dbOrder.currency || 'INR'
   };
 };
 
@@ -149,7 +173,7 @@ export const wooCommerceOrderService = {
             total: parseFloat(item.total || '0'),
             sku: item.sku || null,
             meta_data: item.meta_data || [],
-            packed: false // Initialize as not packed
+            packed: false
           };
 
           // Extract color, size, and other meta data
@@ -194,29 +218,26 @@ export const wooCommerceOrderService = {
           resellerNumber = resellerNumberMeta?.value || null;
         }
 
-        // Format billing address as primary address
+        // Format addresses with complete details
         let billingAddress = null;
+        let shippingAddress = null;
+
+        // Process billing address
         if (order.billing) {
           const addressParts = [];
           
-          // Handle name - only use first_name since last_name was removed
           if (order.billing.first_name) {
             addressParts.push(order.billing.first_name.trim());
           }
           
-          // Add company if available
           if (order.billing.company) {
             addressParts.push(order.billing.company);
           }
           
-          // Add primary address (address_1 is required)
           if (order.billing.address_1) {
             addressParts.push(order.billing.address_1);
           }
           
-          // Skip address_2 since it was removed from checkout
-          
-          // Combine location parts
           const locationParts = [];
           if (order.billing.city) locationParts.push(order.billing.city);
           if (order.billing.state) locationParts.push(order.billing.state);
@@ -233,28 +254,22 @@ export const wooCommerceOrderService = {
           billingAddress = addressParts.filter(part => part && part.trim()).join(', ');
         }
 
-        // Fallback to shipping address if billing is not available
-        if (!billingAddress && order.shipping) {
+        // Process shipping address
+        if (order.shipping) {
           const addressParts = [];
           
-          // Handle name - only use first_name since last_name was removed
           if (order.shipping.first_name) {
             addressParts.push(order.shipping.first_name.trim());
           }
           
-          // Add company if available
           if (order.shipping.company) {
             addressParts.push(order.shipping.company);
           }
           
-          // Add primary address (address_1 is required)
           if (order.shipping.address_1) {
             addressParts.push(order.shipping.address_1);
           }
           
-          // Skip address_2 since it was removed from checkout
-          
-          // Combine location parts
           const locationParts = [];
           if (order.shipping.city) locationParts.push(order.shipping.city);
           if (order.shipping.state) locationParts.push(order.shipping.state);
@@ -268,8 +283,11 @@ export const wooCommerceOrderService = {
             addressParts.push(order.shipping.country);
           }
           
-          billingAddress = addressParts.filter(part => part && part.trim()).join(', ');
+          shippingAddress = addressParts.filter(part => part && part.trim()).join(', ');
         }
+
+        // Use billing address as fallback if shipping is not available
+        const finalShippingAddress = shippingAddress || billingAddress || 'Address not available';
 
         return {
           user_id: user.id,
@@ -281,10 +299,22 @@ export const wooCommerceOrderService = {
           total: parseFloat(order.total || '0'),
           status: order.status === 'processing' ? 'processing' : order.status,
           items: order.line_items?.length || 0,
-          shipping_address: billingAddress || 'Address not available',
+          shipping_address: finalShippingAddress,
           line_items: productMeta,
           reseller_name: resellerName,
-          reseller_number: resellerNumber
+          reseller_number: resellerNumber,
+          billing_address: billingAddress,
+          billing_city: order.billing?.city || null,
+          billing_state: order.billing?.state || null,
+          billing_postcode: order.billing?.postcode || null,
+          billing_country: order.billing?.country || null,
+          shipping_city: order.shipping?.city || null,
+          shipping_state: order.shipping?.state || null,
+          shipping_postcode: order.shipping?.postcode || null,
+          shipping_country: order.shipping?.country || null,
+          order_date: order.date_created || order.date_created_gmt,
+          payment_method: order.payment_method_title || order.payment_method || null,
+          currency: order.currency || 'INR'
         };
       });
 
