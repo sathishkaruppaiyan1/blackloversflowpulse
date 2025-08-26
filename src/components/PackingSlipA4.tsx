@@ -145,7 +145,7 @@ const PackingSlipA4: React.FC<PackingSlipA4Props> = ({ order }) => {
       <div className="flex justify-between items-start mb-6">
         {/* Left: Logo placeholder and title */}
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center">
+          <div className="w-16 h-16 gradient-bg">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
               <div className="w-8 h-8 bg-pink-500 rounded-full"></div>
             </div>

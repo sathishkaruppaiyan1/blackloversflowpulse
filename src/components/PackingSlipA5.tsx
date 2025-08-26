@@ -145,7 +145,7 @@ const PackingSlipA5: React.FC<PackingSlipA5Props> = ({ order }) => {
       <div className="flex justify-between items-start mb-4">
         {/* Left: Logo and title */}
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-pink-400 to-pink-600 rounded-full flex items-center justify-center">
+          <div className="w-12 h-12 gradient-bg">
             <div className="w-9 h-9 bg-white rounded-full flex items-center justify-center">
               <div className="w-6 h-6 bg-pink-500 rounded-full"></div>
             </div>
