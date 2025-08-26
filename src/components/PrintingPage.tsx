@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -76,6 +75,16 @@ const PrintingPage = () => {
   const handlePrint = (order: WooCommerceOrder) => {
     console.log('Printing order:', order.order_number);
     toast.success(`Printing order ${order.order_number}`);
+  };
+
+  const handleBulkPrint = () => {
+    const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
+    console.log('Bulk printing orders:', selectedOrders.map(o => o.order_number));
+    toast.success(`Printing ${selectedOrders.length} selected orders`);
+    
+    // Clear selection after printing
+    setSelectedOrderIds(new Set());
+    setSelectAll(false);
   };
 
   const moveToPackingStage = async (orderId: string) => {
@@ -260,6 +269,15 @@ const PrintingPage = () => {
           </p>
         </div>
         <div className="flex gap-3">
+          {selectedOrderIds.size > 0 && (
+            <Button
+              onClick={handleBulkPrint}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <Printer className="h-4 w-4" />
+              Print {selectedOrderIds.size} Labels
+            </Button>
+          )}
           <Button
             onClick={syncFromWooCommerce}
             disabled={syncing}
@@ -306,6 +324,11 @@ const PrintingPage = () => {
               <CardTitle className="text-lg">Orders for Printing</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {totalOrders} orders match your filter criteria
+                {selectedOrderIds.size > 0 && (
+                  <span className="ml-2 text-blue-600 font-medium">
+                    • {selectedOrderIds.size} selected
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -317,11 +340,11 @@ const PrintingPage = () => {
                 <span className="text-sm">
                   {selectedOrderIds.size > 0 ? (
                     <>
-                      <Button variant="link" className="p-0 h-auto text-sm">
+                      <Button variant="link" className="p-0 h-auto text-sm" onClick={() => handleSelectAll(true)}>
                         Select All
                       </Button>
                       <span className="mx-2">|</span>
-                      <Button variant="link" className="p-0 h-auto text-sm">
+                      <Button variant="link" className="p-0 h-auto text-sm" onClick={() => handleSelectAll(false)}>
                         Unselect All
                       </Button>
                     </>
