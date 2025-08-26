@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import PackingSlipA4 from './PackingSlipA4';
 import PackingSlipA5 from './PackingSlipA5';
+import PrintPackingSlipA4 from './print/PrintPackingSlipA4';
+import PrintPackingSlipA5 from './print/PrintPackingSlipA5';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import JsBarcode from 'jsbarcode';
 
 interface Order {
   id: string;
@@ -21,6 +24,18 @@ interface Order {
   shipping_cost?: number;
 }
 
+interface CompanySettings {
+  company_name: string;
+  address_line1: string;
+  address_line2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+  phone: string;
+  email: string;
+}
+
 interface PackingSlipTemplateProps {
   order?: Order;
   format?: 'A4' | 'A5';
@@ -33,8 +48,19 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   showPrintButton = true 
 }) => {
   const [defaultFormat, setDefaultFormat] = useState<'A4' | 'A5'>('A4');
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({
+    company_name: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: '',
+    phone: '',
+    email: ''
+  });
   const [loading, setLoading] = useState(true);
-  const [lastChecked, setLastChecked] = useState<number>(0);
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
   const { user } = useAuth();
 
   // Sample order data for preview
@@ -68,292 +94,195 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   const format = propFormat || defaultFormat;
 
   useEffect(() => {
-    if (user && !propFormat) {
-      fetchDefaultFormat();
-    } else {
-      setLoading(false);
+    if (user) {
+      fetchSettings();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    generateBarcode();
+  }, [order.order_number]);
+
+  // Listen for settings changes (including format changes)
+  useEffect(() => {
+    if (!propFormat && user) {
+      const interval = setInterval(fetchSettings, 3000); // Check every 3 seconds
+      return () => clearInterval(interval);
     }
   }, [user, propFormat]);
 
-  // Re-fetch format when component becomes visible (handles settings page changes)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && user && !propFormat) {
-        const now = Date.now();
-        // Only fetch if it's been more than 1 second since last check
-        if (now - lastChecked > 1000) {
-          setLastChecked(now);
-          fetchDefaultFormat();
-        }
-      }
-    };
-
-    const handleFocus = () => {
-      if (user && !propFormat) {
-        const now = Date.now();
-        if (now - lastChecked > 1000) {
-          setLastChecked(now);
-          fetchDefaultFormat();
-        }
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, [user, propFormat, lastChecked]);
-
-  // Also check for format changes periodically when component is mounted
-  useEffect(() => {
-    if (!propFormat && user) {
-      const interval = setInterval(() => {
-        const now = Date.now();
-        if (now - lastChecked > 5000) { // Check every 5 seconds
-          setLastChecked(now);
-          fetchDefaultFormat();
-        }
-      }, 5000);
-
-      return () => clearInterval(interval);
-    }
-  }, [user, propFormat, lastChecked]);
-
-  const fetchDefaultFormat = async () => {
+  const fetchSettings = async () => {
     try {
-      setLastChecked(Date.now());
       const { data, error } = await supabase
         .from('company_settings')
-        .select('default_label_format')
+        .select('*')
         .eq('user_id', user?.id)
         .maybeSingle();
 
       if (error) throw error;
 
-      if (data && (data.default_label_format === 'A4' || data.default_label_format === 'A5')) {
-        if (data.default_label_format !== defaultFormat) {
-          console.log('Format changed from', defaultFormat, 'to', data.default_label_format);
-          setDefaultFormat(data.default_label_format);
+      if (data) {
+        setCompanySettings({
+          company_name: data.company_name || '',
+          address_line1: data.address_line1 || '',
+          address_line2: data.address_line2 || '',
+          city: data.city || '',
+          state: data.state || '',
+          postal_code: data.postal_code || '',
+          country: data.country || '',
+          phone: data.phone || '',
+          email: data.email || ''
+        });
+
+        if (data.default_label_format && (data.default_label_format === 'A4' || data.default_label_format === 'A5')) {
+          if (data.default_label_format !== defaultFormat) {
+            console.log('Format updated:', data.default_label_format);
+            setDefaultFormat(data.default_label_format);
+          }
         }
       }
     } catch (error: any) {
-      console.error('Error fetching default format:', error);
+      console.error('Error fetching settings:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const generateBarcode = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      JsBarcode(canvas, order.order_number, {
+        format: "CODE128",
+        width: format === 'A5' ? 1.5 : 2,
+        height: format === 'A5' ? 40 : 60,
+        displayValue: true,
+        fontSize: format === 'A5' ? 10 : 14,
+        margin: format === 'A5' ? 5 : 10,
+        background: "#ffffff",
+        lineColor: "#000000"
+      });
+      setBarcodeDataUrl(canvas.toDataURL());
+    } catch (error) {
+      console.error('Error generating barcode:', error);
+    }
+  };
+
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      const printContent = document.querySelector(`[data-packing-slip-id="${order.id}"]`);
-      
-      const printStyles = `
+    if (!printWindow) return;
+
+    // Create a temporary container to render the print component
+    const tempDiv = document.createElement('div');
+    document.body.appendChild(tempDiv);
+
+    // Render the appropriate print component
+    const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
+    
+    // Create React element and render to HTML
+    import('react-dom/server').then((ReactDOMServer) => {
+      const printElement = React.createElement(PrintComponent, {
+        order,
+        companySettings,
+        barcodeDataUrl
+      });
+
+      const printHTML = ReactDOMServer.renderToString(printElement);
+
+      const pageStyles = `
         <style>
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+          @page {
+            ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
           }
           
-          body { 
-            margin: 0; 
-            padding: 20px;
+          body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
             background: white;
             color: black;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
           }
           
-          ${format === 'A5' ? `
-            @page { 
-              size: A5; 
-              margin: 0.5in; 
-            }
-            .print-container { 
-              max-width: 5.83in;
-              width: 5.83in;
-              min-height: 8.27in;
-            }
-          ` : `
-            @page { 
-              size: A4; 
-              margin: 0.75in; 
-            }
-            .print-container { 
-              max-width: 8.27in;
-              width: 8.27in;
-              min-height: 11.69in;
-            }
-          `}
-          
-          /* Recreate essential Tailwind styles for printing */
-          .text-2xl { font-size: 1.5rem; line-height: 2rem; }
-          .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
-          .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
-          .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
-          .text-xs { font-size: 0.75rem; line-height: 1rem; }
-          .font-bold { font-weight: 700; }
-          .font-semibold { font-weight: 600; }
-          .font-medium { font-weight: 500; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .text-left { text-align: left; }
-          .mb-2 { margin-bottom: 0.5rem; }
-          .mb-3 { margin-bottom: 0.75rem; }
-          .mb-4 { margin-bottom: 1rem; }
-          .mb-6 { margin-bottom: 1.5rem; }
-          .mb-8 { margin-bottom: 2rem; }
-          .mt-1 { margin-top: 0.25rem; }
-          .mt-2 { margin-top: 0.5rem; }
-          .mt-4 { margin-top: 1rem; }
-          .mt-6 { margin-top: 1.5rem; }
-          .mt-8 { margin-top: 2rem; }
-          .mt-12 { margin-top: 3rem; }
-          .p-4 { padding: 1rem; }
-          .p-6 { padding: 1.5rem; }
-          .p-8 { padding: 2rem; }
-          .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
-          .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
-          .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
-          .px-1 { padding-left: 0.25rem; padding-right: 0.25rem; }
-          .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
-          .pt-3 { padding-top: 0.75rem; }
-          .pt-4 { padding-top: 1rem; }
-          .pb-3 { padding-bottom: 0.75rem; }
-          .mt-0 { margin-top: 0; }
-          .mt-0\.5 { margin-top: 0.125rem; }
-          .mt-3 { margin-top: 0.75rem; }
-          .mb-1 { margin-bottom: 0.25rem; }
-          
-          /* Grid layouts */
-          .grid { display: grid; }
-          .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .gap-3 { gap: 0.75rem; }
-          .gap-6 { gap: 1.5rem; }
-          
-          /* Flexbox */
-          .flex { display: flex; }
-          .justify-between { justify-content: space-between; }
-          .justify-center { justify-content: center; }
-          .items-start { align-items: flex-start; }
-          .items-center { align-items: center; }
-          
-          /* Spacing */
-          .space-y-1 > * + * { margin-top: 0.25rem; }
-          .gap-3 { gap: 0.75rem; }
-          
-          /* Colors */
-          .text-gray-700 { color: #374151; }
-          .text-gray-800 { color: #1f2937; }
-          .text-gray-600 { color: #4b5563; }
-          .text-gray-500 { color: #6b7280; }
-          .text-gray-900 { color: #111827; }
-          
-          /* Borders */
-          .border-b { border-bottom: 1px solid #e5e7eb; }
-          .border-b-2 { border-bottom: 2px solid #e5e7eb; }
-          .border-t { border-top: 1px solid #e5e7eb; }
-          .border-gray-200 { border-color: #e5e7eb; }
-          .border-gray-300 { border-color: #d1d5db; }
-          
-          /* Table styles */
-          table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            border-spacing: 0;
-          }
-          th { 
-            font-weight: 600; 
-            text-align: left;
-            padding: 0.75rem 0.5rem;
-            border-bottom: 2px solid #d1d5db;
-          }
-          td { 
-            padding: 1rem 0.5rem; 
-            border-bottom: 1px solid #e5e7eb;
-          }
-          .w-8 { width: 2rem; }
-          .w-12 { width: 3rem; }
-          .w-16 { width: 4rem; }
-          .w-20 { width: 5rem; }
-          .w-32 { width: 8rem; }
-          .max-w-2xl { max-width: 42rem; }
-          .max-w-4xl { max-width: 56rem; }
-          .mx-auto { margin-left: auto; margin-right: auto; }
-          
-          /* Logo styling for new design */
-          .w-12 { width: 3rem; height: 3rem; }
-          .w-16 { width: 4rem; height: 4rem; }
-          .w-20 { width: 5rem; height: 5rem; }
-          .w-8 { width: 2rem; height: 2rem; }
-          .w-9 { width: 2.25rem; height: 2.25rem; }
-          .w-6 { width: 1.5rem; height: 1.5rem; }
-          .h-12 { height: 3rem; }
-          .h-16 { height: 4rem; }
-          .h-20 { height: 5rem; }
-          .h-8 { height: 2rem; }
-          .h-9 { height: 2.25rem; }
-          .h-6 { height: 1.5rem; }
-          
-          .bg-white { background-color: white; }
-          .bg-pink-500 { background-color: #ec4899; }
-          .bg-gray-200 { background-color: #e5e7eb; }
-          .bg-gray-300 { background-color: #d1d5db; }
-          .rounded-full { border-radius: 9999px; }
-          .rounded { border-radius: 0.25rem; }
-          .border { border: 1px solid #e5e7eb; }
-          .border-3 { border-width: 3px; }
-          .border-4 { border-width: 4px; }
-          .border-pink-500 { border-color: #ec4899; }
-          .text-pink-500 { color: #ec4899; }
-          .leading-tight { line-height: 1.25; }
-          .gap-4 { gap: 1rem; }
-          .gap-8 { gap: 2rem; }
-          
-          .print-hidden { display: none !important; }
-          
-          /* Ensure images print */
-          img { 
-            max-width: 100% !important; 
+          img {
+            max-width: 100% !important;
             height: auto !important;
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
           }
+          
+          .print-hidden {
+            display: none !important;
+          }
         </style>
       `;
-      
+
       printWindow.document.write(`
         <!DOCTYPE html>
         <html>
           <head>
             <title>Packing Slip - ${order.order_number}</title>
             <meta charset="utf-8">
-            ${printStyles}
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            ${pageStyles}
           </head>
           <body>
-            <div class="print-container">
-              ${printContent?.innerHTML || ''}
-            </div>
+            ${printHTML}
           </body>
         </html>
       `);
-      
+
       printWindow.document.close();
-      
+
       // Wait for content to load, then print
       setTimeout(() => {
         printWindow.focus();
         printWindow.print();
-      }, 1000);
-      
-      // Close window after printing (optional)
+      }, 1500);
+
+      // Close window after printing
       printWindow.addEventListener('afterprint', () => {
         printWindow.close();
       });
-    }
+
+      // Clean up
+      document.body.removeChild(tempDiv);
+    }).catch((error) => {
+      console.error('Error loading ReactDOMServer:', error);
+      // Fallback: simple print without server-side rendering
+      simplePrint(printWindow);
+      document.body.removeChild(tempDiv);
+    });
+  };
+
+  const simplePrint = (printWindow: Window) => {
+    const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
+    const printHTML = `
+      <div id="print-root"></div>
+      <script>
+        // Fallback print method
+        window.print();
+      </script>
+    `;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Packing Slip - ${order.order_number}</title>
+          <meta charset="utf-8">
+          <style>
+            @page { ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'} }
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+          </style>
+        </head>
+        <body>
+          ${printHTML}
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
   };
 
   if (loading) {
@@ -384,7 +313,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
               <Button
                 onClick={() => {
                   setLoading(true);
-                  fetchDefaultFormat();
+                  fetchSettings();
                 }}
                 variant="outline"
                 size="sm"
@@ -396,7 +325,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           </div>
           {!propFormat && (
             <p className="text-xs text-gray-500">
-              Current format: {format} • Updates automatically when settings change
+              Current format: {format} • Updates automatically every 3 seconds
             </p>
           )}
         </div>
