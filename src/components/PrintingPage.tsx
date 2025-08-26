@@ -269,15 +269,6 @@ const PrintingPage = () => {
           </p>
         </div>
         <div className="flex gap-3">
-          {selectedOrderIds.size > 0 && (
-            <Button
-              onClick={handleBulkPrint}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <Printer className="h-4 w-4" />
-              Print {selectedOrderIds.size} Labels
-            </Button>
-          )}
           <Button
             onClick={syncFromWooCommerce}
             disabled={syncing}
@@ -353,6 +344,15 @@ const PrintingPage = () => {
                   )}
                 </span>
               </div>
+              {selectedOrderIds.size > 0 && (
+                <Button
+                  onClick={handleBulkPrint}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print {selectedOrderIds.size} Labels
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
