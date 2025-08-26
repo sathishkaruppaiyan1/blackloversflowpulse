@@ -1,41 +1,25 @@
-
 import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import PackingSlipTemplate from '@/components/PackingSlipTemplate';
-
-interface CompanySettings {
-  company_name: string;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  state: string;
-  postal_code: string;
-  country: string;
-  phone: string;
-  email: string;
-  default_label_format: 'A4' | 'A5' | 'thermal';
-}
+import PackingSlipTemplate from '../PackingSlipTemplate';
 
 const GeneralSettings = () => {
-  const [settings, setSettings] = useState<CompanySettings>({
-    company_name: '',
-    address_line1: '',
-    address_line2: '',
-    city: '',
-    state: '',
-    postal_code: '',
-    country: '',
-    phone: '',
-    email: '',
-    default_label_format: 'A4'
-  });
+  const [companyName, setCompanyName] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [country, setCountry] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5'>('A4');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
@@ -58,217 +42,194 @@ const GeneralSettings = () => {
       if (error) throw error;
 
       if (data) {
-        setSettings({
-          company_name: data.company_name || '',
-          address_line1: data.address_line1 || '',
-          address_line2: data.address_line2 || '',
-          city: data.city || '',
-          state: data.state || '',
-          postal_code: data.postal_code || '',
-          country: data.country || '',
-          phone: data.phone || '',
-          email: data.email || '',
-          default_label_format: (data.default_label_format as 'A4' | 'A5') || 'A4'
-        });
+        setCompanyName(data.company_name || '');
+        setAddressLine1(data.address_line1 || '');
+        setAddressLine2(data.address_line2 || '');
+        setCity(data.city || '');
+        setState(data.state || '');
+        setPostalCode(data.postal_code || '');
+        setCountry(data.country || '');
+        setPhone(data.phone || '');
+        setEmail(data.email || '');
+        setDefaultLabelFormat(data.default_label_format === 'A5' ? 'A5' : 'A4');
       }
     } catch (error: any) {
-      console.error('Error fetching company settings:', error);
-      toast.error('Failed to load company settings');
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const saveSettings = async () => {
-    if (!user) return;
-
+  const handleSave = async () => {
     setSaving(true);
     try {
       const { error } = await supabase
         .from('company_settings')
         .upsert({
-          user_id: user.id,
-          ...settings,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id'
-        });
+          user_id: user?.id,
+          company_name: companyName,
+          address_line1: addressLine1,
+          address_line2: addressLine2,
+          city: city,
+          state: state,
+          postal_code: postalCode,
+          country: country,
+          phone: phone,
+          email: email,
+          default_label_format: defaultLabelFormat,
+        }, { onConflict: 'user_id' });
 
       if (error) throw error;
-      toast.success('Company settings saved successfully!');
+
+      toast.success('Settings saved successfully!');
     } catch (error: any) {
-      console.error('Error saving company settings:', error);
+      console.error('Error saving settings:', error);
       toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleInputChange = (field: keyof CompanySettings, value: string) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
-  };
-
-  if (loading) {
-    return <div className="flex justify-center p-8">Loading settings...</div>;
-  }
-
   return (
     <div className="space-y-6">
+      {/* Company Information Section */}
       <Card>
         <CardHeader>
           <CardTitle>Company Information</CardTitle>
-          <CardDescription>
-            Configure your company details for shipping labels and documentation
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input
+              id="companyName"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="addressLine1">Address Line 1</Label>
+            <Input
+              id="addressLine1"
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="addressLine2">Address Line 2</Label>
+            <Input
+              id="addressLine2"
+              value={addressLine2}
+              onChange={(e) => setAddressLine2(e.target.value)}
+            />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="company_name">Company Name</Label>
-              <Input
-                id="company_name"
-                value={settings.company_name}
-                onChange={(e) => handleInputChange('company_name', e.target.value)}
-                placeholder="Your Company Name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={settings.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="company@example.com"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={settings.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="+1 234 567 8900"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address_line1">Address Line 1</Label>
-            <Input
-              id="address_line1"
-              value={settings.address_line1}
-              onChange={(e) => handleInputChange('address_line1', e.target.value)}
-              placeholder="Street address"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address_line2">Address Line 2</Label>
-            <Input
-              id="address_line2"
-              value={settings.address_line2}
-              onChange={(e) => handleInputChange('address_line2', e.target.value)}
-              placeholder="Apartment, suite, etc. (optional)"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
               <Input
                 id="city"
-                value={settings.city}
-                onChange={(e) => handleInputChange('city', e.target.value)}
-                placeholder="City"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
               />
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="state">State</Label>
               <Input
                 id="state"
-                value={settings.state}
-                onChange={(e) => handleInputChange('state', e.target.value)}
-                placeholder="State"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="postal_code">Postal Code</Label>
-              <Input
-                id="postal_code"
-                value={settings.postal_code}
-                onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                placeholder="12345"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
               />
             </div>
           </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="postalCode">Postal Code</Label>
+              <Input
+                id="postalCode"
+                value={postalCode}
+                onChange={(e) => setPostalCode(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="country">Country</Label>
+              <Input
+                id="country"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Contact Information Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Contact Information</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="country">Country</Label>
+            <Label htmlFor="phone">Phone</Label>
             <Input
-              id="country"
-              value={settings.country}
-              onChange={(e) => handleInputChange('country', e.target.value)}
-              placeholder="Country"
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
         </CardContent>
       </Card>
 
+      {/* Label Format Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Shipping Label Settings</CardTitle>
-          <CardDescription>
-            Configure default settings for shipping labels and printing
-          </CardDescription>
+          <CardTitle>Label Format Settings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="default_label_format">Default Label Format</Label>
-            <Select 
-              value={settings.default_label_format} 
-              onValueChange={(value: 'A4' | 'A5' | 'thermal') => handleInputChange('default_label_format', value)}
-            >
+            <Label htmlFor="defaultLabelFormat">Default Label Format</Label>
+            <Select value={defaultLabelFormat} onValueChange={(value: 'A4' | 'A5') => setDefaultLabelFormat(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="A4">A4 (210 × 297 mm) - Full Page</SelectItem>
-                <SelectItem value="A5">A5 (148 × 210 mm) - Half Page</SelectItem>
-                <SelectItem value="thermal">Thermal Printer (4" × 6")</SelectItem>
+                <SelectItem value="A4">A4 (8.27" × 11.69")</SelectItem>
+                <SelectItem value="A5">A5 (5.83" × 8.27")</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Choose the default format for shipping labels. A4 for standard printers, A5 for compact labels, or Thermal for 4x6 thermal printers.
+            <p className="text-sm text-muted-foreground">
+              Choose the default format for packing slips. This will be used for all new orders.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Packing Slip Template Preview */}
-      {(settings.default_label_format === 'A4' || settings.default_label_format === 'A5') && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Packing Slip Template Preview</CardTitle>
-            <CardDescription>
-              Preview of the {settings.default_label_format} packing slip template based on your selected format
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gray-50 p-4 rounded-lg border">
-              <PackingSlipTemplate format={settings.default_label_format} showPrintButton={false} />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Template Preview Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Packing Slip Preview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg p-4 bg-gray-50">
+            <PackingSlipTemplate showPrintButton={false} />
+          </div>
+        </CardContent>
+      </Card>
 
-      <Button onClick={saveSettings} disabled={saving} className="w-full">
-        {saving ? 'Saving...' : 'Save Settings'}
-      </Button>
+      {/* Save Button */}
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving || loading}>
+          {saving ? 'Saving...' : 'Save Settings'}
+        </Button>
+      </div>
     </div>
   );
 };

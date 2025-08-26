@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { RefreshCw, ChevronLeft, ChevronRight, Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -282,16 +282,30 @@ const PrintingPage = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 p-6">
+      {/* Header matching the reference image */}
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Print Orders</h1>
-          <p className="text-muted-foreground mt-1">
-            View and print orders that are ready for processing
+          <h1 className="text-2xl font-bold text-gray-900">Orders for Printing</h1>
+          <p className="text-gray-600 mt-1">
+            {totalOrders} orders in printing stage • Auto-synced from Shopify
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={() => handleSelectAll(true)}
+            className="text-blue-600 border-blue-600 hover:bg-blue-50"
+          >
+            Select All
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => handleSelectAll(false)}
+            className="text-gray-600"
+          >
+            Unselect All
+          </Button>
           <Button
             onClick={syncFromWooCommerce}
             disabled={syncing}
@@ -299,282 +313,105 @@ const PrintingPage = () => {
             className="flex items-center gap-2"
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Syncing...' : 'Sync from WooCommerce'}
-          </Button>
-          <Button
-            onClick={loadProcessingOrders}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh Orders
+            {syncing ? 'Syncing...' : 'Sync'}
           </Button>
         </div>
       </div>
 
-      {/* Smart Filtering */}
-      <PrintingFilters onFiltersChange={handleFiltersChange} totalOrders={totalOrders} />
-
-      {/* Search Bar */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search by order number, customer name, phone, email, address, product name, or SKU..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+      {/* Orders List - Simplified Layout matching reference */}
+      <div className="bg-white rounded-lg border">
+        {paginatedOrders.length === 0 ? (
+          <div className="text-center py-12">
+            <h3 className="text-lg font-medium mb-2">No orders found</h3>
+            <p className="text-muted-foreground">
+              No orders match your current filter criteria.
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Orders Section */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-lg">Orders for Printing</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {totalOrders} orders match your filter criteria
-                {selectedOrderIds.size > 0 && (
-                  <span className="ml-2 text-blue-600 font-medium">
-                    • {selectedOrderIds.size} selected
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={selectAll}
-                  onCheckedChange={handleSelectAll}
-                />
-                <span className="text-sm">
-                  {selectedOrderIds.size > 0 ? (
-                    <>
-                      <Button variant="link" className="p-0 h-auto text-sm" onClick={() => handleSelectAll(true)}>
-                        Select All
-                      </Button>
-                      <span className="mx-2">|</span>
-                      <Button variant="link" className="p-0 h-auto text-sm" onClick={() => handleSelectAll(false)}>
-                        Unselect All
-                      </Button>
-                    </>
-                  ) : (
-                    'Select All'
-                  )}
-                </span>
-              </div>
-              {selectedOrderIds.size > 0 && (
-                <Button
-                  onClick={handleBulkPrint}
-                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-                >
-                  <Printer className="h-4 w-4" />
-                  Print {selectedOrderIds.size} Labels
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          {paginatedOrders.length === 0 ? (
-            <div className="text-center py-12">
-              <h3 className="text-lg font-medium mb-2">No orders found</h3>
-              <p className="text-muted-foreground">
-                No orders match your current filter criteria.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-0">
-              {/* Table Header */}
-              <div className="bg-gray-50 border-b border-gray-200">
-                <div className="p-4">
-                  <div className="grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-2">
-                      <div className="font-semibold text-sm text-gray-700">Order Number</div>
-                      <div className="text-xs text-gray-500">Customer</div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="font-semibold text-sm text-gray-700">Product Details</div>
-                      <div className="text-xs text-gray-500">Variations</div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="font-semibold text-sm text-gray-700">Order Info</div>
-                      <div className="text-xs text-gray-500">Weight / Amount / Date</div>
-                    </div>
-                    <div className="col-span-4">
-                      <div className="font-semibold text-sm text-gray-700">Shipping Address</div>
-                      <div className="text-xs text-gray-500">Customer Contact</div>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="font-semibold text-sm text-gray-700 text-right">Actions</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {/* Order Cards */}
-              {paginatedOrders.map((order) => (
-                <PrintingOrderCard
-                  key={order.id}
-                  order={order}
-                  isSelected={selectedOrderIds.has(order.id)}
-                  onSelect={(checked) => handleOrderSelect(order.id, checked)}
-                  onPrint={() => handlePrint(order)}
-                />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pagination Controls */}
-      {totalOrders > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              {/* Left side - Page size selector and info */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Show:</span>
-                  <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-                    <SelectTrigger className="w-20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="5">5</SelectItem>
-                      <SelectItem value="10">10</SelectItem>
-                      <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <span className="text-sm text-muted-foreground">orders per page</span>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Showing {totalOrders === 0 ? 0 : startIndex + 1}-{Math.min(endIndex, totalOrders)} of {totalOrders} orders
-                  {searchQuery && (
-                    <span className="ml-2 text-blue-600">
-                      (filtered by "{searchQuery}")
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              {/* Right side - Pagination controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(1)}
-                    disabled={currentPage === 1}
-                    className="hidden sm:flex"
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span className="hidden sm:inline ml-1">Previous</span>
-                  </Button>
-                  
-                  {/* Page numbers */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handlePageChange(pageNum)}
-                          className="w-10 h-8"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {paginatedOrders.map((order) => (
+              <div key={order.id} className="p-4 hover:bg-gray-50">
+                <div className="flex items-start justify-between">
+                  {/* Left side - Checkbox and Order Info */}
+                  <div className="flex items-start gap-3 flex-1">
+                    <Checkbox
+                      checked={selectedOrderIds.has(order.id)}
+                      onCheckedChange={(checked) => handleOrderSelect(order.id, checked)}
+                      className="mt-1"
+                    />
                     
-                    {totalPages > 5 && currentPage < totalPages - 2 && (
-                      <>
-                        <span className="px-2">...</span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handlePageChange(totalPages)}
-                          className="w-10 h-8"
-                        >
-                          {totalPages}
-                        </Button>
-                      </>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-8">
+                        {/* Order Number and Customer */}
+                        <div className="min-w-0 flex-shrink-0" style={{ width: '140px' }}>
+                          <div className="font-semibold text-gray-900">#{order.order_number}</div>
+                          <div className="text-sm text-gray-600 truncate">{order.customer_name}</div>
+                        </div>
+                        
+                        {/* Products */}
+                        <div className="flex-1 min-w-0" style={{ width: '200px' }}>
+                          <div className="text-sm font-medium text-gray-900 mb-1">Products:</div>
+                          {order.line_items?.map((item: any, index: number) => (
+                            <div key={index} className="text-sm">
+                              <div className="text-gray-900">{item.name || 'Product Name'}</div>
+                              <div className="text-blue-600">
+                                {item.color || 'Multi color'} / {item.size || '2XL'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Details */}
+                        <div className="flex-shrink-0" style={{ width: '120px' }}>
+                          <div className="text-sm font-medium text-gray-900 mb-1">Details:</div>
+                          <div className="text-sm text-gray-600">
+                            {((order.line_items?.[0]?.weight || 0.5) * (order.line_items?.[0]?.quantity || 1)).toFixed(0)}g
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            ₹{order.total.toFixed(0)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {new Date(order.created_at).toLocaleDateString('en-GB')}
+                          </div>
+                        </div>
+                        
+                        {/* Address */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 mb-1">Address:</div>
+                          <div className="text-sm text-gray-600">
+                            {order.shipping_address?.split(',').slice(0, 3).join(', ') || 'No address'}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {order.shipping_address?.split(',').slice(-2).join(', ') || ''}
+                          </div>
+                          {order.customer_phone && (
+                            <div className="text-sm text-red-500 mt-1">
+                              📞 {order.customer_phone}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
-                    <span className="hidden sm:inline mr-1">Next</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="hidden sm:flex"
-                  >
-                    Last
-                  </Button>
+                  {/* Right side - Print Button */}
+                  <div className="flex-shrink-0 ml-4">
+                    <Button
+                      size="sm"
+                      onClick={() => handlePrint(order)}
+                      className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2"
+                      variant="outline"
+                    >
+                      <Printer className="h-4 w-4 mr-2" />
+                      Print
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </div>
-            
-            {/* Quick jump to page */}
-            {totalPages > 10 && (
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                <span className="text-sm text-muted-foreground">Go to page:</span>
-                <Input
-                  type="number"
-                  min="1"
-                  max={totalPages}
-                  placeholder="Page"
-                  className="w-20 h-8"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      const pageNum = parseInt((e.target as HTMLInputElement).value);
-                      if (pageNum >= 1 && pageNum <= totalPages) {
-                        handlePageChange(pageNum);
-                        (e.target as HTMLInputElement).value = '';
-                      }
-                    }
-                  }}
-                />
-                <span className="text-sm text-muted-foreground">of {totalPages}</span>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
