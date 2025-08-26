@@ -1,6 +1,7 @@
 
 import React from 'react';
-import ShippingLabelPreview from './ShippingLabelPreview';
+import PackingSlipA4 from './PackingSlipA4';
+import PackingSlipA5 from './PackingSlipA5';
 
 interface Order {
   id: string;
@@ -9,9 +10,13 @@ interface Order {
   customer_email?: string;
   customer_phone?: string;
   shipping_address?: string;
+  billing_address?: string;
   total: number;
   items: number;
   line_items?: any[];
+  order_date?: string;
+  shipping_method?: string;
+  shipping_cost?: number;
   tracking_number?: string;
   carrier?: string;
   status: string;
@@ -55,7 +60,7 @@ const PrintableLabel: React.FC<PrintableLabelProps> = ({ order, format = 'A4', o
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Shipping Label - ${order.order_number}</title>
+            <title>Packing Slip - ${order.order_number}</title>
             <link href="https://cdn.tailwindcss.com/2.2.19/tailwind.min.css" rel="stylesheet">
             ${printStyles}
           </head>
@@ -76,10 +81,12 @@ const PrintableLabel: React.FC<PrintableLabelProps> = ({ order, format = 'A4', o
     }
   };
 
+  const PackingSlipComponent = format === 'A5' ? PackingSlipA5 : PackingSlipA4;
+
   return (
     <div>
       <div data-order-id={order.id}>
-        <ShippingLabelPreview order={order} format={format} />
+        <PackingSlipComponent order={order} />
       </div>
       <div className="mt-4 text-center print:hidden">
         <button
