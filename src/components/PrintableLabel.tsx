@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { ShippingLabelPreview } from './ShippingLabelPreview';
+import ShippingLabelPreview from './ShippingLabelPreview';
 
 interface Order {
   id: string;

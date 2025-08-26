@@ -104,7 +104,8 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
           postal_code: data.postal_code || '',
           country: data.country || '',
           phone: data.phone || '',
-          email: data.email || ''
+          email: data.email || '',
+          default_label_format: (data.default_label_format as 'A4' | 'A5' | 'thermal') || 'A4'
         });
       }
     } catch (error: any) {
