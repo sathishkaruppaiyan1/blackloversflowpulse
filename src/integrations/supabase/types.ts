@@ -201,14 +201,8 @@ export type Database = {
       }
       orders: {
         Row: {
-          billing_address: string | null
-          billing_city: string | null
-          billing_country: string | null
-          billing_postcode: string | null
-          billing_state: string | null
           carrier: string | null
           created_at: string
-          currency: string | null
           customer_email: string | null
           customer_name: string
           customer_phone: string | null
@@ -216,19 +210,13 @@ export type Database = {
           id: string
           items: number
           line_items: Json | null
-          order_date: string | null
           order_number: string
           packed_at: string | null
-          payment_method: string | null
           printed_at: string | null
           reseller_name: string | null
           reseller_number: string | null
           shipped_at: string | null
           shipping_address: string | null
-          shipping_city: string | null
-          shipping_country: string | null
-          shipping_postcode: string | null
-          shipping_state: string | null
           status: string
           total: number
           tracking_number: string | null
@@ -237,14 +225,8 @@ export type Database = {
           woo_order_id: string | null
         }
         Insert: {
-          billing_address?: string | null
-          billing_city?: string | null
-          billing_country?: string | null
-          billing_postcode?: string | null
-          billing_state?: string | null
           carrier?: string | null
           created_at?: string
-          currency?: string | null
           customer_email?: string | null
           customer_name: string
           customer_phone?: string | null
@@ -252,19 +234,13 @@ export type Database = {
           id?: string
           items?: number
           line_items?: Json | null
-          order_date?: string | null
           order_number: string
           packed_at?: string | null
-          payment_method?: string | null
           printed_at?: string | null
           reseller_name?: string | null
           reseller_number?: string | null
           shipped_at?: string | null
           shipping_address?: string | null
-          shipping_city?: string | null
-          shipping_country?: string | null
-          shipping_postcode?: string | null
-          shipping_state?: string | null
           status?: string
           total?: number
           tracking_number?: string | null
@@ -273,14 +249,8 @@ export type Database = {
           woo_order_id?: string | null
         }
         Update: {
-          billing_address?: string | null
-          billing_city?: string | null
-          billing_country?: string | null
-          billing_postcode?: string | null
-          billing_state?: string | null
           carrier?: string | null
           created_at?: string
-          currency?: string | null
           customer_email?: string | null
           customer_name?: string
           customer_phone?: string | null
@@ -288,19 +258,13 @@ export type Database = {
           id?: string
           items?: number
           line_items?: Json | null
-          order_date?: string | null
           order_number?: string
           packed_at?: string | null
-          payment_method?: string | null
           printed_at?: string | null
           reseller_name?: string | null
           reseller_number?: string | null
           shipped_at?: string | null
           shipping_address?: string | null
-          shipping_city?: string | null
-          shipping_country?: string | null
-          shipping_postcode?: string | null
-          shipping_state?: string | null
           status?: string
           total?: number
           tracking_number?: string | null
