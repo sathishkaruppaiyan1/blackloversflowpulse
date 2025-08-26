@@ -3,14 +3,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom gradient class for packing slip logo */
-.gradient-bg {
-  background: linear-gradient(135deg, #f472b6, #ec4899);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
 /* Import Google Fonts */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');

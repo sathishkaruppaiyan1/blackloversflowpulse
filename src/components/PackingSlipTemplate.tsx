@@ -33,6 +33,8 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   showPrintButton = true 
 }) => {
   const [defaultFormat, setDefaultFormat] = useState<'A4' | 'A5'>('A4');
+  const [loading, setLoading] = useState(true);
+  const [lastChecked, setLastChecked] = useState<number>(0);
   const { user } = useAuth();
 
   // Sample order data for preview
@@ -68,11 +70,61 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   useEffect(() => {
     if (user && !propFormat) {
       fetchDefaultFormat();
+    } else {
+      setLoading(false);
     }
   }, [user, propFormat]);
 
+  // Re-fetch format when component becomes visible (handles settings page changes)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user && !propFormat) {
+        const now = Date.now();
+        // Only fetch if it's been more than 1 second since last check
+        if (now - lastChecked > 1000) {
+          setLastChecked(now);
+          fetchDefaultFormat();
+        }
+      }
+    };
+
+    const handleFocus = () => {
+      if (user && !propFormat) {
+        const now = Date.now();
+        if (now - lastChecked > 1000) {
+          setLastChecked(now);
+          fetchDefaultFormat();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, propFormat, lastChecked]);
+
+  // Also check for format changes periodically when component is mounted
+  useEffect(() => {
+    if (!propFormat && user) {
+      const interval = setInterval(() => {
+        const now = Date.now();
+        if (now - lastChecked > 5000) { // Check every 5 seconds
+          setLastChecked(now);
+          fetchDefaultFormat();
+        }
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [user, propFormat, lastChecked]);
+
   const fetchDefaultFormat = async () => {
     try {
+      setLastChecked(Date.now());
       const { data, error } = await supabase
         .from('company_settings')
         .select('default_label_format')
@@ -82,10 +134,15 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
       if (error) throw error;
 
       if (data && (data.default_label_format === 'A4' || data.default_label_format === 'A5')) {
-        setDefaultFormat(data.default_label_format);
+        if (data.default_label_format !== defaultFormat) {
+          console.log('Format changed from', defaultFormat, 'to', data.default_label_format);
+          setDefaultFormat(data.default_label_format);
+        }
       }
     } catch (error: any) {
       console.error('Error fetching default format:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -166,6 +223,10 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           .pt-3 { padding-top: 0.75rem; }
           .pt-4 { padding-top: 1rem; }
           .pb-3 { padding-bottom: 0.75rem; }
+          .mt-0 { margin-top: 0; }
+          .mt-0\.5 { margin-top: 0.125rem; }
+          .mt-3 { margin-top: 0.75rem; }
+          .mb-1 { margin-bottom: 0.25rem; }
           
           /* Grid layouts */
           .grid { display: grid; }
@@ -182,6 +243,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           
           /* Spacing */
           .space-y-1 > * + * { margin-top: 0.25rem; }
+          .gap-3 { gap: 0.75rem; }
           
           /* Colors */
           .text-gray-700 { color: #374151; }
@@ -213,22 +275,29 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
             padding: 1rem 0.5rem; 
             border-bottom: 1px solid #e5e7eb;
           }
+          .w-8 { width: 2rem; }
+          .w-12 { width: 3rem; }
+          .w-16 { width: 4rem; }
+          .w-20 { width: 5rem; }
+          .w-32 { width: 8rem; }
+          .max-w-2xl { max-width: 42rem; }
+          .max-w-4xl { max-width: 56rem; }
+          .mx-auto { margin-left: auto; margin-right: auto; }
           
-          /* Gradient background for logo */
-          .gradient-bg {
-            background: linear-gradient(135deg, #f472b6, #ec4899);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          
-          /* Responsive widths */
+          /* Logo styling for new design */
           .w-12 { width: 3rem; height: 3rem; }
           .w-16 { width: 4rem; height: 4rem; }
+          .w-20 { width: 5rem; height: 5rem; }
           .w-8 { width: 2rem; height: 2rem; }
           .w-9 { width: 2.25rem; height: 2.25rem; }
           .w-6 { width: 1.5rem; height: 1.5rem; }
+          .h-12 { height: 3rem; }
+          .h-16 { height: 4rem; }
+          .h-20 { height: 5rem; }
+          .h-8 { height: 2rem; }
+          .h-9 { height: 2.25rem; }
+          .h-6 { height: 1.5rem; }
+          
           .bg-white { background-color: white; }
           .bg-pink-500 { background-color: #ec4899; }
           .bg-gray-200 { background-color: #e5e7eb; }
@@ -236,6 +305,13 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           .rounded-full { border-radius: 9999px; }
           .rounded { border-radius: 0.25rem; }
           .border { border: 1px solid #e5e7eb; }
+          .border-3 { border-width: 3px; }
+          .border-4 { border-width: 4px; }
+          .border-pink-500 { border-color: #ec4899; }
+          .text-pink-500 { color: #ec4899; }
+          .leading-tight { line-height: 1.25; }
+          .gap-4 { gap: 1rem; }
+          .gap-8 { gap: 2rem; }
           
           .print-hidden { display: none !important; }
           
@@ -280,6 +356,10 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
     }
   };
 
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading template...</div>;
+  }
+
   return (
     <div className="w-full">
       <div data-packing-slip-id={order.id}>
@@ -291,14 +371,34 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
       </div>
       
       {showPrintButton && (
-        <div className="mt-6 text-center print-hidden">
-          <Button
-            onClick={handlePrint}
-            className="bg-navy-600 hover:bg-navy-700 text-white px-8 py-2 rounded-lg font-medium"
-            style={{ backgroundColor: '#1e3a8a' }}
-          >
-            Print {format} Packing Slip
-          </Button>
+        <div className="mt-6 text-center print-hidden space-y-2">
+          <div className="flex items-center justify-center gap-3">
+            <Button
+              onClick={handlePrint}
+              className="bg-navy-600 hover:bg-navy-700 text-white px-8 py-2 rounded-lg font-medium"
+              style={{ backgroundColor: '#1e3a8a' }}
+            >
+              Print {format} Packing Slip
+            </Button>
+            {!propFormat && (
+              <Button
+                onClick={() => {
+                  setLoading(true);
+                  fetchDefaultFormat();
+                }}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+              >
+                Refresh Format
+              </Button>
+            )}
+          </div>
+          {!propFormat && (
+            <p className="text-xs text-gray-500">
+              Current format: {format} • Updates automatically when settings change
+            </p>
+          )}
         </div>
       )}
     </div>
