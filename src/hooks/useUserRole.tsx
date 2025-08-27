@@ -33,7 +33,7 @@ export const useUserRole = (): UserRole => {
           // If no role exists, assume first user is admin
           setRole('admin');
         } else {
-          setRole(data?.role || 'admin');
+          setRole((data?.role as 'admin' | 'staff') || 'admin');
         }
       } catch (error) {
         console.error('Error in fetchUserRole:', error);

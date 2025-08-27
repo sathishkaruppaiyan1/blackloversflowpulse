@@ -225,13 +225,13 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                 type="text"
                 placeholder="Enter tracking number"
                 value={trackingNumber}
-                onChange={(e) => handleTrackingNumberChange(e.target.value)}
+                onChange={(e) => setTrackingNumber(e.target.value)}
                 required
               />
               {detectedCourier && (
                 <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
                   <p className="text-sm text-green-800">
-                    🎯 Auto-detected: <strong>{detectedCourier.name}</strong>
+                    🎯 Auto-detected: <strong>{detectedCourier}</strong>
                   </p>
                 </div>
               )}
@@ -246,7 +246,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                 <SelectContent>
                   {availableCouriers.length > 0 ? (
                     availableCouriers.map((courierOption) => (
-                      <SelectItem key={courierOption.code} value={courierOption.name}>
+                      <SelectItem key={courierOption.id} value={courierOption.name}>
                         {courierOption.name}
                       </SelectItem>
                     ))
