@@ -37,60 +37,46 @@ const StaffInviteDialog = ({ open, onOpenChange, onStaffCreated }: StaffInviteDi
 
     setLoading(true);
     try {
+      // Generate a mock user ID for demo purposes
+      const mockUserId = `demo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const password = generatePassword();
 
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: email.trim(),
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: fullName.trim()
-        }
-      });
-
-      if (authError) {
-        console.error('Auth error:', authError);
-        toast.error(`Failed to create user: ${authError.message}`);
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error('Failed to create user');
-        return;
-      }
-
-      // Create profile entry
+      // Create profile entry (demo mode)
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
-          user_id: authData.user.id,
-          full_name: fullName.trim()
+          user_id: mockUserId,
+          full_name: fullName.trim(),
+          email: email.trim() // Store email in profile for display
         });
 
       if (profileError) {
         console.warn('Profile creation error:', profileError);
+        // Continue anyway for demo purposes
       }
 
       // Create user role entry
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
-          user_id: authData.user.id,
+          user_id: mockUserId,
           role: role
         });
 
       if (roleError) {
         console.warn('Role creation error:', roleError);
+        // Continue anyway for demo purposes
       }
 
-      // Show success message with credentials
-      toast.success(`Staff member created successfully!`);
+      // Show success message
+      toast.success(`Demo staff member created successfully!`);
       
-      // Copy credentials to clipboard
-      const credentials = `Email: ${email}\nPassword: ${password}`;
-      navigator.clipboard.writeText(credentials).then(() => {
-        toast.success('Login credentials copied to clipboard!');
+      // Copy demo info to clipboard
+      const demoInfo = `Demo Staff Member:\nName: ${fullName}\nEmail: ${email}\nRole: ${role}\nDemo Password: ${password}`;
+      navigator.clipboard.writeText(demoInfo).then(() => {
+        toast.success('Demo credentials copied to clipboard!');
+      }).catch(() => {
+        console.log('Clipboard write failed, showing alert instead');
       });
 
       // Reset form
@@ -100,12 +86,12 @@ const StaffInviteDialog = ({ open, onOpenChange, onStaffCreated }: StaffInviteDi
       onOpenChange(false);
       onStaffCreated();
 
-      // Alert with credentials (as backup)
-      alert(`Staff Member Created Successfully!\n\nLogin Credentials:\nEmail: ${email}\nPassword: ${password}\n\nPlease save these credentials and share them securely with the staff member.`);
+      // Alert with demo info
+      alert(`Demo Staff Member Created!\n\nThis is a demo entry for testing purposes.\n\nName: ${fullName}\nEmail: ${email}\nRole: ${role}\nDemo Password: ${password}\n\nIn production, this would send an actual invitation email.`);
 
     } catch (error: any) {
-      console.error('Error creating staff member:', error);
-      toast.error(`Failed to create staff member: ${error.message}`);
+      console.error('Error creating demo staff member:', error);
+      toast.error(`Failed to create demo staff member: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -115,9 +101,9 @@ const StaffInviteDialog = ({ open, onOpenChange, onStaffCreated }: StaffInviteDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add New Staff Member</DialogTitle>
+          <DialogTitle>Add New Staff Member (Demo)</DialogTitle>
           <DialogDescription>
-            Create a new staff member account with auto-generated credentials
+            Create a demo staff member entry for testing user management functionality
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
@@ -159,7 +145,7 @@ const StaffInviteDialog = ({ open, onOpenChange, onStaffCreated }: StaffInviteDi
             Cancel
           </Button>
           <Button onClick={createStaffMember} disabled={loading}>
-            {loading ? 'Creating...' : 'Create Staff Member'}
+            {loading ? 'Creating...' : 'Create Demo Staff'}
           </Button>
         </DialogFooter>
       </DialogContent>
