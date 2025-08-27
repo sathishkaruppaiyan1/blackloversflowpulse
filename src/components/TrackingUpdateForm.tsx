@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Package, Send, User, Phone } from 'lucide-react';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { useInteraktIntegration } from '@/hooks/useInteraktIntegration';
 import { useCompletedOrders } from '@/hooks/useCompletedOrders';
+import { detectCourierFromTracking, getCouriers } from '@/services/courierDetectionService';
 
 interface TrackingUpdateFormProps {
   order: WooCommerceOrder;
@@ -37,8 +37,45 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
   const [trackingNumber, setTrackingNumber] = useState('');
   const [carrier, setCarrier] = useState('');
   const [updating, setUpdating] = useState(false);
+  const [detectedCourier, setDetectedCourier] = useState<string>('');
+  const [availableCouriers, setAvailableCouriers] = useState<any[]>([]);
   const { sendResellerTrackingNotification, isActive: isInteraktActive } = useInteraktIntegration();
   const { storeCompletedOrder } = useCompletedOrders();
+
+  // Load available couriers on component mount
+  useEffect(() => {
+    const loadCouriers = async () => {
+      try {
+        const couriers = await getCouriers();
+        setAvailableCouriers(couriers);
+      } catch (error) {
+        console.error('Error loading couriers:', error);
+      }
+    };
+    loadCouriers();
+  }, []);
+
+  // Detect courier when tracking number changes
+  useEffect(() => {
+    const detectCourier = async () => {
+      if (trackingNumber.trim().length > 5) {
+        try {
+          const detected = await detectCourierFromTracking(trackingNumber.trim());
+          if (detected) {
+            setDetectedCourier(detected);
+            // Auto-select the detected carrier
+            const carrierCode = getCarrierCode(detected);
+            setCarrier(carrierCode);
+          }
+        } catch (error) {
+          console.error('Error detecting courier:', error);
+        }
+      } else {
+        setDetectedCourier('');
+      }
+    };
+    detectCourier();
+  }, [trackingNumber]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -130,6 +167,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
       // Clear form
       setTrackingNumber('');
       setCarrier('');
+      setDetectedCourier('');
       
     } catch (error: any) {
       console.error('Error updating tracking:', error);
@@ -246,15 +284,15 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                 <SelectContent>
                   {availableCouriers.length > 0 ? (
                     availableCouriers.map((courierOption) => (
-                      <SelectItem key={courierOption.id} value={courierOption.name}>
+                      <SelectItem key={courierOption.id} value={getCarrierCode(courierOption.name)}>
                         {courierOption.name}
                       </SelectItem>
                     ))
                   ) : (
                     // Fallback to static list if no couriers configured
                     <>
-                      <SelectItem value="Franch Express">Franch Express</SelectItem>
-                      <SelectItem value="Delhivery">Delhivery</SelectItem>
+                      <SelectItem value="frenchexpress">Franch Express</SelectItem>
+                      <SelectItem value="delhivery">Delhivery</SelectItem>
                     </>
                   )}
                 </SelectContent>
