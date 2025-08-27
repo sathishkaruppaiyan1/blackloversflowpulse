@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, Package, Users, Clock, CheckCircle, BarChart3, PieChart } from "lucide-react";
@@ -33,7 +34,7 @@ const chartConfig = {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-const AnalyticsPage = () => {
+export const AnalyticsPage = () => {
   const { orders, loading } = useWooCommerceOrders();
   const { completedOrders } = useCompletedOrders();
 
@@ -283,5 +284,3 @@ const AnalyticsPage = () => {
     </div>
   );
 };
-
-export default AnalyticsPage;
