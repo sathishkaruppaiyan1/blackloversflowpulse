@@ -20,10 +20,6 @@ import ShippedPage from "./components/ShippedPage";
 import TrackingPage from "./components/TrackingPage";
 import AnalyticsPage from "./components/AnalyticsPage";
 import SettingsPage from "./components/SettingsPage";
-import { InventoryDashboard } from "./components/inventory/InventoryDashboard";
-import { ProductsPage } from "./components/inventory/ProductsPage";
-import { StockMovementsPage } from "./components/inventory/StockMovementsPage";
-import { ReportsPage } from "./components/inventory/ReportsPage";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -81,26 +77,6 @@ function App() {
                         <Route path="/analytics" element={
                           <ProtectedRoute>
                             <AnalyticsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/inventory" element={
-                          <ProtectedRoute>
-                            <InventoryDashboard />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/inventory/products" element={
-                          <ProtectedRoute>
-                            <ProductsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/inventory/movements" element={
-                          <ProtectedRoute>
-                            <StockMovementsPage />
-                          </ProtectedRoute>
-                        } />
-                        <Route path="/inventory/reports" element={
-                          <ProtectedRoute>
-                            <ReportsPage />
                           </ProtectedRoute>
                         } />
                         <Route path="/settings" element={
