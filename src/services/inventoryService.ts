@@ -109,7 +109,10 @@ class InventoryService {
 
     const { data, error } = await query;
     if (error) throw error;
-    return data || [];
+    return (data || []).map(item => ({
+      ...item,
+      movement_type: item.movement_type as 'in' | 'out' | 'adjustment' | 'sale'
+    }));
   }
 
   async recordStockMovement(movement: Omit<StockMovement, 'id' | 'user_id' | 'created_at'>): Promise<StockMovement> {
@@ -127,7 +130,10 @@ class InventoryService {
       .single();
 
     if (error) throw error;
-    return data;
+    return {
+      ...data,
+      movement_type: data.movement_type as 'in' | 'out' | 'adjustment' | 'sale'
+    };
   }
 
   // Categories
@@ -193,11 +199,16 @@ class InventoryService {
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('is_active', true)
-      .lte('stock_quantity', supabase.raw('min_stock_level'));
+      .eq('is_active', true);
 
     if (error) throw error;
-    return data || [];
+    
+    // Filter products where stock_quantity <= min_stock_level
+    const lowStockProducts = (data || []).filter(product => 
+      product.stock_quantity <= (product.min_stock_level || 0)
+    );
+    
+    return lowStockProducts;
   }
 
   async getStockSummary(): Promise<any> {

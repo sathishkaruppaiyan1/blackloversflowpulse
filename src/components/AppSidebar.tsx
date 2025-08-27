@@ -51,7 +51,8 @@ const inventoryItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const location = useLocation();
   const { signOut } = useAuth();
   const { role } = useUserRole();
@@ -69,7 +70,7 @@ export function AppSidebar() {
   const isStaff = role === 'staff';
 
   return (
-    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible>
+    <Sidebar className={collapsed ? "w-14" : "w-60"} collapsible="icon">
       <SidebarContent>
         {/* Main Navigation */}
         <SidebarGroup>
