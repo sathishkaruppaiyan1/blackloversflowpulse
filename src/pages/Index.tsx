@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { Dashboard } from '@/components/Dashboard';
 import { BarcodeScanner } from '@/components/BarcodeScanner';
-import { AnalyticsPage } from '@/components/AnalyticsPage';
+import AnalyticsPage from '@/components/AnalyticsPage';
 import SettingsPage from '@/components/SettingsPage';
 import PrintingPage from '@/components/PrintingPage';
 import { PackingPage } from '@/components/PackingPage';
