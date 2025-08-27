@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import PackingSlipTemplate from './PackingSlipTemplate';
 import { PrintingAnalytics } from './PrintingAnalytics';
 import { PrintingSearchBar } from './PrintingSearchBar';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -26,7 +28,7 @@ const PrintingPage = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
   
   // Selection state
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -125,6 +127,19 @@ const PrintingPage = () => {
       const { createRoot } = await import('react-dom/client');
       const PrintPackingSlipA4 = (await import('./print/PrintPackingSlipA4')).default;
 
+      // Default company settings
+      const defaultCompanySettings = {
+        company_name: 'Perfect Collections',
+        address_line1: '123 Business Street',
+        address_line2: 'Suite 100',
+        city: 'Mumbai',
+        state: 'Maharashtra',
+        postal_code: '400001',
+        country: 'India',
+        phone: '9876543210',
+        email: 'info@perfectcollections.com'
+      };
+
       // Create a container for all packing slips
       const printContainer = document.createElement('div');
       printContainer.id = 'bulk-print-container';
@@ -138,10 +153,7 @@ const PrintingPage = () => {
         React.createElement(PrintPackingSlipA4, {
           key: order.id,
           order: order,
-          style: { 
-            pageBreakAfter: index < selectedOrders.length - 1 ? 'always' : 'auto',
-            marginBottom: index < selectedOrders.length - 1 ? '20px' : '0'
-          }
+          companySettings: defaultCompanySettings
         })
       ));
 
@@ -174,10 +186,12 @@ const PrintingPage = () => {
                 margin-bottom: 30px; 
                 border-bottom: 2px dashed #ccc; 
                 padding-bottom: 20px;
+                page-break-after: always;
               }
               .packing-slip:last-child { 
                 border-bottom: none; 
                 margin-bottom: 0;
+                page-break-after: auto;
               }
             </style>
           </head>
@@ -382,6 +396,42 @@ const PrintingPage = () => {
     setCurrentPage(1);
   };
 
+  // Generate page numbers for pagination
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    
+    return pages;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -461,11 +511,28 @@ const PrintingPage = () => {
             </Button>
           )}
         </div>
-        {selectedOrderIds.size > 0 && (
-          <div className="text-sm text-gray-600">
-            {selectedOrderIds.size} of {totalOrders} orders selected
+        <div className="flex items-center gap-4">
+          {selectedOrderIds.size > 0 && (
+            <div className="text-sm text-gray-600">
+              {selectedOrderIds.size} of {totalOrders} orders selected
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Show:</span>
+            <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="25">25</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+                <SelectItem value="100">100</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-sm text-gray-600">per page</span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Orders List - Simplified Layout matching reference */}
@@ -572,6 +639,49 @@ const PrintingPage = () => {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            Showing {startIndex + 1} to {Math.min(endIndex, totalOrders)} of {totalOrders} orders
+          </div>
+          
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
+                  className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+              
+              {generatePageNumbers().map((page, index) => (
+                <PaginationItem key={index}>
+                  {page === '...' ? (
+                    <span className="px-3 py-2">...</span>
+                  ) : (
+                    <PaginationLink
+                      onClick={() => handlePageChange(page as number)}
+                      isActive={currentPage === page}
+                      className="cursor-pointer"
+                    >
+                      {page}
+                    </PaginationLink>
+                  )}
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
+                  className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 };
