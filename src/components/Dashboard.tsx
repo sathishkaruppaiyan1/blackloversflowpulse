@@ -5,10 +5,10 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/s
 import AppSidebar from './AppSidebar';
 import OrdersPage from './OrdersPage';
 import PrintingPage from './PrintingPage';
-import PackingPage from './PackingPage';
+import { PackingPage } from './PackingPage';
 import TrackingPage from './TrackingPage';
 import ShippedPage from './ShippedPage';
-import AnalyticsPage from './AnalyticsPage';
+import { AnalyticsPage } from './AnalyticsPage';
 import SettingsPage from './SettingsPage';
 import InventoryPage from './inventory/InventoryPage';
 import { Package, Users, TrendingUp, DollarSign } from 'lucide-react';

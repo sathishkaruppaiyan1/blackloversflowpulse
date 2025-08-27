@@ -52,7 +52,7 @@ serve(async (req) => {
     // Sync categories first
     for (const wooCategory of wooCategories) {
       await supabase
-        .from('categories')
+        .from('product_categories')
         .upsert({
           user_id,
           name: wooCategory.name,
@@ -64,7 +64,7 @@ serve(async (req) => {
 
     // Get local categories for mapping
     const { data: localCategories } = await supabase
-      .from('categories')
+      .from('product_categories')
       .select('*')
       .eq('user_id', user_id)
 
@@ -83,10 +83,10 @@ serve(async (req) => {
         category_id: localCategory?.id || null,
         price: parseFloat(wooProduct.price) || 0,
         cost_price: 0, // WooCommerce doesn't provide cost price by default
-        current_stock: wooProduct.stock_quantity || 0,
+        stock_quantity: wooProduct.stock_quantity || 0,
         min_stock_level: wooProduct.low_stock_amount || 10,
         max_stock_level: 1000,
-        status: wooProduct.status === 'publish' ? 'active' : 'inactive',
+        is_active: wooProduct.status === 'publish',
         description: wooProduct.description || '',
       }
     })

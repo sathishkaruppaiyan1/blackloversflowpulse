@@ -6,15 +6,15 @@ export interface Product {
   id: string;
   woo_product_id: number;
   name: string;
-  sku?: string;
-  category_id?: string;
+  sku: string | null;
+  category_id: string | null;
   price: number;
   cost_price: number;
   current_stock: number;
   min_stock_level: number;
   max_stock_level: number;
   status: string;
-  description?: string;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -22,7 +22,7 @@ export interface Product {
 export interface Category {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -32,8 +32,8 @@ export interface StockMovement {
   product_id: string;
   movement_type: 'in' | 'out' | 'sale' | 'adjustment';
   quantity: number;
-  reference_id?: string;
-  notes?: string;
+  reference_id: string | null;
+  notes: string | null;
   created_at: string;
 }
 
@@ -42,18 +42,50 @@ export const inventoryService = {
   async getProducts(userId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        id,
+        woo_product_id,
+        name,
+        sku,
+        category_id,
+        price,
+        cost_price,
+        stock_quantity,
+        min_stock_level,
+        max_stock_level,
+        is_active,
+        description,
+        created_at,
+        updated_at
+      `)
       .eq('user_id', userId)
       .order('name');
 
     if (error) throw error;
-    return data || [];
+    
+    // Map database columns to interface properties
+    return (data || []).map(item => ({
+      id: item.id,
+      woo_product_id: item.woo_product_id,
+      name: item.name,
+      sku: item.sku,
+      category_id: item.category_id,
+      price: item.price,
+      cost_price: item.cost_price,
+      current_stock: item.stock_quantity,
+      min_stock_level: item.min_stock_level,
+      max_stock_level: item.max_stock_level,
+      status: item.is_active ? 'active' : 'inactive',
+      description: item.description,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }));
   },
 
   // Fetch categories from local database
   async getCategories(userId: string): Promise<Category[]> {
     const { data, error } = await supabase
-      .from('categories')
+      .from('product_categories')
       .select('*')
       .eq('user_id', userId)
       .order('name');
@@ -130,25 +162,89 @@ export const inventoryService = {
   async getLowStockProducts(userId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        id,
+        woo_product_id,
+        name,
+        sku,
+        category_id,
+        price,
+        cost_price,
+        stock_quantity,
+        min_stock_level,
+        max_stock_level,
+        is_active,
+        description,
+        created_at,
+        updated_at
+      `)
       .eq('user_id', userId)
-      .filter('current_stock', 'lte', 'min_stock_level')
-      .order('current_stock');
+      .filter('stock_quantity', 'lte', 'min_stock_level')
+      .order('stock_quantity');
 
     if (error) throw error;
-    return data || [];
+    
+    // Map database columns to interface properties
+    return (data || []).map(item => ({
+      id: item.id,
+      woo_product_id: item.woo_product_id,
+      name: item.name,
+      sku: item.sku,
+      category_id: item.category_id,
+      price: item.price,
+      cost_price: item.cost_price,
+      current_stock: item.stock_quantity,
+      min_stock_level: item.min_stock_level,
+      max_stock_level: item.max_stock_level,
+      status: item.is_active ? 'active' : 'inactive',
+      description: item.description,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }));
   },
 
   // Get out of stock products
   async getOutOfStockProducts(userId: string): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(`
+        id,
+        woo_product_id,
+        name,
+        sku,
+        category_id,
+        price,
+        cost_price,
+        stock_quantity,
+        min_stock_level,
+        max_stock_level,
+        is_active,
+        description,
+        created_at,
+        updated_at
+      `)
       .eq('user_id', userId)
-      .eq('current_stock', 0)
+      .eq('stock_quantity', 0)
       .order('name');
 
     if (error) throw error;
-    return data || [];
+    
+    // Map database columns to interface properties
+    return (data || []).map(item => ({
+      id: item.id,
+      woo_product_id: item.woo_product_id,
+      name: item.name,
+      sku: item.sku,
+      category_id: item.category_id,
+      price: item.price,
+      cost_price: item.cost_price,
+      current_stock: item.stock_quantity,
+      min_stock_level: item.min_stock_level,
+      max_stock_level: item.max_stock_level,
+      status: item.is_active ? 'active' : 'inactive',
+      description: item.description,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    }));
   }
 };
