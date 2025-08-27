@@ -105,23 +105,132 @@ const PrintingPage = () => {
   const handleBulkPrint = async () => {
     const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
     console.log('Bulk printing orders:', selectedOrders.map(o => o.order_number));
-    toast.success(`Printing ${selectedOrders.length} selected orders`);
     
-    // Move all selected orders to packing stage after printing
-    try {
-      for (const order of selectedOrders) {
-        await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
-      }
-      await loadProcessingOrders();
-      toast.success(`Moved ${selectedOrders.length} orders to packing stage`);
-    } catch (error: any) {
-      console.error('Error moving orders to packing:', error);
-      toast.error('Failed to move some orders to packing stage');
+    if (selectedOrders.length === 0) {
+      toast.error('No orders selected for printing');
+      return;
     }
+
+    toast.success(`Preparing to print ${selectedOrders.length} packing slips...`);
     
-    // Clear selection after printing
-    setSelectedOrderIds(new Set());
-    setSelectAll(false);
+    // Create bulk print window
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast.error('Could not open print window. Please allow pop-ups for this site.');
+      return;
+    }
+
+    try {
+      // Import React DOM for rendering print components
+      const { createRoot } = await import('react-dom/client');
+      const PrintPackingSlipA4 = (await import('./print/PrintPackingSlipA4')).default;
+
+      // Create a container for all packing slips
+      const printContainer = document.createElement('div');
+      printContainer.id = 'bulk-print-container';
+      
+      const root = createRoot(printContainer);
+
+      // Create bulk print content with all selected orders
+      const bulkPrintContent = React.createElement('div', {
+        style: { width: '100%' }
+      }, selectedOrders.map((order, index) => 
+        React.createElement(PrintPackingSlipA4, {
+          key: order.id,
+          order: order,
+          style: { 
+            pageBreakAfter: index < selectedOrders.length - 1 ? 'always' : 'auto',
+            marginBottom: index < selectedOrders.length - 1 ? '20px' : '0'
+          }
+        })
+      ));
+
+      // Render the bulk content
+      root.render(bulkPrintContent);
+
+      // Wait for rendering to complete
+      setTimeout(() => {
+        const printedContent = printContainer.innerHTML;
+
+        // Set up print window with styles
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Bulk Print - ${selectedOrders.length} Packing Slips</title>
+            <style>
+              @media print {
+                body { margin: 0; padding: 20px; }
+                * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
+                .page-break { page-break-after: always; }
+              }
+              body { 
+                font-family: Arial, sans-serif; 
+                line-height: 1.4; 
+                margin: 0;
+                padding: 20px;
+              }
+              .packing-slip { 
+                margin-bottom: 30px; 
+                border-bottom: 2px dashed #ccc; 
+                padding-bottom: 20px;
+              }
+              .packing-slip:last-child { 
+                border-bottom: none; 
+                margin-bottom: 0;
+              }
+            </style>
+          </head>
+          <body>
+            ${printedContent}
+          </body>
+          </html>
+        `);
+
+        printWindow.document.close();
+
+        // Wait for content to load, then print
+        setTimeout(() => {
+          printWindow.focus();
+          printWindow.print();
+          
+          toast.success(`Printing ${selectedOrders.length} packing slips...`);
+        }, 1000);
+
+        // Handle after print - move orders to packing stage
+        printWindow.addEventListener('afterprint', async () => {
+          printWindow.close();
+          
+          try {
+            for (const order of selectedOrders) {
+              await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
+            }
+            await loadProcessingOrders();
+            toast.success(`Printed and moved ${selectedOrders.length} orders to packing stage`);
+          } catch (error: any) {
+            console.error('Error moving orders to packing:', error);
+            toast.error('Printed successfully, but failed to move some orders to packing stage');
+          }
+          
+          // Clear selection after printing
+          setSelectedOrderIds(new Set());
+          setSelectAll(false);
+        });
+
+        // Fallback cleanup after 30 seconds if user doesn't print
+        setTimeout(() => {
+          if (!printWindow.closed) {
+            printWindow.close();
+          }
+        }, 30000);
+
+      }, 500);
+
+    } catch (error: any) {
+      console.error('Error in bulk printing:', error);
+      toast.error(`Failed to prepare bulk print: ${error.message}`);
+      printWindow.close();
+    }
   };
 
   const handleFiltersChange = (filters: any) => {
