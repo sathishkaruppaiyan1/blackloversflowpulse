@@ -14,6 +14,8 @@ import { PrintingFilters } from './PrintingFilters';
 import PrintingOrderCard from './PrintingOrderCard';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import PackingSlipTemplate from './PackingSlipTemplate';
+import { PrintingAnalytics } from './PrintingAnalytics';
+import { PrintingSearchBar } from './PrintingSearchBar';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -318,6 +320,24 @@ const PrintingPage = () => {
           </Button>
         </div>
       </div>
+
+      {/* Analytics Cards */}
+      <PrintingAnalytics 
+        totalOrders={orders.length} 
+        selectedCount={selectedOrderIds.size} 
+      />
+
+      {/* Search Bar */}
+      <PrintingSearchBar 
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
+
+      {/* Filters */}
+      <PrintingFilters 
+        onFiltersChange={handleFiltersChange}
+        totalOrders={totalOrders}
+      />
 
       {/* Orders List - Simplified Layout matching reference */}
       <div className="bg-white rounded-lg border">
