@@ -11,7 +11,6 @@ import { toast } from 'sonner';
 const ProfileSettings = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -96,7 +95,6 @@ const ProfileSettings = () => {
       if (error) throw error;
 
       toast.success('Password updated successfully!');
-      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error: any) {
@@ -159,17 +157,6 @@ const ProfileSettings = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="current_password">Current Password</Label>
-            <Input
-              id="current_password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter your current password"
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="new_password">New Password</Label>
             <Input
               id="new_password"
@@ -177,7 +164,11 @@ const ProfileSettings = () => {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Enter your new password"
+              minLength={6}
             />
+            <p className="text-sm text-muted-foreground">
+              Password must be at least 6 characters long
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -188,10 +179,15 @@ const ProfileSettings = () => {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm your new password"
+              minLength={6}
             />
           </div>
 
-          <Button onClick={changePassword} disabled={changingPassword} className="w-full">
+          <Button 
+            onClick={changePassword} 
+            disabled={changingPassword || !newPassword || !confirmPassword} 
+            className="w-full"
+          >
             {changingPassword ? 'Changing Password...' : 'Change Password'}
           </Button>
         </CardContent>
