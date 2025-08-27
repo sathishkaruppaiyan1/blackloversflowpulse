@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { PrintingFilters } from './PrintingFilters';
 import PrintingOrderCard from './PrintingOrderCard';
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
+import PackingSlipTemplate from './PackingSlipTemplate';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -77,7 +78,7 @@ const PrintingPage = () => {
     console.log('Printing order:', order.order_number);
     toast.success(`Printing order ${order.order_number}`);
     
-    // Automatically move to packing stage after printing
+    // Move to packing stage after printing
     try {
       await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
       await loadProcessingOrders();
@@ -120,7 +121,6 @@ const PrintingPage = () => {
     setSelectedOrderIds(new Set());
     setSelectAll(false);
   };
-
 
   const handleFiltersChange = (filters: any) => {
     let filtered = [...orders];
@@ -395,17 +395,27 @@ const PrintingPage = () => {
                     </div>
                   </div>
                   
-                  {/* Right side - Print Button */}
+                  {/* Right side - Print Button with Dialog */}
                   <div className="flex-shrink-0 ml-4">
-                    <Button
-                      size="sm"
-                      onClick={() => handlePrint(order)}
-                      className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2"
-                      variant="outline"
-                    >
-                      <Printer className="h-4 w-4 mr-2" />
-                      Print
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2"
+                          variant="outline"
+                        >
+                          <Printer className="h-4 w-4 mr-2" />
+                          Print
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <PackingSlipTemplate
+                          order={order}
+                          showPrintButton={true}
+                          onPrint={() => handlePrint(order)}
+                        />
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </div>
               </div>
