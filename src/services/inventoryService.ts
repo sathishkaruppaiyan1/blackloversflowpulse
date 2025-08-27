@@ -4,7 +4,7 @@ import { wooCommerceApiService } from './wooCommerceApiService';
 
 export interface Product {
   id: string;
-  woo_product_id: number;
+  woo_product_id?: number;
   name: string;
   sku: string | null;
   category_id: string | null;
@@ -44,10 +44,9 @@ export const inventoryService = {
       .from('products')
       .select(`
         id,
-        woo_product_id,
         name,
         sku,
-        category_id,
+        category,
         price,
         cost_price,
         stock_quantity,
@@ -66,10 +65,10 @@ export const inventoryService = {
     // Map database columns to interface properties
     return (data || []).map(item => ({
       id: item.id,
-      woo_product_id: item.woo_product_id,
+      woo_product_id: undefined,
       name: item.name,
       sku: item.sku,
-      category_id: item.category_id,
+      category_id: null,
       price: item.price,
       cost_price: item.cost_price,
       current_stock: item.stock_quantity,
@@ -122,7 +121,16 @@ export const inventoryService = {
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    return (data || []).map(item => ({
+      id: item.id,
+      product_id: item.product_id,
+      movement_type: item.movement_type as 'in' | 'out' | 'sale' | 'adjustment',
+      quantity: item.quantity,
+      reference_id: item.reference_id,
+      notes: item.notes,
+      created_at: item.created_at
+    }));
   },
 
   // Sync products from WooCommerce
@@ -164,10 +172,9 @@ export const inventoryService = {
       .from('products')
       .select(`
         id,
-        woo_product_id,
         name,
         sku,
-        category_id,
+        category,
         price,
         cost_price,
         stock_quantity,
@@ -187,10 +194,10 @@ export const inventoryService = {
     // Map database columns to interface properties
     return (data || []).map(item => ({
       id: item.id,
-      woo_product_id: item.woo_product_id,
+      woo_product_id: undefined,
       name: item.name,
       sku: item.sku,
-      category_id: item.category_id,
+      category_id: null,
       price: item.price,
       cost_price: item.cost_price,
       current_stock: item.stock_quantity,
@@ -209,10 +216,9 @@ export const inventoryService = {
       .from('products')
       .select(`
         id,
-        woo_product_id,
         name,
         sku,
-        category_id,
+        category,
         price,
         cost_price,
         stock_quantity,
@@ -232,10 +238,10 @@ export const inventoryService = {
     // Map database columns to interface properties
     return (data || []).map(item => ({
       id: item.id,
-      woo_product_id: item.woo_product_id,
+      woo_product_id: undefined,
       name: item.name,
       sku: item.sku,
-      category_id: item.category_id,
+      category_id: null,
       price: item.price,
       cost_price: item.cost_price,
       current_stock: item.stock_quantity,
