@@ -266,11 +266,27 @@ const PrintingPage = () => {
       );
     }
 
+    // Helper function to apply filter type logic
+    const applyFilterType = (itemValue: string, filterValue: string, filterType: string) => {
+      const item = itemValue.toLowerCase();
+      const filter = filterValue.toLowerCase();
+      
+      switch (filterType) {
+        case 'equals':
+          return item === filter;
+        case 'starts':
+          return item.startsWith(filter);
+        case 'contains':
+        default:
+          return item.includes(filter);
+      }
+    };
+
     // Apply product filter
     if (filters.product && filters.product !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
-          item.name.toLowerCase().includes(filters.product.toLowerCase())
+          applyFilterType(item.name || '', filters.product, filters.filterType || 'contains')
         )
       );
     }
@@ -279,7 +295,7 @@ const PrintingPage = () => {
     if (filters.color && filters.color !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
-          item.color?.toLowerCase().includes(filters.color.toLowerCase())
+          item.color && applyFilterType(item.color, filters.color, filters.filterType || 'contains')
         )
       );
     }
@@ -288,7 +304,7 @@ const PrintingPage = () => {
     if (filters.size && filters.size !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => 
-          item.size?.toLowerCase().includes(filters.size.toLowerCase())
+          item.size && applyFilterType(item.size, filters.size, filters.filterType || 'contains')
         )
       );
     }
@@ -297,18 +313,22 @@ const PrintingPage = () => {
     if (filters.variation && filters.variation !== 'any') {
       filtered = filtered.filter(order => 
         order.line_items?.some(item => {
-          // Check variation_id if it exists
-          if (item.variation_id && item.variation_id.toString().includes(filters.variation)) {
+          // Check against weight
+          if (item.weight && applyFilterType(item.weight, filters.variation, filters.filterType || 'contains')) {
             return true;
           }
-          // Check against weight or other meta properties
-          if (item.weight?.toLowerCase().includes(filters.variation.toLowerCase())) {
+          // Check against material
+          if (item.material && applyFilterType(item.material, filters.variation, filters.filterType || 'contains')) {
+            return true;
+          }
+          // Check against brand
+          if (item.brand && applyFilterType(item.brand, filters.variation, filters.filterType || 'contains')) {
             return true;
           }
           // Check meta_data for variation information
           if (item.meta_data && Array.isArray(item.meta_data)) {
             return item.meta_data.some(meta => 
-              meta.value?.toString().toLowerCase().includes(filters.variation.toLowerCase())
+              meta.display_value && applyFilterType(meta.display_value.toString(), filters.variation, filters.filterType || 'contains')
             );
           }
           return false;
@@ -482,6 +502,7 @@ const PrintingPage = () => {
       <PrintingFilters 
         onFiltersChange={handleFiltersChange}
         totalOrders={totalOrders}
+        orders={orders}
       />
 
       {/* Selection Controls - Below Filters */}
