@@ -225,9 +225,16 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                 type="text"
                 placeholder="Enter tracking number"
                 value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
+                onChange={(e) => handleTrackingNumberChange(e.target.value)}
                 required
               />
+              {detectedCourier && (
+                <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                  <p className="text-sm text-green-800">
+                    🎯 Auto-detected: <strong>{detectedCourier.name}</strong>
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -237,11 +244,19 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                   <SelectValue placeholder="Select courier service" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CARRIERS.map((carrierOption) => (
-                    <SelectItem key={carrierOption} value={carrierOption}>
-                      {carrierOption}
-                    </SelectItem>
-                  ))}
+                  {availableCouriers.length > 0 ? (
+                    availableCouriers.map((courierOption) => (
+                      <SelectItem key={courierOption.code} value={courierOption.name}>
+                        {courierOption.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    // Fallback to static list if no couriers configured
+                    <>
+                      <SelectItem value="Franch Express">Franch Express</SelectItem>
+                      <SelectItem value="Delhivery">Delhivery</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>

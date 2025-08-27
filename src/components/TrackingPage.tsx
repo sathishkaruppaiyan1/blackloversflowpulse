@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { wooCommerceOrderService, type WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { interaktService } from '@/services/interaktService';
+import { courierDetectionService, type CourierInfo, type TrackingDetails } from '@/services/courierDetectionService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
@@ -21,6 +22,10 @@ const TrackingPage = () => {
   const [currentOrder, setCurrentOrder] = useState<WooCommerceOrder | null>(null);
   const [detectedCarrier, setDetectedCarrier] = useState<string>('');
   const [selectedCarrier, setSelectedCarrier] = useState<string>('');
+  const [detectedCourierInfo, setDetectedCourierInfo] = useState<CourierInfo | null>(null);
+  const [trackingDetails, setTrackingDetails] = useState<TrackingDetails | null>(null);
+  const [fetchingDetails, setFetchingDetails] = useState(false);
+  const [availableCouriers, setAvailableCouriers] = useState<CourierInfo[]>([]);
   const [isOrderLocked, setIsOrderLocked] = useState(false);
   const [whatsappStatus, setWhatsappStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
   const [shopifyStatus, setShopifyStatus] = useState<'pending' | 'success' | 'failed' | null>(null);
@@ -98,40 +103,72 @@ const TrackingPage = () => {
     }
   };
 
-  // Load orders when component mounts and initialize Interakt
+  // Load orders when component mounts and initialize services
   useEffect(() => {
     fetchOrders();
     if (user) {
       interaktService.initialize(user.id);
+      initializeCourierService();
     }
   }, [user]);
 
-  // Helper function to detect courier partner
-  const detectCourierPartner = (trackingNumber: string): string => {
+  // Initialize courier detection service
+  const initializeCourierService = async () => {
+    if (!user) return;
+    
+    try {
+      await courierDetectionService.initialize(user.id);
+      setAvailableCouriers(courierDetectionService.getCouriers());
+    } catch (error) {
+      console.error('Error initializing courier service:', error);
+    }
+  };
+
+  // Enhanced courier detection with automatic details fetching
+  const detectCourierPartner = async (trackingNumber: string): Promise<string> => {
     const cleanInput = trackingNumber.trim();
     
-    // Detect based on first digit as per business rules
-    const firstDigit = cleanInput.charAt(0);
-    
-    if (firstDigit === '4') {
-      return 'frenchexpress';
-    } else if (firstDigit === '2') {
-      return 'delhivery';
+    try {
+      const courierInfo = await courierDetectionService.detectCourier(cleanInput);
+      
+      if (courierInfo) {
+        setDetectedCourierInfo(courierInfo);
+        
+        // Automatically fetch tracking details if API is configured
+        if (courierInfo.api_key) {
+          await fetchTrackingDetailsAutomatically(cleanInput, courierInfo);
+        }
+        
+        return courierInfo.code;
+      }
+    } catch (error) {
+      console.error('Error detecting courier:', error);
     }
     
     return 'unknown';
   };
 
+  // Fetch tracking details automatically
+  const fetchTrackingDetailsAutomatically = async (trackingNumber: string, courier: CourierInfo) => {
+    setFetchingDetails(true);
+    
+    try {
+      const details = await courierDetectionService.fetchTrackingDetails(trackingNumber, courier);
+      
+      if (details) {
+        setTrackingDetails(details);
+        toast.success(`📦 Tracking details fetched automatically from ${courier.name}`);
+      }
+    } catch (error) {
+      console.error('Error fetching tracking details:', error);
+    } finally {
+      setFetchingDetails(false);
+    }
+  };
+
   // Helper function to get courier display name
   const getCourierDisplayName = (carrierCode: string): string => {
-    switch (carrierCode) {
-      case 'frenchexpress':
-        return 'Franch Express';
-      case 'delhivery':
-        return 'Delhivery';
-      default:
-        return 'Unknown';
-    }
+    return courierDetectionService.getCourierDisplayName(carrierCode);
   };
 
   // Helper function to check if input looks like a tracking number
@@ -395,6 +432,8 @@ const TrackingPage = () => {
       setCurrentOrder(null);
       setDetectedCarrier('');
       setSelectedCarrier('');
+      setDetectedCourierInfo(null);
+      setTrackingDetails(null);
       setIsOrderLocked(false);
       
         toast.success(`Tracking number ${trackingNumber} added for order ${currentOrder.order_number}`);
@@ -420,6 +459,8 @@ const TrackingPage = () => {
     setCurrentOrder(null);
     setDetectedCarrier('');
     setSelectedCarrier('');
+    setDetectedCourierInfo(null);
+    setTrackingDetails(null);
     setIsOrderLocked(false);
     setWhatsappStatus(null);
     setShopifyStatus(null);
@@ -754,10 +795,10 @@ const TrackingPage = () => {
                     ref={trackingInputRef}
                     placeholder="Scan tracking number barcode (not order ID)"
                     value={trackingNumberInput}
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       setTrackingNumberInput(e.target.value);
                       if (e.target.value.length > 8) {
-                        const carrier = detectCourierPartner(e.target.value);
+                        const carrier = await detectCourierPartner(e.target.value);
                         setDetectedCarrier(carrier);
                       }
                     }}
@@ -788,14 +829,49 @@ const TrackingPage = () => {
                       <SelectValue placeholder={detectedCarrier ? getCourierDisplayName(detectedCarrier) : "Select courier partner"} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="frenchexpress">Franch Express</SelectItem>
-                      <SelectItem value="delhivery">Delhivery</SelectItem>
+                      {availableCouriers.length > 0 ? (
+                        availableCouriers.map((courier) => (
+                          <SelectItem key={courier.code} value={courier.code}>
+                            {courier.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="frenchexpress">Franch Express</SelectItem>
+                          <SelectItem value="delhivery">Delhivery</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                   {detectedCarrier && (
-                    <p className="text-sm text-green-600">
-                      Auto-detected: {getCourierDisplayName(detectedCarrier)}
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600">
+                        🎯 Auto-detected: {getCourierDisplayName(detectedCarrier)}
+                      </p>
+                      {fetchingDetails && (
+                        <p className="text-sm text-blue-600 flex items-center gap-2">
+                          <RefreshCw className="h-3 w-3 animate-spin" />
+                          Fetching tracking details...
+                        </p>
+                      )}
+                      {trackingDetails && (
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <h4 className="text-sm font-medium text-green-900 mb-2">📦 Tracking Details</h4>
+                          <div className="text-sm text-green-800 space-y-1">
+                            <p><strong>Status:</strong> {trackingDetails.status}</p>
+                            {trackingDetails.location && (
+                              <p><strong>Location:</strong> {trackingDetails.location}</p>
+                            )}
+                            {trackingDetails.description && (
+                              <p><strong>Update:</strong> {trackingDetails.description}</p>
+                            )}
+                            {trackingDetails.timestamp && (
+                              <p><strong>Last Update:</strong> {new Date(trackingDetails.timestamp).toLocaleString()}</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -896,6 +972,11 @@ const TrackingPage = () => {
                     <div className="text-sm text-blue-800">
                       <p><strong>Tracking Number:</strong> {trackingNumberInput}</p>
                       <p><strong>Courier:</strong> {getCourierDisplayName(selectedCarrier || detectedCarrier)}</p>
+                      {detectedCourierInfo && detectedCourierInfo.tracking_url && (
+                        <p className="text-xs text-blue-600">
+                          🔗 Tracking URL: {courierDetectionService.buildTrackingUrl(trackingNumberInput, detectedCourierInfo)}
+                        </p>
+                      )}
                       <p className="text-xs text-blue-600 mt-1">
                         📱 WhatsApp notification will be sent to reseller when you add tracking
                       </p>

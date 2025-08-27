@@ -17,6 +17,9 @@ interface Courier {
   name: string;
   tracking_url: string;
   example_number: string;
+  pattern_prefix?: string;
+  pattern_length?: number;
+  api_key?: string;
   is_active: boolean;
 }
 
@@ -28,7 +31,10 @@ const CourierSettings = () => {
   const [formData, setFormData] = useState({
     name: '',
     tracking_url: '',
-    example_number: ''
+    example_number: '',
+    pattern_prefix: '',
+    pattern_length: '',
+    api_key: ''
   });
   const { user } = useAuth();
 
@@ -71,6 +77,9 @@ const CourierSettings = () => {
             name: formData.name.trim(),
             tracking_url: formData.tracking_url.trim(),
             example_number: formData.example_number.trim(),
+            pattern_prefix: formData.pattern_prefix.trim(),
+            pattern_length: formData.pattern_length ? parseInt(formData.pattern_length) : null,
+            api_key: formData.api_key.trim(),
             updated_at: new Date().toISOString()
           })
           .eq('id', editingCourier.id);
@@ -84,7 +93,10 @@ const CourierSettings = () => {
             user_id: user.id,
             name: formData.name.trim(),
             tracking_url: formData.tracking_url.trim(),
-            example_number: formData.example_number.trim()
+            example_number: formData.example_number.trim(),
+            pattern_prefix: formData.pattern_prefix.trim(),
+            pattern_length: formData.pattern_length ? parseInt(formData.pattern_length) : null,
+            api_key: formData.api_key.trim()
           });
 
         if (error) throw error;
@@ -136,7 +148,7 @@ const CourierSettings = () => {
 
   const openAddDialog = () => {
     setEditingCourier(null);
-    setFormData({ name: '', tracking_url: '', example_number: '' });
+    setFormData({ name: '', tracking_url: '', example_number: '', pattern_prefix: '', pattern_length: '', api_key: '' });
     setDialogOpen(true);
   };
 
@@ -145,13 +157,16 @@ const CourierSettings = () => {
     setFormData({
       name: courier.name,
       tracking_url: courier.tracking_url || '',
-      example_number: courier.example_number || ''
+      example_number: courier.example_number || '',
+      pattern_prefix: courier.pattern_prefix || '',
+      pattern_length: courier.pattern_length ? courier.pattern_length.toString() : '',
+      api_key: courier.api_key || ''
     });
     setDialogOpen(true);
   };
 
   const resetForm = () => {
-    setFormData({ name: '', tracking_url: '', example_number: '' });
+    setFormData({ name: '', tracking_url: '', example_number: '', pattern_prefix: '', pattern_length: '', api_key: '' });
     setEditingCourier(null);
     setDialogOpen(false);
   };
@@ -218,6 +233,46 @@ const CourierSettings = () => {
                       placeholder="e.g., DH123456789"
                     />
                   </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pattern_prefix">Pattern Prefix</Label>
+                      <Input
+                        id="pattern_prefix"
+                        value={formData.pattern_prefix}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pattern_prefix: e.target.value }))}
+                        placeholder="e.g., 4, DH, 2158"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Starting digits/characters for auto-detection
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="pattern_length">Expected Length</Label>
+                      <Input
+                        id="pattern_length"
+                        type="number"
+                        value={formData.pattern_length}
+                        onChange={(e) => setFormData(prev => ({ ...prev, pattern_length: e.target.value }))}
+                        placeholder="e.g., 15"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Total tracking number length
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="api_key">API Key (Optional)</Label>
+                    <Input
+                      id="api_key"
+                      type="password"
+                      value={formData.api_key}
+                      onChange={(e) => setFormData(prev => ({ ...prev, api_key: e.target.value }))}
+                      placeholder="API key for tracking details"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      For automatic tracking detail fetching
+                    </p>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={resetForm}>
@@ -255,6 +310,12 @@ const CourierSettings = () => {
                     {courier.example_number && (
                       <p className="text-sm text-muted-foreground">
                         Example: {courier.example_number}
+                      </p>
+                    )}
+                    {courier.pattern_prefix && (
+                      <p className="text-sm text-muted-foreground">
+                        Pattern: Starts with "{courier.pattern_prefix}"
+                        {courier.pattern_length && ` (${courier.pattern_length} chars)`}
                       </p>
                     )}
                   </div>
