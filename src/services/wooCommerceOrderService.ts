@@ -160,7 +160,43 @@ export const wooCommerceOrderService = {
     }
 
     if (data?.orders && data.orders.length > 0) {
+      // First, fetch existing orders to preserve their status if they've moved beyond 'processing'
+      const wooOrderIds = data.orders.map((order: any) => order.id.toString());
+      const { data: existingOrders } = await supabase
+        .from('orders')
+        .select('woo_order_id, status')
+        .eq('user_id', user.id)
+        .in('woo_order_id', wooOrderIds);
+
+      // Create a map of existing order statuses
+      const existingStatusMap = new Map<string, string>();
+      if (existingOrders) {
+        existingOrders.forEach((existingOrder: any) => {
+          existingStatusMap.set(existingOrder.woo_order_id, existingOrder.status);
+        });
+      }
+
       const ordersToSync = data.orders.map((order: any) => {
+        const wooOrderId = order.id.toString();
+        const existingStatus = existingStatusMap.get(wooOrderId);
+        
+        // Preserve local status if order has moved beyond 'processing'
+        // Only set to 'processing' if it's a new order or still in 'processing' locally
+        let orderStatus = 'processing';
+        if (existingStatus) {
+          // If order exists and has been moved beyond 'processing', preserve the local status
+          if (existingStatus !== 'processing') {
+            orderStatus = existingStatus;
+            console.log(`Preserving local status '${existingStatus}' for order ${wooOrderId} (WooCommerce status: ${order.status})`);
+          } else {
+            // Order is still in 'processing', sync from WooCommerce
+            orderStatus = order.status === 'processing' ? 'processing' : order.status;
+          }
+        } else {
+          // New order, set status from WooCommerce
+          orderStatus = order.status === 'processing' ? 'processing' : order.status;
+        }
+
         // Extract product meta data from line_items
         const productMeta = order.line_items?.map((item: any) => {
           const meta: any = {
@@ -291,13 +327,13 @@ export const wooCommerceOrderService = {
 
         return {
           user_id: user.id,
-          woo_order_id: order.id.toString(),
+          woo_order_id: wooOrderId,
           order_number: order.number || order.id.toString(),
           customer_name: order.billing?.first_name?.trim() || 'Unknown Customer',
           customer_email: order.billing?.email || 'No email provided',
           customer_phone: order.billing?.phone || null,
           total: parseFloat(order.total || '0'),
-          status: order.status === 'processing' ? 'processing' : order.status,
+          status: orderStatus, // Use preserved or synced status
           items: order.line_items?.length || 0,
           shipping_address: finalShippingAddress,
           line_items: productMeta,
