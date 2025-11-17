@@ -18,6 +18,7 @@ import PackingSlipTemplate from './PackingSlipTemplate';
 import { PrintingAnalytics } from './PrintingAnalytics';
 import { PrintingSearchBar } from './PrintingSearchBar';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -36,6 +37,9 @@ const PrintingPage = () => {
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Get bypass packing stage setting
+  const { bypassPackingStage } = useBypassPackingStage();
 
   const loadProcessingOrders = async () => {
     if (!user) {
@@ -83,25 +87,33 @@ const PrintingPage = () => {
     console.log('Printing order:', order.order_number);
     toast.success(`Printing order ${order.order_number}`);
     
-    // Move to packing stage after printing
+    // Move to appropriate stage after printing based on bypass setting
     try {
-      await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
+      const targetStage = bypassPackingStage ? 'packed' : 'packing';
+      await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
       await loadProcessingOrders();
-      toast.success(`Order ${order.order_number} moved to packing stage`);
+      const stageMessage = bypassPackingStage 
+        ? `Order ${order.order_number} moved to tracking stage` 
+        : `Order ${order.order_number} moved to packing stage`;
+      toast.success(stageMessage);
     } catch (error: any) {
-      console.error('Error moving order to packing:', error);
-      toast.error('Failed to move order to packing stage');
+      console.error('Error moving order:', error);
+      toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
     }
   };
 
   const moveToPackingStage = async (orderId: string) => {
     try {
-      await wooCommerceOrderService.updateOrderStage(orderId, 'packing');
+      const targetStage = bypassPackingStage ? 'packed' : 'packing';
+      await wooCommerceOrderService.updateOrderStage(orderId, targetStage);
       await loadProcessingOrders();
-      toast.success('Order moved to packing stage');
+      const stageMessage = bypassPackingStage 
+        ? 'Order moved to tracking stage' 
+        : 'Order moved to packing stage';
+      toast.success(stageMessage);
     } catch (error: any) {
-      console.error('Error moving order to packing:', error);
-      toast.error('Failed to move order to packing stage');
+      console.error('Error moving order:', error);
+      toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
     }
   };
 
@@ -212,19 +224,26 @@ const PrintingPage = () => {
           toast.success(`Printing ${selectedOrders.length} packing slips...`);
         }, 1000);
 
-        // Handle after print - move orders to packing stage
+        // Handle after print - move orders to appropriate stage based on bypass setting
         printWindow.addEventListener('afterprint', async () => {
           printWindow.close();
           
           try {
+            const targetStage = bypassPackingStage ? 'packed' : 'packing';
             for (const order of selectedOrders) {
-              await wooCommerceOrderService.updateOrderStage(order.id, 'packing');
+              await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
             }
             await loadProcessingOrders();
-            toast.success(`Printed and moved ${selectedOrders.length} orders to packing stage`);
+            const stageMessage = bypassPackingStage
+              ? `Printed and moved ${selectedOrders.length} orders to tracking stage`
+              : `Printed and moved ${selectedOrders.length} orders to packing stage`;
+            toast.success(stageMessage);
           } catch (error: any) {
-            console.error('Error moving orders to packing:', error);
-            toast.error('Printed successfully, but failed to move some orders to packing stage');
+            console.error('Error moving orders:', error);
+            const errorMessage = bypassPackingStage
+              ? 'Printed successfully, but failed to move some orders to tracking stage'
+              : 'Printed successfully, but failed to move some orders to packing stage';
+            toast.error(errorMessage);
           }
           
           // Clear selection after printing

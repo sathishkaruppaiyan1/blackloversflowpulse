@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -20,6 +21,7 @@ const GeneralSettings = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5'>('A4');
+  const [bypassPackingStage, setBypassPackingStage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const { user } = useAuth();
@@ -52,6 +54,7 @@ const GeneralSettings = () => {
         setPhone(data.phone || '');
         setEmail(data.email || '');
         setDefaultLabelFormat(data.default_label_format === 'A5' ? 'A5' : 'A4');
+        setBypassPackingStage(data.bypass_packing_stage ?? false);
       }
     } catch (error: any) {
       console.error('Error fetching settings:', error);
@@ -78,6 +81,7 @@ const GeneralSettings = () => {
           phone: phone,
           email: email,
           default_label_format: defaultLabelFormat,
+          bypass_packing_stage: bypassPackingStage,
         }, { onConflict: 'user_id' });
 
       if (error) throw error;
@@ -208,6 +212,29 @@ const GeneralSettings = () => {
             <p className="text-sm text-muted-foreground">
               Choose the default format for packing slips. This will be used for all new orders.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Order Workflow Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Order Workflow Settings</CardTitle>
+          <CardDescription>Configure how orders move through the fulfillment stages</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="bypassPacking">Bypass Packing Stage</Label>
+              <p className="text-sm text-muted-foreground">
+                When enabled, orders will automatically move to tracking stage after printing, skipping the packing stage. The packing page will be hidden from navigation.
+              </p>
+            </div>
+            <Switch
+              id="bypassPacking"
+              checked={bypassPackingStage}
+              onCheckedChange={setBypassPackingStage}
+            />
           </div>
         </CardContent>
       </Card>

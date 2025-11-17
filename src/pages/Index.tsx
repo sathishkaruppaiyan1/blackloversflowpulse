@@ -15,6 +15,7 @@ import OrdersPage from '@/components/OrdersPage';
 import ShippedPage from '@/components/ShippedPage';
 import { useWooCommerceOrders } from '@/hooks/useWooCommerceOrders';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { 
   Home, 
   ShoppingCart, 
@@ -30,10 +31,11 @@ import {
 } from 'lucide-react';
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("packing");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { orders: allOrders } = useWooCommerceOrders();
+  const { bypassPackingStage } = useBypassPackingStage();
 
   // Get order counts for navigation badges
   const packingOrders = allOrders.filter(order => 
@@ -48,6 +50,13 @@ const Index = () => {
       navigate('/auth');
     }
   }, [user, navigate]);
+
+  // Redirect packing to tracking if bypass is enabled and user is on packing tab
+  useEffect(() => {
+    if (bypassPackingStage && activeTab === "packing") {
+      setActiveTab("tracking");
+    }
+  }, [bypassPackingStage, activeTab]);
 
   // Show loading while checking auth
   if (!user) {
@@ -65,7 +74,8 @@ const Index = () => {
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "printing", label: "Printing", icon: Printer },
-    { id: "packing", label: "Packing", icon: Package, badge: packingOrders.length },
+    // Conditionally include packing stage based on bypass setting
+    ...(bypassPackingStage ? [] : [{ id: "packing", label: "Packing", icon: Package, badge: packingOrders.length }]),
     { id: "tracking", label: "Tracking", icon: Truck, badge: trackingOrders.length },
     { id: "shipped", label: "Shipped", icon: CheckCircle, badge: shippedOrders.length },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
@@ -91,7 +101,8 @@ const Index = () => {
       case "printing":
         return <PrintingPage />;
       case "packing":
-        return <PackingPage />;
+        // If bypass is enabled, show tracking page instead
+        return bypassPackingStage ? <TrackingPage /> : <PackingPage />;
       case "tracking":
         return <TrackingPage />;
       case "shipped":

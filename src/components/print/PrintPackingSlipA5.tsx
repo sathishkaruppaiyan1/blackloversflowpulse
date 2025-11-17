@@ -92,8 +92,8 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
       padding: '24px',
       backgroundColor: 'white',
       fontFamily: 'Arial, sans-serif',
-      fontSize: '12px',
-      lineHeight: '1.3',
+      fontSize: '14px',
+      lineHeight: '1.4',
       color: '#000',
       boxSizing: 'border-box'
     }}>
@@ -121,17 +121,17 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               <div style={{
                 color: '#ec4899',
                 fontWeight: 'bold',
-                fontSize: '14px',
+                fontSize: '16px',
                 lineHeight: '1.2'
               }}>Perfect</div>
               <div style={{
                 color: '#ec4899',
-                fontSize: '10px'
+                fontSize: '12px'
               }}>Collections</div>
             </div>
           </div>
           <h1 style={{
-            fontSize: '24px',
+            fontSize: '28px',
             fontWeight: 'bold',
             color: '#1f2937',
             margin: '0'
@@ -139,7 +139,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         </div>
 
         {/* Right: Order Information */}
-        <div style={{ textAlign: 'right', fontSize: '12px' }}>
+        <div style={{ textAlign: 'right', fontSize: '14px' }}>
           <div style={{ marginBottom: '4px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
             <span style={{ color: '#374151' }}>{order.order_number}</span>
@@ -161,7 +161,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         gridTemplateColumns: '1fr 1fr 1fr',
         gap: '12px',
         marginBottom: '24px',
-        fontSize: '10px'
+        fontSize: '12px'
       }}>
         {/* From Address */}
         <div>
@@ -169,20 +169,20 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             fontWeight: 'bold',
             color: '#1f2937',
             marginBottom: '8px',
-            fontSize: '14px',
+            fontSize: '16px',
             margin: '0 0 8px 0'
           }}>From</h3>
           <div>
-            <div style={{ fontWeight: '500', fontSize: '10px', marginBottom: '2px' }}>
+            <div style={{ fontWeight: '500', fontSize: '12px', marginBottom: '2px' }}>
               {companySettings.company_name || 'Perfect Collections'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
+              <div key={index} style={{ fontSize: '12px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
             {companySettings.phone && (
-              <div style={{ fontSize: '10px', color: '#374151', marginBottom: '1px' }}>
+              <div style={{ fontSize: '12px', color: '#374151', marginBottom: '1px' }}>
                 +91 {companySettings.phone}
               </div>
             )}
@@ -195,25 +195,25 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             fontWeight: 'bold',
             color: '#1f2937',
             marginBottom: '8px',
-            fontSize: '14px',
+            fontSize: '16px',
             margin: '0 0 8px 0'
           }}>Bill to</h3>
           <div>
-            <div style={{ fontWeight: '500', fontSize: '10px', marginBottom: '2px' }}>
+            <div style={{ fontWeight: '500', fontSize: '12px', marginBottom: '2px' }}>
               {order.customer_name}
             </div>
             {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
+              <div key={index} style={{ fontSize: '12px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
             {order.customer_email && (
-              <div style={{ fontSize: '10px', color: '#374151', marginBottom: '1px' }}>
+              <div style={{ fontSize: '12px', color: '#374151', marginBottom: '1px' }}>
                 Email: {order.customer_email}
               </div>
             )}
             {order.customer_phone && (
-              <div style={{ fontSize: '10px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
+              <div style={{ fontSize: '12px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
                 Phone: {order.customer_phone}
               </div>
             )}
@@ -226,15 +226,15 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             fontWeight: 'bold',
             color: '#1f2937',
             marginBottom: '8px',
-            fontSize: '14px',
+            fontSize: '16px',
             margin: '0 0 8px 0'
           }}>Ship to</h3>
           <div>
-            <div style={{ fontWeight: '500', fontSize: '10px', marginBottom: '2px' }}>
+            <div style={{ fontWeight: '500', fontSize: '12px', marginBottom: '2px' }}>
               {order.customer_name}
             </div>
             {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} style={{ fontSize: '10px', color: '#374151', marginBottom: '1px', lineHeight: '1.3' }}>
+              <div key={index} style={{ fontSize: '12px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
@@ -248,7 +248,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           width: '100%',
           borderCollapse: 'collapse',
           borderSpacing: '0',
-          fontSize: '10px'
+          fontSize: '12px'
         }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #d1d5db' }}>
@@ -313,13 +313,13 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     </div>
                   </td>
                   <td style={{ padding: '8px 4px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '13px', lineHeight: '1.3', marginBottom: '1px' }}>
                       ₹{(item.total || item.price || 0).toFixed(2)}
                     </div>
-                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '10px', lineHeight: '1.2', marginBottom: '2px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '12px', lineHeight: '1.3', marginBottom: '2px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
+                    <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.3' }}>
                       Measurements: {getVariationDisplay(item)}
                     </div>
                   </td>
@@ -354,10 +354,10 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                   </div>
                 </td>
                 <td style={{ padding: '8px 4px' }}>
-                  <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '10px', lineHeight: '1.2', marginBottom: '2px' }}>
+                  <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '12px', lineHeight: '1.3', marginBottom: '2px' }}>
                     4434 - Anarkali Kurtis - XL - 42
                   </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
+                  <div style={{ fontSize: '12px', color: '#6b7280', lineHeight: '1.3' }}>
                     Measurements: XL - 42
                   </div>
                 </td>
@@ -367,7 +367,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             )}
             {order.line_items && order.line_items.length > 6 && (
               <tr>
-                <td colSpan={5} style={{ fontSize: '10px', color: '#6b7280', padding: '8px', textAlign: 'center' }}>
+                <td colSpan={5} style={{ fontSize: '12px', color: '#6b7280', padding: '8px', textAlign: 'center' }}>
                   ... and {order.line_items.length - 6} more items
                 </td>
               </tr>

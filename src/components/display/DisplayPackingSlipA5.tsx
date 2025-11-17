@@ -73,15 +73,15 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
         <div className="flex items-center gap-3">
           <div className="w-16 h-16 rounded-full border-4 border-pink-500 flex items-center justify-center bg-white">
             <div className="text-center">
-              <div className="text-pink-500 font-bold text-sm leading-tight">Perfect</div>
-              <div className="text-pink-500 text-xs">Collections</div>
+              <div className="text-pink-500 font-bold text-base leading-tight">Perfect</div>
+              <div className="text-pink-500 text-sm">Collections</div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Packing slip</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Packing slip</h1>
         </div>
 
         {/* Right: Order Information - Compact */}
-        <div className="text-right text-sm">
+        <div className="text-right text-base">
           <div className="mb-1">
             <span className="font-bold text-gray-800">Order No.: </span>
             <span className="text-gray-700">{order.order_number}</span>
@@ -105,45 +105,45 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
       )}
 
       {/* Address Section - Three Columns Compact */}
-      <div className="grid grid-cols-3 gap-4 mb-6 text-xs">
+      <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
         {/* From Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-2 text-sm">From</h3>
+          <h3 className="font-bold text-gray-800 mb-2 text-base">From</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold text-xs">{companySettings.company_name || 'Perfect Collections'}</div>
+            <div className="font-semibold text-sm">{companySettings.company_name || 'Perfect Collections'}</div>
             {formatAddress(companySettings).map((line, index) => (
-              <div key={index} className="text-xs leading-tight">{line}</div>
+              <div key={index} className="text-sm leading-tight">{line}</div>
             ))}
             {companySettings.phone && (
-              <div className="text-xs">+91 {companySettings.phone}</div>
+              <div className="text-sm">+91 {companySettings.phone}</div>
             )}
           </div>
         </div>
 
         {/* Bill To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-2 text-sm">Bill to</h3>
+          <h3 className="font-bold text-gray-800 mb-2 text-base">Bill to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold text-xs">{order.customer_name}</div>
+            <div className="font-semibold text-sm">{order.customer_name}</div>
             {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} className="text-xs leading-tight">{line}</div>
+              <div key={index} className="text-sm leading-tight">{line}</div>
             ))}
             {order.customer_email && (
-              <div className="text-xs">Email: {order.customer_email}</div>
+              <div className="text-sm">Email: {order.customer_email}</div>
             )}
             {order.customer_phone && (
-              <div className="text-xs">Phone: {order.customer_phone}</div>
+              <div className="text-sm">Phone: {order.customer_phone}</div>
             )}
           </div>
         </div>
 
         {/* Ship To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-2 text-sm">Ship to</h3>
+          <h3 className="font-bold text-gray-800 mb-2 text-base">Ship to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold text-xs">{order.customer_name}</div>
+            <div className="font-semibold text-sm">{order.customer_name}</div>
             {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} className="text-xs leading-tight">{line}</div>
+              <div key={index} className="text-sm leading-tight">{line}</div>
             ))}
           </div>
         </div>
@@ -151,7 +151,7 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
 
       {/* Product Table - Compact */}
       <div className="mb-6">
-        <table className="w-full border-collapse text-xs">
+        <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="border-b-2 border-gray-300">
               <th className="text-left py-2 px-1 font-bold text-gray-800 w-8">S.No</th>
@@ -172,8 +172,8 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                     </div>
                   </td>
                   <td className="py-2 px-1">
-                    <div className="font-medium text-gray-800 text-xs leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
-                    <div className="text-xs text-gray-600 mt-0.5 leading-tight">
+                    <div className="font-medium text-gray-800 text-sm leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
+                    <div className="text-sm text-gray-600 mt-0.5 leading-tight">
                       {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
                     </div>
                   </td>
@@ -192,8 +192,8 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                   </div>
                 </td>
                 <td className="py-2 px-1">
-                  <div className="font-medium text-gray-800 text-xs leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
-                  <div className="text-xs text-gray-600 mt-0.5 leading-tight">Measurements: XL - 42</div>
+                  <div className="font-medium text-gray-800 text-sm leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
+                  <div className="text-sm text-gray-600 mt-0.5 leading-tight">Measurements: XL - 42</div>
                 </td>
                 <td className="py-2 px-1 text-center text-gray-700">1</td>
                 <td className="py-2 px-1 text-right text-gray-700">0.5 kg</td>
@@ -201,7 +201,7 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
             )}
             {order.line_items && order.line_items.length > 6 && (
               <tr>
-                <td colSpan={5} className="text-xs text-gray-600 py-2 text-center">
+                <td colSpan={5} className="text-sm text-gray-600 py-2 text-center">
                   ... and {order.line_items.length - 6} more items
                 </td>
               </tr>

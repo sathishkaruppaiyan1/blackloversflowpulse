@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { wooCommerceOrderService, type WooCommerceOrder } from "@/services/wooCommerceOrderService";
 import { Progress } from "@/components/ui/progress";
 import { BulkMovementTrigger } from "./BulkMovementTrigger";
+import { useBypassPackingStage } from "@/hooks/useBypassPackingStage";
 
 interface ScannedProduct {
   id: string;
@@ -35,6 +36,7 @@ export const PackingPage = () => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const { toast } = useToast();
   const orderScannerRef = useRef<HTMLInputElement>(null);
+  const { bypassPackingStage } = useBypassPackingStage();
 
   // Filter orders by stages using the enhanced service
   const packingOrders = allOrders.filter(order => 
@@ -435,6 +437,32 @@ export const PackingPage = () => {
       orderScannerRef.current.focus();
     }
   }, []);
+
+  // If bypass is enabled, show a message instead of packing interface
+  if (bypassPackingStage) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="max-w-md">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Packing Stage Disabled
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-muted-foreground">
+                The packing stage has been bypassed in your settings. Orders will automatically move to the tracking stage after printing.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                You can enable the packing stage again in Settings → General → Order Workflow Settings.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">

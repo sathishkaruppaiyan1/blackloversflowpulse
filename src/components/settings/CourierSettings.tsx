@@ -75,11 +75,11 @@ const CourierSettings = () => {
           .from('couriers')
           .update({
             name: formData.name.trim(),
-            tracking_url: formData.tracking_url.trim(),
-            example_number: formData.example_number.trim(),
-            pattern_prefix: formData.pattern_prefix.trim(),
+            tracking_url: formData.tracking_url.trim() || null,
+            example_number: formData.example_number.trim() || null,
+            pattern_prefix: formData.pattern_prefix.trim() || null,
             pattern_length: formData.pattern_length ? parseInt(formData.pattern_length) : null,
-            api_key: formData.api_key.trim(),
+            api_key: formData.api_key.trim() || null,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingCourier.id);
@@ -92,11 +92,11 @@ const CourierSettings = () => {
           .insert({
             user_id: user.id,
             name: formData.name.trim(),
-            tracking_url: formData.tracking_url.trim(),
-            example_number: formData.example_number.trim(),
-            pattern_prefix: formData.pattern_prefix.trim(),
+            tracking_url: formData.tracking_url.trim() || null,
+            example_number: formData.example_number.trim() || null,
+            pattern_prefix: formData.pattern_prefix.trim() || null,
             pattern_length: formData.pattern_length ? parseInt(formData.pattern_length) : null,
-            api_key: formData.api_key.trim()
+            api_key: formData.api_key.trim() || null
           });
 
         if (error) throw error;
@@ -107,7 +107,8 @@ const CourierSettings = () => {
       fetchCouriers();
     } catch (error: any) {
       console.error('Error saving courier:', error);
-      toast.error('Failed to save courier');
+      const errorMessage = error?.message || 'Failed to save courier';
+      toast.error(`Failed to save courier: ${errorMessage}`);
     }
   };
 
