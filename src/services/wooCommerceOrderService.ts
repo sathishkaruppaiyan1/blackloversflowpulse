@@ -333,7 +333,10 @@ export const wooCommerceOrderService = {
 
       console.log(`✅ Successfully synced ${ordersToSync.length} orders from WooCommerce`);
       toast.success(`Synced ${ordersToSync.length} orders from WooCommerce`);
+      return ordersToSync.map((o: any) => o.woo_order_id as string);
     }
+
+    return [];
   },
 
   async fetchOrders(): Promise<WooCommerceOrder[]> {
@@ -350,6 +353,7 @@ export const wooCommerceOrderService = {
     }
 
     return (data || []).map(transformDatabaseOrder);
+  },
   },
 
   async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
