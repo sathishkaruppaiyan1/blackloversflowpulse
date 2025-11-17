@@ -125,7 +125,7 @@ const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
 };
 
 export const wooCommerceOrderService = {
-  async syncOrdersFromWooCommerce(): Promise<void> {
+  async syncOrdersFromWooCommerce(): Promise<string[]> {
     console.log('🔄 Starting WooCommerce order sync...');
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -353,7 +353,6 @@ export const wooCommerceOrderService = {
     }
 
     return (data || []).map(transformDatabaseOrder);
-  },
   },
 
   async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
