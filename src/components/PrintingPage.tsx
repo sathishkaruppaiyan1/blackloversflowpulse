@@ -45,11 +45,12 @@ const PrintingPage = () => {
 
     setLoading(true);
     try {
-      console.log('📖 Loading processing orders from database...');
+      console.log('📖 Fetching live processing orders from WooCommerce...');
+      await wooCommerceOrderService.syncOrdersFromWooCommerce();
       const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
-      console.log(`✅ Loaded ${processingOrders.length} processing orders`);
+      console.log(`✅ Loaded ${processingOrders.length} live processing orders`);
     } catch (error: any) {
       console.error('Error loading processing orders:', error);
       toast.error('Failed to load processing orders');

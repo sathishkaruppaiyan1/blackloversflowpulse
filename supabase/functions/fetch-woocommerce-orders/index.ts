@@ -73,10 +73,10 @@ serve(async (req) => {
       cleanStoreUrl = 'https://' + cleanStoreUrl;
     }
     
-    // Construct the WooCommerce REST API URL
+    // Construct the WooCommerce REST API URL with processing status filter
     const apiUrl = order_id 
       ? `${cleanStoreUrl}/wp-json/wc/v3/orders/${order_id}`
-      : `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=100&order=desc&orderby=date`;
+      : `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=100&status=processing&order=desc&orderby=date`;
     
     console.log('🔗 Final API URL:', apiUrl);
     
