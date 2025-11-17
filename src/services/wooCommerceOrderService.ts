@@ -378,9 +378,15 @@ export const wooCommerceOrderService = {
   async fetchOrders(): Promise<WooCommerceOrder[]> {
     console.log('Fetching orders from database...');
     
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
     const { data, error } = await supabase
       .from('orders')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -388,11 +394,17 @@ export const wooCommerceOrderService = {
       throw error;
     }
 
+    console.log(`Fetched ${data?.length || 0} orders for user ${user.id}`);
     return (data || []).map(transformDatabaseOrder);
   },
 
   async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
     console.log(`Fetching orders for stage: ${stage}`);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
     
     // For shipped stage, also include completed orders
     let statusConditions = [stage];
@@ -403,6 +415,7 @@ export const wooCommerceOrderService = {
     const { data, error } = await supabase
       .from('orders')
       .select('*')
+      .eq('user_id', user.id)
       .in('status', statusConditions)
       .order('created_at', { ascending: false });
 
@@ -411,7 +424,7 @@ export const wooCommerceOrderService = {
       throw error;
     }
 
-    console.log(`Fetched ${data?.length || 0} orders for stage ${stage}`);
+    console.log(`Fetched ${data?.length || 0} orders for stage ${stage} for user ${user.id}`);
     return (data || []).map(transformDatabaseOrder);
   },
 
