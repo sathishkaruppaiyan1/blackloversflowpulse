@@ -55,11 +55,32 @@ serve(async (req) => {
 
     console.log('Sending Interakt message to:', messageData.phoneNumber);
     
+    // Extract country code and phone number
+    const cleanedNumber = messageData.phoneNumber.replace(/[^\d]/g, '');
+    let countryCode = '+91';
+    let phoneNumber = cleanedNumber;
+    
+    // If number has country code (more than 10 digits)
+    if (cleanedNumber.length > 10) {
+      // Extract last 10 digits as phone number
+      phoneNumber = cleanedNumber.slice(-10);
+      // Extract country code (everything before last 10 digits)
+      const extractedCode = cleanedNumber.slice(0, -10);
+      if (extractedCode) {
+        countryCode = `+${extractedCode}`;
+      }
+    } else if (cleanedNumber.length === 10) {
+      // 10 digit number without country code, default to +91
+      phoneNumber = cleanedNumber;
+    }
+    
+    console.log('Extracted country code:', countryCode);
+    console.log('Extracted phone number:', phoneNumber);
+    
     // Prepare Interakt API payload
     const interaktPayload = {
-      countryCode: messageData.phoneNumber.startsWith('+') ? 
-        messageData.phoneNumber.substring(1, messageData.phoneNumber.length - 10) : '+91',
-      phoneNumber: messageData.phoneNumber.replace(/[^\d]/g, '').slice(-10),
+      countryCode: countryCode,
+      phoneNumber: phoneNumber,
       type: 'text',
       data: {
         message: messageData.message

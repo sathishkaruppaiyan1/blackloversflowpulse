@@ -183,16 +183,26 @@ class InteraktService {
   }
 
   private formatPhoneNumber(phoneNumber: string): string {
-    // Remove any non-digit characters
+    // Remove any non-digit characters and + sign
     const cleaned = phoneNumber.replace(/[^\d]/g, '');
     
-    // If it doesn't start with country code, assume Indian number and add +91
+    // If it's exactly 10 digits, assume Indian number and add country code 91
     if (cleaned.length === 10) {
       return `91${cleaned}`;
     }
     
-    // If it already has country code, return as is
-    return cleaned;
+    // If it's 12 digits and starts with 91, it already has country code
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return cleaned;
+    }
+    
+    // If it's 11 digits or more but doesn't start with 91, return as is (other country codes)
+    if (cleaned.length >= 11) {
+      return cleaned;
+    }
+    
+    // For any other case less than 10 digits or invalid format, add 91 prefix
+    return `91${cleaned}`;
   }
 
   private generateTrackingLink(trackingNumber: string, carrier: string): string {
