@@ -69,11 +69,8 @@ serve(async (req) => {
     // If media URL is provided, change type to media
     if (messageData.mediaUrl) {
       interaktPayload.type = 'media';
-      interaktPayload.data = {
-        message: messageData.message,
-        mediaUrl: messageData.mediaUrl,
-        filename: 'image.jpg'
-      };
+      (interaktPayload.data as any).mediaUrl = messageData.mediaUrl;
+      (interaktPayload.data as any).filename = 'image.jpg';
     }
 
     console.log('Interakt payload:', JSON.stringify(interaktPayload, null, 2));

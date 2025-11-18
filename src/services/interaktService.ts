@@ -89,19 +89,17 @@ class InteraktService {
     // Create template message in BSP format
     const templateMessage: InteraktTemplateMessage = {
       fullPhoneNumber: this.formatPhoneNumber(phoneNumber),
-      callbackData: "order_shipped_template",
+      callbackData: "order_shipped_no_tracking_link",
       type: "Template",
       template: {
-        name: "order_shipped_template",
+        name: "order_shipped_no_tracking_link_woocommerce",
         languageCode: "en",
         headerValues: [],
         bodyValues: [
           trackingData.customerName || 'Customer',
-          courierDisplayName,
           trackingData.orderNumber,
           trackingData.trackingNumber,
-          courierDisplayName,
-          trackingLink
+          courierDisplayName
         ],
         buttonValues: {}
       }
