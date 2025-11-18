@@ -158,11 +158,11 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('💥 Unexpected error in fetch-woocommerce-orders function:', error);
-    console.error('Error stack:', error.stack);
+    console.error('Error stack:', error instanceof Error ? error.stack : String(error));
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message,
+        details: error instanceof Error ? error.message : String(error),
         suggestions: [
           'Check your internet connection',
           'Verify the store URL is accessible',

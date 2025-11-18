@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           address_line1: string | null
           address_line2: string | null
+          bypass_packing_stage: boolean | null
           city: string | null
           company_name: string | null
           country: string | null
@@ -34,6 +35,7 @@ export type Database = {
         Insert: {
           address_line1?: string | null
           address_line2?: string | null
+          bypass_packing_stage?: boolean | null
           city?: string | null
           company_name?: string | null
           country?: string | null
@@ -50,6 +52,7 @@ export type Database = {
         Update: {
           address_line1?: string | null
           address_line2?: string | null
+          bypass_packing_stage?: boolean | null
           city?: string | null
           company_name?: string | null
           country?: string | null
@@ -94,31 +97,40 @@ export type Database = {
       }
       couriers: {
         Row: {
+          api_key: string | null
           created_at: string
           example_number: string | null
           id: string
           is_active: boolean
           name: string
+          pattern_length: number | null
+          pattern_prefix: string | null
           tracking_url: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          api_key?: string | null
           created_at?: string
           example_number?: string | null
           id?: string
           is_active?: boolean
           name: string
+          pattern_length?: number | null
+          pattern_prefix?: string | null
           tracking_url?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          api_key?: string | null
           created_at?: string
           example_number?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          pattern_length?: number | null
+          pattern_prefix?: string | null
           tracking_url?: string | null
           updated_at?: string
           user_id?: string
