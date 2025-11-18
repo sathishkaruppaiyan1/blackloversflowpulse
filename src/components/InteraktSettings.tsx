@@ -118,15 +118,30 @@ const InteraktSettings = () => {
 
       if (data?.error) {
         console.error('Interakt API error:', data.error);
-        toast.error(`Interakt API Error: ${data.error}`);
+        const errorMessage = data.details 
+          ? `${data.error}: ${data.details}` 
+          : data.error;
+        toast.error(errorMessage, {
+          description: data.suggestion || 'Please check your API key and try again.',
+          duration: 5000
+        });
         return;
       }
 
       if (data?.success) {
-        toast.success('Interakt connection successful!');
+        const successMessage = data.note 
+          ? `${data.message} - ${data.note}` 
+          : data.message || 'Interakt connection successful!';
+        toast.success(successMessage, {
+          description: data.details || 'Your API credentials are working correctly.',
+          duration: 5000
+        });
         console.log('Test successful:', data);
       } else {
-        toast.error('Unexpected response from Interakt API');
+        toast.error('Unexpected response from Interakt API', {
+          description: 'Please check the browser console for details.',
+          duration: 5000
+        });
       }
     } catch (error: any) {
       console.error('Unexpected error during connection test:', error);
