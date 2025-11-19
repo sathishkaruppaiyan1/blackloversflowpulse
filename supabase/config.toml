@@ -1,1 +1,19 @@
 project_id = "agikvjvzqmgjfymficjm"
+
+[functions.fetch-woocommerce-orders]
+verify_jwt = true
+
+[functions.send-interakt-message]
+verify_jwt = true
+
+[functions.send-interakt-template-message]
+verify_jwt = true
+
+[functions.test-interakt-connection]
+verify_jwt = true
+
+[functions.update-woocommerce-order]
+verify_jwt = true
+
+[functions.update-woocommerce-tracking]
+verify_jwt = true
