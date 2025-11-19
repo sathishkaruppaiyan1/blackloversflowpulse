@@ -368,42 +368,63 @@ const TrackingPage = () => {
       // Update tracking information using WooCommerce service
       await wooCommerceOrderService.updateTracking(currentOrder.id, trackingNumber, carrier);
       
-      // Send real WhatsApp notification to reseller via Interakt
-      if (interaktService.isActive() && currentOrder.reseller_number && currentOrder.reseller_name) {
-        console.log('📱 Sending tracking update to reseller via Interakt...');
-        
-        const trackingData = {
-          orderNumber: currentOrder.order_number,
-          customerName: currentOrder.customer_name,
-          trackingNumber: trackingNumber,
-          carrier: carrier,
-          orderValue: String(currentOrder.total || '0'),
-          shippingAddress: currentOrder.shipping_address || 'No address provided',
-          resellerName: currentOrder.reseller_name
-        };
+      // Prepare tracking data for WhatsApp notifications
+      const trackingData = {
+        orderNumber: currentOrder.order_number,
+        customerName: currentOrder.customer_name,
+        trackingNumber: trackingNumber,
+        carrier: carrier,
+        orderValue: String(currentOrder.total || '0'),
+        shippingAddress: currentOrder.shipping_address || 'No address provided',
+        resellerName: currentOrder.reseller_name
+      };
 
-        const success = await interaktService.sendTrackingUpdateToReseller(
-          trackingData, 
-          currentOrder.reseller_number, 
-          currentOrder.reseller_name
-        );
-        
-        if (success) {
+      // Send WhatsApp notification via Interakt (reseller and/or customer)
+      if (interaktService.isActive()) {
+        let whatsappSuccess = false;
+
+        // Send to reseller if details are available
+        if (currentOrder.reseller_number && currentOrder.reseller_name) {
+          console.log('📱 Sending tracking update to reseller via Interakt...');
+          const resellerSuccess = await interaktService.sendTrackingUpdateToReseller(
+            trackingData,
+            currentOrder.reseller_number,
+            currentOrder.reseller_name
+          );
+
+          if (resellerSuccess) {
+            console.log('✅ Tracking notification sent to reseller successfully');
+            whatsappSuccess = true;
+          } else {
+            console.log('❌ Failed to send tracking notification to reseller');
+          }
+        }
+
+        // Also send to customer if a phone number is available
+        if (currentOrder.customer_phone) {
+          console.log('📱 Sending tracking update to customer via Interakt...');
+          const customerSuccess = await interaktService.sendTrackingUpdateToCustomer(
+            trackingData,
+            currentOrder.customer_phone
+          );
+
+          if (customerSuccess) {
+            console.log('✅ Tracking notification sent to customer successfully');
+            whatsappSuccess = true;
+          } else {
+            console.log('❌ Failed to send tracking notification to customer');
+          }
+        }
+
+        if (whatsappSuccess) {
           setWhatsappStatus('success');
-          console.log('✅ Tracking notification sent to reseller successfully');
         } else {
           setWhatsappStatus('failed');
-          console.log('❌ Failed to send tracking notification to reseller');
+          console.log('❌ Could not send WhatsApp notification - check phone numbers or Interakt settings');
         }
       } else {
         setWhatsappStatus('failed');
-        if (!interaktService.isActive()) {
-          console.log('❌ Interakt not configured or disabled');
-        } else if (!currentOrder.reseller_number) {
-          console.log('❌ No reseller phone number available');
-        } else if (!currentOrder.reseller_name) {
-          console.log('❌ No reseller name available');
-        }
+        console.log('❌ Interakt not configured or disabled');
       }
       
       // Update WooCommerce status
