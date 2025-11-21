@@ -153,10 +153,10 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
       const canvas = document.createElement('canvas');
       JsBarcode(canvas, order.order_number, {
         format: "CODE128",
-        width: format === 'A5' ? 1.5 : 2,
-        height: format === 'A5' ? 40 : 60,
+        width: format === 'A5' ? 1.2 : 2,
+        height: format === 'A5' ? 35 : 60,
         displayValue: true,
-        fontSize: format === 'A5' ? 10 : 14,
+        fontSize: format === 'A5' ? 20 : 18,
         margin: format === 'A5' ? 5 : 10,
         background: "#ffffff",
         lineColor: "#000000"
@@ -207,7 +207,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
         const pageStyles = `
           <style>
             @page {
-              ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
+              ${format === 'A5' ? 'size: A5; margin: 0.3in;' : 'size: A4; margin: 0.75in;'}
               -webkit-print-color-adjust: exact;
               color-adjust: exact;
             }

@@ -122,28 +122,28 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
 
         {/* Bill To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-2 text-base">Bill to</h3>
+          <h3 className="font-bold text-gray-800 mb-2 text-lg">Bill to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold text-sm">{order.customer_name}</div>
+            <div className="font-semibold text-base">{order.customer_name}</div>
             {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} className="text-sm leading-tight">{line}</div>
+              <div key={index} className="text-base leading-tight">{line}</div>
             ))}
             {order.customer_email && (
-              <div className="text-sm">Email: {order.customer_email}</div>
+              <div className="text-base">Email: {order.customer_email}</div>
             )}
             {order.customer_phone && (
-              <div className="text-sm">Phone: {order.customer_phone}</div>
+              <div className="text-base">Phone: {order.customer_phone}</div>
             )}
           </div>
         </div>
 
         {/* Ship To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-2 text-base">Ship to</h3>
+          <h3 className="font-bold text-gray-800 mb-2 text-lg">Ship to</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold text-sm">{order.customer_name}</div>
+            <div className="font-semibold text-base">{order.customer_name}</div>
             {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
-              <div key={index} className="text-sm leading-tight">{line}</div>
+              <div key={index} className="text-base leading-tight">{line}</div>
             ))}
           </div>
         </div>
