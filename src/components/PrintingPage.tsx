@@ -19,6 +19,7 @@ import { PrintingAnalytics } from './PrintingAnalytics';
 import { PrintingSearchBar } from './PrintingSearchBar';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
+import { supabase } from '@/integrations/supabase/client';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -136,22 +137,71 @@ const PrintingPage = () => {
     }
 
     try {
-      // Import React DOM for rendering print components
+      // Fetch company settings and format
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('User not authenticated');
+        return;
+      }
+
+      const { data: settings } = await supabase
+        .from('company_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const format = settings?.default_label_format || 'A4';
+      const companySettings = settings ? {
+        company_name: settings.company_name || 'Perfect Collections',
+        address_line1: settings.address_line1 || '',
+        address_line2: settings.address_line2 || '',
+        city: settings.city || '',
+        state: settings.state || '',
+        postal_code: settings.postal_code || '',
+        country: settings.country || '',
+        phone: settings.phone || '',
+        email: settings.email || ''
+      } : {
+        company_name: 'Perfect Collections',
+        address_line1: '',
+        address_line2: '',
+        city: '',
+        state: '',
+        postal_code: '',
+        country: '',
+        phone: '',
+        email: ''
+      };
+
+      // Import React DOM and print components
       const { createRoot } = await import('react-dom/client');
       const PrintPackingSlipA4 = (await import('./print/PrintPackingSlipA4')).default;
+      const PrintPackingSlipA5 = (await import('./print/PrintPackingSlipA5')).default;
+      const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
 
-      // Default company settings
-      const defaultCompanySettings = {
-        company_name: 'Perfect Collections',
-        address_line1: '123 Business Street',
-        address_line2: 'Suite 100',
-        city: 'Mumbai',
-        state: 'Maharashtra',
-        postal_code: '400001',
-        country: 'India',
-        phone: '9876543210',
-        email: 'info@perfectcollections.com'
-      };
+      // Import JsBarcode for barcode generation
+      const JsBarcode = (await import('jsbarcode')).default;
+
+      // Generate barcodes for all orders
+      const ordersWithBarcodes = await Promise.all(selectedOrders.map(async (order) => {
+        try {
+          const canvas = document.createElement('canvas');
+          JsBarcode(canvas, order.order_number, {
+            format: "CODE128",
+            width: format === 'A5' ? 1.2 : 2,
+            height: format === 'A5' ? 35 : 60,
+            displayValue: true,
+            fontSize: format === 'A5' ? 20 : 18,
+            margin: format === 'A5' ? 5 : 10,
+            background: "#ffffff",
+            lineColor: "#000000"
+          });
+          return { ...order, barcodeDataUrl: canvas.toDataURL() };
+        } catch (error) {
+          console.error('Error generating barcode for order', order.order_number, error);
+          return { ...order, barcodeDataUrl: '' };
+        }
+      }));
 
       // Create a container for all packing slips
       const printContainer = document.createElement('div');
@@ -159,15 +209,22 @@ const PrintingPage = () => {
       
       const root = createRoot(printContainer);
 
-      // Create bulk print content with all selected orders
+      // Create bulk print content with all selected orders, each wrapped in a page-break div
       const bulkPrintContent = React.createElement('div', {
         style: { width: '100%' }
-      }, selectedOrders.map((order, index) => 
-        React.createElement(PrintPackingSlipA4, {
+      }, ordersWithBarcodes.map((order, index) => 
+        React.createElement('div', {
           key: order.id,
+          className: 'packing-slip-page',
+          style: {
+            pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto',
+            pageBreakInside: 'avoid'
+          }
+        }, React.createElement(PrintComponent, {
           order: order,
-          companySettings: defaultCompanySettings
-        })
+          companySettings: companySettings,
+          barcodeDataUrl: order.barcodeDataUrl
+        }))
       ));
 
       // Render the bulk content
@@ -177,34 +234,64 @@ const PrintingPage = () => {
       setTimeout(() => {
         const printedContent = printContainer.innerHTML;
 
-        // Set up print window with styles
+        // Set up print window with styles - ensure one order per page
+        const pageSize = format === 'A5' ? 'A5' : 'A4';
+        const pageMargin = format === 'A5' ? '0.3in' : '0.75in';
+        
         printWindow.document.write(`
           <!DOCTYPE html>
           <html>
           <head>
             <title>Bulk Print - ${selectedOrders.length} Packing Slips</title>
+            <meta charset="utf-8">
             <style>
+              @page {
+                size: ${pageSize};
+                margin: ${pageMargin};
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+              }
               @media print {
-                body { margin: 0; padding: 20px; }
-                * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
-                .page-break { page-break-after: always; }
+                body { 
+                  margin: 0; 
+                  padding: 0;
+                  -webkit-print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                }
+                * { 
+                  -webkit-print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                  box-sizing: border-box;
+                }
+                .packing-slip-page {
+                  page-break-after: always;
+                  page-break-inside: avoid;
+                  width: 100%;
+                  height: 100%;
+                }
+                .packing-slip-page:last-child {
+                  page-break-after: auto;
+                }
+                img {
+                  max-width: 100% !important;
+                  height: auto !important;
+                  -webkit-print-color-adjust: exact !important;
+                  color-adjust: exact !important;
+                }
+                table {
+                  page-break-inside: avoid;
+                }
+                tr {
+                  page-break-inside: avoid;
+                }
               }
               body { 
                 font-family: Arial, sans-serif; 
                 line-height: 1.4; 
                 margin: 0;
-                padding: 20px;
-              }
-              .packing-slip { 
-                margin-bottom: 30px; 
-                border-bottom: 2px dashed #ccc; 
-                padding-bottom: 20px;
-                page-break-after: always;
-              }
-              .packing-slip:last-child { 
-                border-bottom: none; 
-                margin-bottom: 0;
-                page-break-after: auto;
+                padding: 0;
+                background: white;
+                color: black;
               }
             </style>
           </head>
@@ -222,7 +309,7 @@ const PrintingPage = () => {
           printWindow.print();
           
           toast.success(`Printing ${selectedOrders.length} packing slips...`);
-        }, 1000);
+        }, 2000);
 
         // Handle after print - move orders to appropriate stage based on bypass setting
         printWindow.addEventListener('afterprint', async () => {

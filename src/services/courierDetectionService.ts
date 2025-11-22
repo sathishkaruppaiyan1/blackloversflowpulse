@@ -26,6 +26,21 @@ export const detectCourierFromTracking = async (trackingNumber: string): Promise
       return null;
     }
 
+    const trackingUpper = trackingNumber.toUpperCase().trim();
+    
+    // Manual courier detection rules (highest priority)
+    // Rule 1: If tracking number starts with "5" → ST COURIER
+    if (trackingUpper.startsWith('5')) {
+      console.log(`🎯 Manual rule: Tracking ${trackingNumber} starts with "5" → ST COURIER`);
+      return 'ST COURIER';
+    }
+    
+    // Rule 2: If tracking number starts with "CT" → INDIAN POST
+    if (trackingUpper.startsWith('CT')) {
+      console.log(`🎯 Manual rule: Tracking ${trackingNumber} starts with "CT" → INDIAN POST`);
+      return 'INDIAN POST';
+    }
+
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -46,7 +61,6 @@ export const detectCourierFromTracking = async (trackingNumber: string): Promise
       return null;
     }
 
-    const trackingUpper = trackingNumber.toUpperCase();
     const trackingLength = trackingNumber.length;
     const matches: CourierMatch[] = [];
 
