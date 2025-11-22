@@ -249,9 +249,6 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                   </td>
                   <td className="py-2 px-1">
                     <div className="font-medium text-gray-800 text-base leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
-                    <div className="text-sm text-gray-600 mt-0.5 leading-tight">
-                      Measurements: {cleanVariation(item.variation)}
-                    </div>
                   </td>
                   <td className="py-2 px-1 text-center text-gray-700">{item.quantity || 1}</td>
                   <td className="py-2 px-1 text-right text-gray-700">
@@ -269,7 +266,6 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                 </td>
                 <td className="py-2 px-1">
                   <div className="font-medium text-gray-800 text-base leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
-                  <div className="text-sm text-gray-600 mt-0.5 leading-tight">Measurements: XL - 42</div>
                 </td>
                 <td className="py-2 px-1 text-center text-gray-700">1</td>
                 <td className="py-2 px-1 text-right text-gray-700">0.5 kg</td>

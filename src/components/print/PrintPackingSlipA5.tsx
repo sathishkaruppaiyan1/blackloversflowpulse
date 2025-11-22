@@ -404,9 +404,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
-                      Measurements: {getVariationDisplay(item)}
-                    </div>
                   </td>
                   <td style={{ padding: '4px 2px', textAlign: 'center', color: '#374151' }}>
                     {item.quantity || 1}
@@ -441,9 +438,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 <td style={{ padding: '4px 2px' }}>
                   <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                     4434 - Anarkali Kurtis - XL - 42
-                  </div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
-                    Measurements: XL - 42
                   </div>
                 </td>
                 <td style={{ padding: '4px 2px', textAlign: 'center', color: '#374151' }}>1</td>
