@@ -130,36 +130,67 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
         }
       }
 
-      // Send WhatsApp notification only to reseller if configured and reseller details available
-      if (isInteraktActive && order.reseller_name && order.reseller_number) {
-        console.log(`📱 Sending WhatsApp notification to reseller: ${order.reseller_name} at ${order.reseller_number}`);
-        console.log(`📱 Using customer phone: ${customerPhone}, product: ${productName}, variant: ${productVariant}`);
-        
-        const resellerSuccess = await sendResellerTrackingNotification(
-          order.order_number,
-          order.customer_name,
-          trackingNumber.trim(),
-          carrierCode,
-          order.total,
-          order.shipping_address || '',
-          order.reseller_name,
-          order.reseller_number,
-          customerPhone, // Pass the proper customer phone
-          productName,   // Pass the proper product name
-          productVariant // Pass the proper product variant
-        );
+      // Show success immediately
+      toast.success('Tracking updated and order data stored successfully!');
 
-        if (resellerSuccess) {
-          toast.success('Tracking updated, order data stored, and WhatsApp notification sent to reseller!');
-        } else {
-          toast.success('Tracking updated and order data stored. Failed to send WhatsApp notification to reseller.');
+      // Send WhatsApp notifications asynchronously in the background (fire and forget)
+      if (isInteraktActive) {
+        // Always send to customer if phone available
+        if (customerPhone && customerPhone !== 'N/A') {
+          console.log(`📱 Sending WhatsApp notification to customer (background)...`);
+          const { interaktService } = await import('@/services/interaktService');
+          const trackingData = {
+            orderNumber: order.order_number,
+            customerName: order.customer_name,
+            trackingNumber: trackingNumber.trim(),
+            carrier: carrierCode,
+            orderValue: String(order.total || '0'),
+            shippingAddress: order.shipping_address || 'No address provided',
+            resellerName: order.reseller_name,
+            customerPhone: customerPhone,
+            productName: productName,
+            productVariant: productVariant
+          };
+          
+          interaktService.sendTrackingUpdateToCustomer(
+            trackingData,
+            customerPhone
+          ).then((success) => {
+            if (success) {
+              console.log('✅ Customer tracking notification sent successfully');
+            } else {
+              console.log('❌ Failed to send customer tracking notification');
+            }
+          }).catch((error) => {
+            console.error('Error sending customer notification:', error);
+          });
         }
-      } else if (!isInteraktActive) {
-        toast.success('Tracking updated and order data stored. Configure Interakt settings to enable WhatsApp notifications.');
-      } else if (!order.reseller_name || !order.reseller_number) {
-        toast.success('Tracking updated and order data stored. No reseller details available for WhatsApp notification.');
-      } else {
-        toast.success('Tracking updated and order data stored successfully!');
+
+        // Send to reseller if details are available (background)
+        if (order.reseller_name && order.reseller_number) {
+          console.log(`📱 Sending WhatsApp notification to reseller (background): ${order.reseller_name} at ${order.reseller_number}`);
+          sendResellerTrackingNotification(
+            order.order_number,
+            order.customer_name,
+            trackingNumber.trim(),
+            carrierCode,
+            order.total,
+            order.shipping_address || '',
+            order.reseller_name,
+            order.reseller_number,
+            customerPhone,
+            productName,
+            productVariant
+          ).then((resellerSuccess) => {
+            if (resellerSuccess) {
+              console.log('✅ Reseller tracking notification sent successfully');
+            } else {
+              console.log('❌ Failed to send reseller tracking notification');
+            }
+          }).catch((error) => {
+            console.error('Error sending reseller notification:', error);
+          });
+        }
       }
 
       onTrackingUpdated(updatedOrder);

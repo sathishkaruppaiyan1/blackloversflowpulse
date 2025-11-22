@@ -91,8 +91,9 @@ class InteraktService {
     const phoneNum = formattedPhone.length >= 2 ? formattedPhone.substring(2) : formattedPhone;
     
     // Create template message using order_tracking_information template
-    // Template format: bodyValues[0] = Customer name ({{4}}), bodyValues[1] = Order ID ({{1}}), 
-    //                  bodyValues[2] = Courier ({{3}}), bodyValues[3] = Tracking ID ({{2}})
+    // Template: Hello {{4}}! Order ID: {{1}}, Tracking ID: {{2}}, COURIER: {{3}}
+    // Interakt may map bodyValues by order of appearance in template: {{4}}, {{1}}, {{2}}, {{3}}
+    // So bodyValues should be: [CustomerName, OrderID, TrackingID, Courier]
     const templateMessage: InteraktTemplateMessage = {
       countryCode: `+${countryCode}`,
       phoneNumber: phoneNum,
@@ -101,10 +102,10 @@ class InteraktService {
         name: "order_tracking_information",
         languageCode: "en",
         bodyValues: [
-          trackingData.customerName || 'Customer', // {{4}} - Customer name
-          trackingData.orderNumber, // {{1}} - Order ID
-          courierDisplayName, // {{3}} - COURIER
-          trackingData.trackingNumber // {{2}} - Tracking ID
+          trackingData.customerName || 'Customer', // {{4}} - Customer name (appears first in template)
+          trackingData.orderNumber, // {{1}} - Order ID (appears second in template)
+          trackingData.trackingNumber, // {{2}} - Tracking ID (appears third in template)
+          courierDisplayName // {{3}} - COURIER (appears fourth in template)
         ]
       }
     };
@@ -132,15 +133,19 @@ class InteraktService {
     const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
     const courierDisplayName = this.getCourierDisplayName(trackingData.carrier);
     
+    // Format phone number for reseller
+    const formattedResellerPhone = this.formatPhoneNumber(resellerPhone);
+    const resellerCountryCode = formattedResellerPhone.length >= 2 ? formattedResellerPhone.substring(0, 2) : '91';
+    const resellerPhoneNum = formattedResellerPhone.length >= 2 ? formattedResellerPhone.substring(2) : formattedResellerPhone;
+    
     // Create template message for reseller using shipped_template_resellers_
     const templateMessage: InteraktTemplateMessage = {
-      fullPhoneNumber: this.formatPhoneNumber(resellerPhone),
-      callbackData: "shipped_template_resellers_",
+      countryCode: `+${resellerCountryCode}`,
+      phoneNumber: resellerPhoneNum,
       type: "Template",
       template: {
         name: "shipped_template_resellers_",
         languageCode: "en",
-        headerValues: [],
         bodyValues: [
           trackingData.orderNumber, // {{1}} - order ID
           trackingData.customerName, // {{2}} - customer name
@@ -152,8 +157,7 @@ class InteraktService {
           trackingLink, // {{8}} - tracking link
           trackingData.productName || 'Product', // {{9}} - product name (fixed to use actual product name)
           trackingData.productVariant || 'Standard' // {{10}} - product variant (fixed to use actual variant)
-        ],
-        buttonValues: {}
+        ]
       }
     };
 
@@ -173,7 +177,6 @@ class InteraktService {
     // Map courier codes to proper display names
     switch (lowerCarrier) {
       case 'frenchexpress':
-      case 'franch express':
       case 'franch express':
         return 'FRANCH EXPRESS';
       
@@ -215,7 +218,6 @@ class InteraktService {
     // Generate tracking links based on courier
     switch (lowerCarrier) {
       case 'frenchexpress':
-      case 'franch express':
       case 'franch express':
         return `https://franchexpress.com/courier-tracking/?awb=${trackingNumber}`;
       

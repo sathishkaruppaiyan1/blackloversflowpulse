@@ -365,8 +365,18 @@ const TrackingPage = () => {
     try {
       console.log('🚀 Starting tracking update process...');
       
-      // Update tracking information using WooCommerce service
+      // Update tracking information using WooCommerce service (this updates status immediately)
       await wooCommerceOrderService.updateTracking(currentOrder.id, trackingNumber, carrier);
+      
+      // Update status immediately - don't wait for WhatsApp
+      setShopifyStatus('success');
+      console.log('✅ Order updated successfully');
+      
+      // Play success sound immediately
+      playSuccessSound();
+      
+      // Refresh orders to show updated status immediately
+      await fetchOrders();
       
       // Prepare tracking data for WhatsApp notifications
       const trackingData = {
@@ -379,63 +389,49 @@ const TrackingPage = () => {
         resellerName: currentOrder.reseller_name
       };
 
-      // Send WhatsApp notification via Interakt (reseller and/or customer)
+      // Send WhatsApp notifications asynchronously in the background (fire and forget)
       if (interaktService.isActive()) {
-        let whatsappSuccess = false;
+        // Send to customer automatically (always send if phone available)
+        if (currentOrder.customer_phone) {
+          console.log('📱 Sending tracking update to customer via Interakt (background)...');
+          interaktService.sendTrackingUpdateToCustomer(
+            trackingData,
+            currentOrder.customer_phone
+          ).then((customerSuccess) => {
+            if (customerSuccess) {
+              console.log('✅ Tracking notification sent to customer successfully');
+              setWhatsappStatus('success');
+            } else {
+              console.log('❌ Failed to send tracking notification to customer');
+              setWhatsappStatus('failed');
+            }
+          }).catch((error) => {
+            console.error('Error sending customer notification:', error);
+            setWhatsappStatus('failed');
+          });
+        }
 
-        // Send to reseller if details are available
+        // Send to reseller if details are available (background)
         if (currentOrder.reseller_number && currentOrder.reseller_name) {
-          console.log('📱 Sending tracking update to reseller via Interakt...');
-          const resellerSuccess = await interaktService.sendTrackingUpdateToReseller(
+          console.log('📱 Sending tracking update to reseller via Interakt (background)...');
+          interaktService.sendTrackingUpdateToReseller(
             trackingData,
             currentOrder.reseller_number,
             currentOrder.reseller_name
-          );
-
-          if (resellerSuccess) {
-            console.log('✅ Tracking notification sent to reseller successfully');
-            whatsappSuccess = true;
-          } else {
-            console.log('❌ Failed to send tracking notification to reseller');
-          }
-        }
-
-        // Also send to customer if a phone number is available
-        if (currentOrder.customer_phone) {
-          console.log('📱 Sending tracking update to customer via Interakt...');
-          const customerSuccess = await interaktService.sendTrackingUpdateToCustomer(
-            trackingData,
-            currentOrder.customer_phone
-          );
-
-          if (customerSuccess) {
-            console.log('✅ Tracking notification sent to customer successfully');
-            whatsappSuccess = true;
-          } else {
-            console.log('❌ Failed to send tracking notification to customer');
-          }
-        }
-
-        if (whatsappSuccess) {
-          setWhatsappStatus('success');
-        } else {
-          setWhatsappStatus('failed');
-          console.log('❌ Could not send WhatsApp notification - check phone numbers or Interakt settings');
+          ).then((resellerSuccess) => {
+            if (resellerSuccess) {
+              console.log('✅ Tracking notification sent to reseller successfully');
+            } else {
+              console.log('❌ Failed to send tracking notification to reseller');
+            }
+          }).catch((error) => {
+            console.error('Error sending reseller notification:', error);
+          });
         }
       } else {
         setWhatsappStatus('failed');
         console.log('❌ Interakt not configured or disabled');
       }
-      
-      // Update WooCommerce status
-      setShopifyStatus('success');
-      console.log('✅ Order updated successfully');
-      
-      // Play success sound for successful tracking update
-      playSuccessSound();
-      
-      // Refresh orders to show updated status
-      await fetchOrders();
       
       // Reset form after successful update
       setOrderIdInput('');
