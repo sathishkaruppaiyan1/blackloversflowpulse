@@ -175,10 +175,11 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: '12px'
+        marginBottom: '12px',
+        gap: '16px'
       }}>
         {/* Left: Logo and Title */}
-        <div style={{ flex: '1' }}>
+        <div style={{ flex: '0 0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{
               width: '70px',
@@ -212,8 +213,16 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             }}>Packing slip</h1>
           </div>
         </div>
-        {/* Right: Order Information */}
-        <div style={{ fontSize: '13px', textAlign: 'right' }}>
+        {/* Right: Order Information - Moved left with margin */}
+        <div style={{ 
+          fontSize: '13px', 
+          textAlign: 'left',
+          flex: '0 0 auto',
+          marginLeft: 'auto',
+          marginRight: '0',
+          maxWidth: '45%',
+          paddingLeft: '8px'
+        }}>
           <div style={{ marginBottom: '2px' }}>
             <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
             <span style={{ color: '#374151' }}>{order.order_number || order.id || 'N/A'}</span>
