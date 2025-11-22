@@ -82,7 +82,7 @@ class InteraktService {
     }
 
     const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
-    const courierDisplayName = this.getCourierDisplayName(trackingData.carrier);
+    const courierDisplayName = await this.getCourierDisplayName(trackingData.carrier);
     
     // Format phone number to extract country code and phone number
     const formattedPhone = this.formatPhoneNumber(phoneNumber);
@@ -92,8 +92,8 @@ class InteraktService {
     
     // Create template message using order_tracking_information template
     // Template: Hello {{4}}! Order ID: {{1}}, Tracking ID: {{2}}, COURIER: {{3}}
-    // Interakt may map bodyValues by order of appearance in template: {{4}}, {{1}}, {{2}}, {{3}}
-    // So bodyValues should be: [CustomerName, OrderID, TrackingID, Courier]
+    // Interakt bodyValues mapping: [0]={{1}}, [1]={{2}}, [2]={{3}}, [3]={{4}}
+    // Correct order: [Order ID, Tracking ID, Courier Name, Customer Name]
     const templateMessage: InteraktTemplateMessage = {
       countryCode: `+${countryCode}`,
       phoneNumber: phoneNum,
@@ -102,10 +102,10 @@ class InteraktService {
         name: "order_tracking_information",
         languageCode: "en",
         bodyValues: [
-          trackingData.customerName || 'Customer', // {{4}} - Customer name (appears first in template)
-          trackingData.orderNumber, // {{1}} - Order ID (appears second in template)
-          trackingData.trackingNumber, // {{2}} - Tracking ID (appears third in template)
-          courierDisplayName // {{3}} - COURIER (appears fourth in template)
+          trackingData.orderNumber || 'N/A', // {{1}} - Order ID
+          trackingData.trackingNumber || 'N/A', // {{2}} - Tracking ID
+          courierDisplayName || 'UNKNOWN', // {{3}} - Courier Name
+          trackingData.customerName || 'Customer' // {{4}} - Customer Name
         ]
       }
     };
@@ -131,7 +131,7 @@ class InteraktService {
     }
 
     const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
-    const courierDisplayName = this.getCourierDisplayName(trackingData.carrier);
+    const courierDisplayName = await this.getCourierDisplayName(trackingData.carrier);
     
     // Format phone number for reseller
     const formattedResellerPhone = this.formatPhoneNumber(resellerPhone);
@@ -171,21 +171,53 @@ class InteraktService {
     }
   }
 
-  private getCourierDisplayName(carrier: string): string {
-    const lowerCarrier = carrier.toLowerCase();
-    
-    // Map courier codes to proper display names
-    switch (lowerCarrier) {
-      case 'frenchexpress':
-      case 'franch express':
-        return 'FRANCH EXPRESS';
-      
-      case 'delhivery':
-        return 'DELHIVERY';
-      
-      default:
-        // Return the original carrier name in uppercase if not recognized
+  private async getCourierDisplayName(carrier: string): Promise<string> {
+    if (!carrier || carrier.trim() === '') {
+      return 'UNKNOWN';
+    }
+
+    try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.error('User not authenticated for courier lookup');
         return carrier.toUpperCase();
+      }
+
+      // Try to find courier in database by name (case-insensitive)
+      const { data: couriers, error } = await supabase
+        .from('couriers')
+        .select('name')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .ilike('name', `%${carrier}%`);
+
+      if (!error && couriers && couriers.length > 0) {
+        return couriers[0].name.toUpperCase();
+      }
+
+      // Fallback: Map common courier codes to display names
+      const lowerCarrier = carrier.toLowerCase().trim();
+      switch (lowerCarrier) {
+        case 'frenchexpress':
+        case 'franch express':
+          return 'FRANCH EXPRESS';
+        
+        case 'delhivery':
+          return 'DELHIVERY';
+        
+        case 'stcourier':
+        case 'st courier':
+          return 'ST COURIER';
+        
+        default:
+          // Return the original carrier name in uppercase if not recognized
+          return carrier.toUpperCase();
+      }
+    } catch (error) {
+      console.error('Error fetching courier name:', error);
+      // Fallback to uppercase carrier code
+      return carrier.toUpperCase();
     }
   }
 
