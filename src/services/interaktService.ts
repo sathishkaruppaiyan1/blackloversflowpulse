@@ -86,20 +86,21 @@ class InteraktService {
     const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
     const courierDisplayName = this.getCourierDisplayName(trackingData.carrier);
     
-    // Create template message in BSP format
+    // Create template message using order_tracking_information template
+    // Template format: {{1}} = Order ID, {{2}} = Tracking ID, {{3}} = COURIER, {{4}} = Customer name
     const templateMessage: InteraktTemplateMessage = {
       fullPhoneNumber: this.formatPhoneNumber(phoneNumber),
-      callbackData: "order_shipped_no_tracking_link",
+      callbackData: "order_tracking_information",
       type: "Template",
       template: {
-        name: "order_shipped_no_tracking_link_woocommerce",
+        name: "order_tracking_information",
         languageCode: "en",
         headerValues: [],
         bodyValues: [
-          trackingData.customerName || 'Customer',
-          trackingData.orderNumber,
-          trackingData.trackingNumber,
-          courierDisplayName
+          trackingData.orderNumber, // {{1}} - Order ID
+          trackingData.trackingNumber, // {{2}} - Tracking ID
+          courierDisplayName, // {{3}} - COURIER
+          trackingData.customerName || 'Customer' // {{4}} - Customer name
         ],
         buttonValues: {}
       }
