@@ -210,6 +210,7 @@ const PrintingPage = () => {
       const root = createRoot(printContainer);
 
       // Create bulk print content with all selected orders, each wrapped in a page-break div
+      // Use page-break-before to ensure each order starts on a new page
       const bulkPrintContent = React.createElement('div', {
         style: { width: '100%' }
       }, ordersWithBarcodes.map((order, index) => 
@@ -217,8 +218,13 @@ const PrintingPage = () => {
           key: order.id,
           className: 'packing-slip-page',
           style: {
-            pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto',
-            pageBreakInside: 'avoid'
+            pageBreakBefore: index > 0 ? 'always' : 'auto', // Force new page for each order except first
+            pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto', // Also add after for safety
+            pageBreakInside: 'auto', // Allow content to span multiple pages if needed
+            minHeight: format === 'A5' ? '8.27in' : '11in', // Minimum height for proper page sizing
+            width: format === 'A5' ? '5.83in' : '8.27in',
+            margin: '0 auto',
+            display: 'block'
           }
         }, React.createElement(PrintComponent, {
           order: order,
@@ -264,13 +270,26 @@ const PrintingPage = () => {
                   box-sizing: border-box;
                 }
                 .packing-slip-page {
+                  page-break-before: always;
                   page-break-after: always;
-                  page-break-inside: avoid;
-                  width: 100%;
-                  height: 100%;
+                  page-break-inside: auto;
+                  width: ${format === 'A5' ? '5.83in' : '8.27in'};
+                  min-height: ${format === 'A5' ? '8.27in' : '11in'};
+                  margin: 0 auto;
+                  display: block;
+                }
+                .packing-slip-page:first-child {
+                  page-break-before: auto;
                 }
                 .packing-slip-page:last-child {
                   page-break-after: auto;
+                }
+                /* Override A5 component fixed height to allow multi-page content */
+                .packing-slip-page > div {
+                  height: auto !important;
+                  min-height: ${format === 'A5' ? '8.27in' : '11in'} !important;
+                  overflow: visible !important;
+                  page-break-inside: auto !important;
                 }
                 img {
                   max-width: 100% !important;
@@ -279,7 +298,7 @@ const PrintingPage = () => {
                   color-adjust: exact !important;
                 }
                 table {
-                  page-break-inside: avoid;
+                  page-break-inside: auto;
                 }
                 tr {
                   page-break-inside: avoid;
