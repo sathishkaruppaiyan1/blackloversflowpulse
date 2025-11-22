@@ -231,7 +231,6 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
           <thead>
             <tr className="border-b-2 border-gray-300">
               <th className="text-left py-2 px-1 font-bold text-gray-800 w-8">S.No</th>
-              <th className="text-left py-2 px-1 font-bold text-gray-800 w-12">Image</th>
               <th className="text-left py-2 px-1 font-bold text-gray-800">Product</th>
               <th className="text-center py-2 px-1 font-bold text-gray-800 w-16">Quantity</th>
               <th className="text-right py-2 px-1 font-bold text-gray-800 w-20">Total weight</th>
@@ -242,11 +241,6 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
               order.line_items.slice(0, 6).map((item: any, index: number) => (
                 <tr key={index} className="border-b border-gray-200">
                   <td className="py-2 px-1 text-gray-700">{index + 1}</td>
-                  <td className="py-2 px-1">
-                    <div className="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center">
-                      <div className="w-6 h-6 bg-gray-300 rounded"></div>
-                    </div>
-                  </td>
                   <td className="py-2 px-1">
                     <div className="font-medium text-gray-800 text-base leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
                   </td>
@@ -260,11 +254,6 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
               <tr className="border-b border-gray-200">
                 <td className="py-2 px-1 text-gray-700">1</td>
                 <td className="py-2 px-1">
-                  <div className="w-8 h-8 bg-gray-200 rounded border flex items-center justify-center">
-                    <div className="w-6 h-6 bg-gray-300 rounded"></div>
-                  </div>
-                </td>
-                <td className="py-2 px-1">
                   <div className="font-medium text-gray-800 text-base leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
                 </td>
                 <td className="py-2 px-1 text-center text-gray-700">1</td>
@@ -273,7 +262,7 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
             )}
             {order.line_items && order.line_items.length > 6 && (
               <tr>
-                <td colSpan={5} className="text-sm text-gray-600 py-2 text-center">
+                <td colSpan={4} className="text-sm text-gray-600 py-2 text-center">
                   ... and {order.line_items.length - 6} more items
                 </td>
               </tr>

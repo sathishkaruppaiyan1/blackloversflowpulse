@@ -357,13 +357,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 textAlign: 'left',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937',
-                width: '48px'
-              }}>Image</th>
-              <th style={{
-                textAlign: 'left',
-                padding: '4px 2px',
-                fontWeight: 'bold',
                 color: '#1f2937'
               }}>Product</th>
               <th style={{
@@ -388,25 +381,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '4px 2px', color: '#374151' }}>{index + 1}</td>
                   <td style={{ padding: '4px 2px' }}>
-                    <div style={{
-                      width: '28px',
-                      height: '28px',
-                      backgroundColor: '#f3f4f6',
-                      borderRadius: '4px',
-                      border: '1px solid #e5e7eb',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: '#d1d5db',
-                        borderRadius: '4px'
-                      }}></div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '4px 2px' }}>
                     <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
                       ₹{(item.total || item.price || 0).toFixed(2)}
                     </div>
@@ -426,25 +400,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                 <td style={{ padding: '4px 2px', color: '#374151' }}>1</td>
                 <td style={{ padding: '4px 2px' }}>
-                  <div style={{
-                    width: '28px',
-                    height: '28px',
-                    backgroundColor: '#f3f4f6',
-                    borderRadius: '4px',
-                    border: '1px solid #e5e7eb',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#d1d5db',
-                      borderRadius: '4px'
-                    }}></div>
-                  </div>
-                </td>
-                <td style={{ padding: '4px 2px' }}>
                   <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                     4434 - Anarkali Kurtis - XL - 42
                   </div>
@@ -455,7 +410,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             )}
             {order.line_items && order.line_items.length > 6 && (
               <tr>
-                <td colSpan={5} style={{ fontSize: '12px', color: '#6b7280', padding: '8px', textAlign: 'center' }}>
+                <td colSpan={4} style={{ fontSize: '12px', color: '#6b7280', padding: '8px', textAlign: 'center' }}>
                   ... and {order.line_items.length - 6} more items
                 </td>
               </tr>
