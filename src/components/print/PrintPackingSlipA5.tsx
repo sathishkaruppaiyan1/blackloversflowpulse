@@ -126,13 +126,29 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
     if (item.color) variations.push(`Color: ${item.color}`);
     if (item.weight) variations.push(`Weight: ${item.weight}kg`);
     
-    // Check meta_data for additional variations
+    // Check meta_data for additional variations, but exclude internal/system fields
     if (item.meta_data && Array.isArray(item.meta_data)) {
       item.meta_data.forEach((meta: any) => {
         if (meta.display_key && meta.display_value) {
-          variations.push(`${meta.display_key}: ${meta.display_value}`);
+          // Filter out internal fields that start with underscore
+          const key = meta.display_key.trim();
+          if (!key.startsWith('_') && key.toLowerCase() !== 'measurements') {
+            // Remove "Measurements:" prefix if it exists in display_value
+            let value = meta.display_value.toString().trim();
+            value = value.replace(/^Measurements:\s*/i, '');
+            variations.push(`${key}: ${value}`);
+          }
         }
       });
+    }
+    
+    // Also check if item.variation exists and doesn't already have "Measurements:" prefix
+    if (item.variation) {
+      let variation = item.variation.toString().trim();
+      variation = variation.replace(/^Measurements:\s*/i, '');
+      if (variation && !variations.some(v => v.includes(variation))) {
+        variations.push(variation);
+      }
     }
     
     return variations.length > 0 ? variations.join(', ') : 'XL - 42';
@@ -385,7 +401,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
                       ₹{(item.total || item.price || 0).toFixed(2)}
                     </div>
-                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>
@@ -423,7 +439,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                   </div>
                 </td>
                 <td style={{ padding: '4px 2px' }}>
-                  <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
+                  <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                     4434 - Anarkali Kurtis - XL - 42
                   </div>
                   <div style={{ fontSize: '10px', color: '#6b7280', lineHeight: '1.2' }}>

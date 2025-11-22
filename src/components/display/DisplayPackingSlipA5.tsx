@@ -119,6 +119,18 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
     return new Date(dateString).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   };
 
+  const cleanVariation = (variation?: string) => {
+    if (!variation) return 'XL - 42';
+    let cleaned = variation.toString().trim();
+    // Remove duplicate "Measurements:" prefix
+    cleaned = cleaned.replace(/^Measurements:\s*/i, '');
+    // Remove internal fields like "_reduced_stock: 1"
+    cleaned = cleaned.split(',').map(part => part.trim())
+      .filter(part => !part.startsWith('_') && part.length > 0)
+      .join(', ');
+    return cleaned || 'XL - 42';
+  };
+
   return (
     <div className="w-full max-w-2xl mx-auto p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
       {/* Header Section - Compact */}
@@ -236,9 +248,9 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                     </div>
                   </td>
                   <td className="py-2 px-1">
-                    <div className="font-medium text-gray-800 text-sm leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
+                    <div className="font-medium text-gray-800 text-base leading-tight">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
                     <div className="text-sm text-gray-600 mt-0.5 leading-tight">
-                      {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
+                      Measurements: {cleanVariation(item.variation)}
                     </div>
                   </td>
                   <td className="py-2 px-1 text-center text-gray-700">{item.quantity || 1}</td>
@@ -256,7 +268,7 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
                   </div>
                 </td>
                 <td className="py-2 px-1">
-                  <div className="font-medium text-gray-800 text-sm leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
+                  <div className="font-medium text-gray-800 text-base leading-tight">4434 - Anarkali Kurtis - XL - 42</div>
                   <div className="text-sm text-gray-600 mt-0.5 leading-tight">Measurements: XL - 42</div>
                 </td>
                 <td className="py-2 px-1 text-center text-gray-700">1</td>
