@@ -14,15 +14,13 @@ interface InteraktSettings {
 }
 
 interface InteraktTemplateMessage {
-  fullPhoneNumber: string;
-  callbackData: string;
+  countryCode: string;
+  phoneNumber: string;
   type: 'Template';
   template: {
     name: string;
     languageCode: string;
-    headerValues: string[];
     bodyValues: string[];
-    buttonValues: Record<string, any>;
   };
 }
 

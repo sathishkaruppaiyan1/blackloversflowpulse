@@ -8,15 +8,13 @@ export interface InteraktSettings {
 }
 
 export interface InteraktTemplateMessage {
-  fullPhoneNumber: string;
-  callbackData: string;
+  countryCode: string;
+  phoneNumber: string;
   type: 'Template';
   template: {
     name: string;
     languageCode: string;
-    headerValues: string[];
     bodyValues: string[];
-    buttonValues: Record<string, any>;
   };
 }
 
@@ -86,23 +84,28 @@ class InteraktService {
     const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
     const courierDisplayName = this.getCourierDisplayName(trackingData.carrier);
     
+    // Format phone number to extract country code and phone number
+    const formattedPhone = this.formatPhoneNumber(phoneNumber);
+    // Extract country code (first 2 digits) and phone number (remaining digits)
+    const countryCode = formattedPhone.length >= 2 ? formattedPhone.substring(0, 2) : '91';
+    const phoneNum = formattedPhone.length >= 2 ? formattedPhone.substring(2) : formattedPhone;
+    
     // Create template message using order_tracking_information template
-    // Template format: {{1}} = Order ID, {{2}} = Tracking ID, {{3}} = COURIER, {{4}} = Customer name
+    // Template format: bodyValues[0] = Customer name ({{4}}), bodyValues[1] = Order ID ({{1}}), 
+    //                  bodyValues[2] = Courier ({{3}}), bodyValues[3] = Tracking ID ({{2}})
     const templateMessage: InteraktTemplateMessage = {
-      fullPhoneNumber: this.formatPhoneNumber(phoneNumber),
-      callbackData: "order_tracking_information",
+      countryCode: `+${countryCode}`,
+      phoneNumber: phoneNum,
       type: "Template",
       template: {
         name: "order_tracking_information",
         languageCode: "en",
-        headerValues: [],
         bodyValues: [
+          trackingData.customerName || 'Customer', // {{4}} - Customer name
           trackingData.orderNumber, // {{1}} - Order ID
-          trackingData.trackingNumber, // {{2}} - Tracking ID
           courierDisplayName, // {{3}} - COURIER
-          trackingData.customerName || 'Customer' // {{4}} - Customer name
-        ],
-        buttonValues: {}
+          trackingData.trackingNumber // {{2}} - Tracking ID
+        ]
       }
     };
 
