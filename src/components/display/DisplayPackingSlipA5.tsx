@@ -8,6 +8,12 @@ interface Order {
   customer_phone?: string;
   shipping_address?: string;
   billing_address?: string;
+  billing_postcode?: string;
+  shipping_postcode?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  billing_city?: string;
+  billing_state?: string;
   total: number;
   items: number;
   line_items?: any[];
@@ -50,14 +56,62 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
     return parts;
   };
 
-  const formatShippingAddress = (address?: string) => {
+  const formatShippingAddress = (address?: string, postcode?: string, city?: string, state?: string) => {
     if (!address) return ['No shipping address provided'];
-    return address.split(',').map(line => line.trim());
+    const addressLines = address.split(',').map(line => line.trim()).filter(Boolean);
+    
+    // Ensure postcode is included - check if it's already in the address or add it separately
+    const hasPostcode = addressLines.some(line => /\d{6}/.test(line)); // Check if any line has 6-digit pincode
+    
+    // If postcode is provided separately and not in address, add it
+    if (postcode && !hasPostcode) {
+      // Try to add postcode to the city/state line or as a separate line
+      if (city && state) {
+        const locationLine = `${city}, ${state} ${postcode}`;
+        // Replace city/state line if exists, otherwise add at end
+        const cityStateIndex = addressLines.findIndex(line => 
+          line.includes(city) || line.includes(state)
+        );
+        if (cityStateIndex >= 0) {
+          addressLines[cityStateIndex] = locationLine;
+        } else {
+          addressLines.push(locationLine);
+        }
+      } else {
+        addressLines.push(postcode);
+      }
+    }
+    
+    return addressLines;
   };
 
-  const formatBillingAddress = (address?: string) => {
+  const formatBillingAddress = (address?: string, postcode?: string, city?: string, state?: string) => {
     if (!address) return ['No billing address provided'];
-    return address.split(',').map(line => line.trim());
+    const addressLines = address.split(',').map(line => line.trim()).filter(Boolean);
+    
+    // Ensure postcode is included - check if it's already in the address or add it separately
+    const hasPostcode = addressLines.some(line => /\d{6}/.test(line)); // Check if any line has 6-digit pincode
+    
+    // If postcode is provided separately and not in address, add it
+    if (postcode && !hasPostcode) {
+      // Try to add postcode to the city/state line or as a separate line
+      if (city && state) {
+        const locationLine = `${city}, ${state} ${postcode}`;
+        // Replace city/state line if exists, otherwise add at end
+        const cityStateIndex = addressLines.findIndex(line => 
+          line.includes(city) || line.includes(state)
+        );
+        if (cityStateIndex >= 0) {
+          addressLines[cityStateIndex] = locationLine;
+        } else {
+          addressLines.push(locationLine);
+        }
+      } else {
+        addressLines.push(postcode);
+      }
+    }
+    
+    return addressLines;
   };
 
   const formatDate = (dateString?: string) => {
@@ -125,7 +179,12 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
           <h3 className="font-bold text-gray-800 mb-2 text-lg">Bill to</h3>
           <div className="space-y-1 text-gray-700">
             <div className="font-semibold text-base">{order.customer_name}</div>
-            {formatBillingAddress(order.billing_address || order.shipping_address).slice(0, 4).map((line, index) => (
+            {formatBillingAddress(
+              order.billing_address || order.shipping_address,
+              order.billing_postcode || order.shipping_postcode,
+              order.billing_city || order.shipping_city,
+              order.billing_state || order.shipping_state
+            ).map((line, index) => (
               <div key={index} className="text-base leading-tight">{line}</div>
             ))}
             {order.customer_email && (
@@ -142,7 +201,12 @@ const DisplayPackingSlipA5: React.FC<DisplayPackingSlipA5Props> = ({
           <h3 className="font-bold text-gray-800 mb-2 text-lg">Ship to</h3>
           <div className="space-y-1 text-gray-700">
             <div className="font-semibold text-base">{order.customer_name}</div>
-            {formatShippingAddress(order.shipping_address).slice(0, 4).map((line, index) => (
+            {formatShippingAddress(
+              order.shipping_address,
+              order.shipping_postcode,
+              order.shipping_city,
+              order.shipping_state
+            ).map((line, index) => (
               <div key={index} className="text-base leading-tight">{line}</div>
             ))}
           </div>
