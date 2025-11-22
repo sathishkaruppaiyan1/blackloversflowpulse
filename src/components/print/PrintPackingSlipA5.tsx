@@ -181,10 +181,10 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         <div style={{ flex: '1' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{
-              width: '50px',
-              height: '50px',
+              width: '70px',
+              height: '70px',
               borderRadius: '50%',
-              border: '2px solid #ec4899',
+              border: '3px solid #ec4899',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -195,12 +195,12 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 <div style={{
                   color: '#ec4899',
                   fontWeight: 'bold',
-                  fontSize: '14px',
+                  fontSize: '18px',
                   lineHeight: '1.1'
                 }}>Perfect</div>
                 <div style={{
                   color: '#ec4899',
-                  fontSize: '10px'
+                  fontSize: '12px'
                 }}>Collections</div>
               </div>
             </div>
