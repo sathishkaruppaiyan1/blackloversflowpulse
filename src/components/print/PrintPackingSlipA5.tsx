@@ -211,21 +211,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               margin: '0'
             }}>Packing slip</h1>
           </div>
-          {/* Order Information - Left Side */}
-          <div style={{ fontSize: '13px', marginLeft: '60px' }}>
-            <div style={{ marginBottom: '2px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
-              <span style={{ color: '#374151' }}>{order.order_number || order.id || 'N/A'}</span>
-            </div>
-            <div style={{ marginBottom: '2px' }}>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Date: </span>
-              <span style={{ color: '#374151' }}>{formatDate(order.order_date)}</span>
-            </div>
-            <div>
-              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Method: </span>
-              <span style={{ color: '#374151' }}>{order.shipping_method || 'Standard Shipping'}</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -301,6 +286,21 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
 
         {/* Ship To Address */}
         <div>
+          {/* Order Information - Above Ship To */}
+          <div style={{ fontSize: '13px', marginBottom: '8px', paddingBottom: '4px', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ marginBottom: '2px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
+              <span style={{ color: '#374151' }}>{order.order_number || order.id || 'N/A'}</span>
+            </div>
+            <div style={{ marginBottom: '2px' }}>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Date: </span>
+              <span style={{ color: '#374151' }}>{formatDate(order.order_date)}</span>
+            </div>
+            <div>
+              <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Method: </span>
+              <span style={{ color: '#374151' }}>{order.shipping_method || 'Standard Shipping'}</span>
+            </div>
+          </div>
           <h3 style={{
             fontWeight: 'bold',
             color: '#1f2937',
