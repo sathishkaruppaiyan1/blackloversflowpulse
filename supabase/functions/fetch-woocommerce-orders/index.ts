@@ -73,72 +73,33 @@ serve(async (req) => {
       cleanStoreUrl = 'https://' + cleanStoreUrl;
     }
     
-    // Construct the WooCommerce REST API URL with processing status filter
-    const apiUrl = order_id 
-      ? `${cleanStoreUrl}/wp-json/wc/v3/orders/${order_id}`
-      : `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=100&status=processing&order=desc&orderby=date`;
-    
-    console.log('🔗 Final API URL:', apiUrl);
-    
-    // Create Basic Auth header
-    const authString = btoa(`${consumer_key}:${consumer_secret}`);
-    
-    console.log('📤 Making request to WooCommerce API...');
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'OrderSync/1.0',
-      },
-    });
-
-    console.log('📊 Response status:', response.status);
-    console.log('📊 Response statusText:', response.statusText);
-    console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()));
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ WooCommerce API error:', response.status, response.statusText);
-      console.error('❌ Error details:', errorText);
-      
-      let errorMessage = `WooCommerce API error: ${response.status} ${response.statusText}`;
-      
-      // Provide more helpful error messages based on status codes
-      if (response.status === 404) {
-        errorMessage = 'WooCommerce API endpoint not found. Please check if WooCommerce is installed and REST API is enabled.';
-      } else if (response.status === 401) {
-        errorMessage = 'Authentication failed. Please check your Consumer Key and Consumer Secret.';
-      } else if (response.status === 403) {
-        errorMessage = 'Access forbidden. Please check your API permissions.';
-      }
-      
-      return new Response(
-        JSON.stringify({ 
-          error: errorMessage,
-          details: errorText,
-          status_code: response.status,
-          suggestions: [
-            'Verify WooCommerce is installed and activated',
-            'Check if REST API is enabled in WooCommerce settings',
-            'Ensure Consumer Key and Secret are valid and have read permissions',
-            'Try accessing the API URL directly in your browser'
-          ]
-        }),
-        { 
-          status: response.status, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    const responseData = await response.json();
-    console.log(`✅ Successfully fetched ${order_id ? '1 order' : responseData.length + ' orders'}`);
-    console.log('Response data sample:', JSON.stringify(responseData).substring(0, 200) + '...');
-
-    // Handle both single order and multiple orders
+    // Handle single order request
     if (order_id) {
+      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders/${order_id}`;
+      console.log('🔗 Final API URL:', apiUrl);
+      
+      const authString = btoa(`${consumer_key}:${consumer_secret}`);
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'OrderSync/1.0',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return new Response(
+          JSON.stringify({ error: `WooCommerce API error: ${response.status}` }),
+          { 
+            status: response.status, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const responseData = await response.json();
       return new Response(
         JSON.stringify({ order: responseData }),
         { 
@@ -146,15 +107,100 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
-    } else {
-      return new Response(
-        JSON.stringify({ orders: responseData }),
-        { 
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
     }
+
+    // Fetch all processing orders with pagination
+    const authString = btoa(`${consumer_key}:${consumer_secret}`);
+    const allOrders: any[] = [];
+    let page = 1;
+    const perPage = 100; // WooCommerce max per page
+    
+    console.log('📤 Fetching all processing orders with pagination...');
+    
+    while (true) {
+      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&status=processing&order=desc&orderby=date`;
+      console.log(`📄 Fetching page ${page}...`);
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'OrderSync/1.0',
+        },
+      });
+
+      console.log(`📊 Page ${page} response status:`, response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ WooCommerce API error:', response.status, response.statusText);
+        console.error('❌ Error details:', errorText);
+        
+        let errorMessage = `WooCommerce API error: ${response.status} ${response.statusText}`;
+        
+        if (response.status === 404) {
+          errorMessage = 'WooCommerce API endpoint not found. Please check if WooCommerce is installed and REST API is enabled.';
+        } else if (response.status === 401) {
+          errorMessage = 'Authentication failed. Please check your Consumer Key and Consumer Secret.';
+        } else if (response.status === 403) {
+          errorMessage = 'Access forbidden. Please check your API permissions.';
+        }
+        
+        // If we got some orders before error, return them
+        if (allOrders.length > 0) {
+          console.log(`⚠️ Error on page ${page}, but returning ${allOrders.length} orders fetched so far`);
+          break;
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            error: errorMessage,
+            details: errorText,
+            status_code: response.status,
+            suggestions: [
+              'Verify WooCommerce is installed and activated',
+              'Check if REST API is enabled in WooCommerce settings',
+              'Ensure Consumer Key and Secret are valid and have read permissions',
+              'Try accessing the API URL directly in your browser'
+            ]
+          }),
+          { 
+            status: response.status, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const pageOrders = await response.json();
+      
+      if (!Array.isArray(pageOrders) || pageOrders.length === 0) {
+        console.log(`✅ No more orders on page ${page}, total fetched: ${allOrders.length}`);
+        break;
+      }
+      
+      allOrders.push(...pageOrders);
+      console.log(`✅ Fetched ${pageOrders.length} orders from page ${page}, total so far: ${allOrders.length}`);
+      
+      // If we got fewer than perPage orders, we've reached the last page
+      if (pageOrders.length < perPage) {
+        console.log(`✅ Reached last page, total orders fetched: ${allOrders.length}`);
+        break;
+      }
+      
+      page++;
+    }
+
+    console.log(`✅ Successfully fetched ${allOrders.length} total processing orders`);
+    console.log('Response data sample:', JSON.stringify(allOrders[0] || {}).substring(0, 200) + '...');
+
+    return new Response(
+      JSON.stringify({ orders: allOrders }),
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
 
   } catch (error) {
     console.error('💥 Unexpected error in fetch-woocommerce-orders function:', error);

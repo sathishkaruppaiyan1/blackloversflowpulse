@@ -387,7 +387,7 @@ export const wooCommerceOrderService = {
       .from('orders')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('order_number', { ascending: false });
 
     if (error) {
       console.error('Error fetching orders:', error);
@@ -395,7 +395,18 @@ export const wooCommerceOrderService = {
     }
 
     console.log(`Fetched ${data?.length || 0} orders for user ${user.id}`);
-    return (data || []).map(transformDatabaseOrder);
+    
+    // Transform and sort by order number numerically (descending)
+    const orders = (data || []).map(transformDatabaseOrder);
+    
+    // Sort by order number numerically (descending - highest first)
+    orders.sort((a, b) => {
+      const numA = parseInt(a.order_number) || 0;
+      const numB = parseInt(b.order_number) || 0;
+      return numB - numA; // Descending order
+    });
+    
+    return orders;
   },
 
   async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
@@ -417,7 +428,7 @@ export const wooCommerceOrderService = {
       .select('*')
       .eq('user_id', user.id)
       .in('status', statusConditions)
-      .order('created_at', { ascending: false });
+      .order('order_number', { ascending: false });
 
     if (error) {
       console.error(`Error fetching orders for stage ${stage}:`, error);
@@ -425,7 +436,18 @@ export const wooCommerceOrderService = {
     }
 
     console.log(`Fetched ${data?.length || 0} orders for stage ${stage} for user ${user.id}`);
-    return (data || []).map(transformDatabaseOrder);
+    
+    // Transform and sort by order number numerically (descending)
+    const orders = (data || []).map(transformDatabaseOrder);
+    
+    // Sort by order number numerically (descending - highest first)
+    orders.sort((a, b) => {
+      const numA = parseInt(a.order_number) || 0;
+      const numB = parseInt(b.order_number) || 0;
+      return numB - numA; // Descending order
+    });
+    
+    return orders;
   },
 
   async updateOrderStage(orderId: string, stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered'): Promise<WooCommerceOrder> {
