@@ -862,7 +862,15 @@ const ShippedPage = () => {
                       </TableCell>
                       <TableCell className="w-[120px]">
                         <div className="flex items-center text-xs sm:text-sm">
-                          {new Date(order.shipped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          {order.shipped_at ? (() => {
+                            const date = new Date(order.shipped_at);
+                            const hours = date.getHours();
+                            const minutes = date.getMinutes();
+                            const ampm = hours >= 12 ? 'PM' : 'AM';
+                            const displayHours = hours % 12 || 12;
+                            const displayMinutes = minutes.toString().padStart(2, '0');
+                            return `${displayHours}.${displayMinutes}${ampm}`;
+                          })() : 'N/A'}
                         </div>
                       </TableCell>
                       <TableCell className="w-[100px]">
