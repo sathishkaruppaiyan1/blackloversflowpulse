@@ -378,17 +378,8 @@ export const wooCommerceOrderService = {
     }
 
     // Even if no new processing orders, still check existing ones
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: settings } = await supabase
-        .from('woocommerce_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (settings) {
-        await this.syncExistingProcessingOrders(settings, user.id);
-      }
+    if (user && settings) {
+      await this.syncExistingProcessingOrders(settings, user.id);
     }
 
     return [];
