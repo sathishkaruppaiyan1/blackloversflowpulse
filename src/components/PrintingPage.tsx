@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,23 @@ const PrintingPage = () => {
   // Get bypass packing stage setting
   const { bypassPackingStage } = useBypassPackingStage();
 
-  const loadProcessingOrders = async () => {
+  // Fast function to fetch from database without syncing
+  const fetchProcessingOrdersFromDB = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
+      setOrders(processingOrders);
+      setFilteredOrders(processingOrders);
+      console.log(`✅ Loaded ${processingOrders.length} processing orders from database`);
+    } catch (error: any) {
+      console.error('Error fetching processing orders:', error);
+      toast.error('Failed to fetch processing orders');
+    }
+  }, [user]);
+
+  // Full sync function (slow - only for manual sync)
+  const loadProcessingOrders = async (shouldSync: boolean = false) => {
     if (!user) {
       toast.error('Please log in to view orders');
       return;
@@ -50,12 +66,16 @@ const PrintingPage = () => {
 
     setLoading(true);
     try {
-      console.log('📖 Fetching live processing orders from WooCommerce...');
-      await wooCommerceOrderService.syncOrdersFromWooCommerce();
+      if (shouldSync) {
+        console.log('📖 Syncing and fetching processing orders from WooCommerce...');
+        await wooCommerceOrderService.syncOrdersFromWooCommerce();
+      } else {
+        console.log('📖 Fetching processing orders from database...');
+      }
       const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
-      console.log(`✅ Loaded ${processingOrders.length} live processing orders`);
+      console.log(`✅ Loaded ${processingOrders.length} processing orders`);
     } catch (error: any) {
       console.error('Error loading processing orders:', error);
       toast.error('Failed to load processing orders');
@@ -73,8 +93,7 @@ const PrintingPage = () => {
     setSyncing(true);
     try {
       console.log('🔄 Starting WooCommerce sync...');
-      await wooCommerceOrderService.syncOrdersFromWooCommerce();
-      await loadProcessingOrders();
+      await loadProcessingOrders(true); // Pass true to sync
       toast.success('Successfully synced orders from WooCommerce');
     } catch (error: any) {
       console.error('Error syncing from WooCommerce:', error);
@@ -93,7 +112,7 @@ const PrintingPage = () => {
     try {
       const targetStage = bypassPackingStage ? 'packed' : 'packing';
       await wooCommerceOrderService.updateOrderStage(orderId, targetStage);
-      await loadProcessingOrders();
+      await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
       const stageMessage = bypassPackingStage 
         ? 'Order moved to tracking stage' 
         : 'Order moved to packing stage';
@@ -348,7 +367,7 @@ const PrintingPage = () => {
               for (const order of selectedOrders) {
                 await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
               }
-              await loadProcessingOrders();
+              await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
               const stageMessage = bypassPackingStage
                 ? `Printed and moved ${selectedOrders.length} orders to tracking stage`
                 : `Printed and moved ${selectedOrders.length} orders to packing stage`;
@@ -533,12 +552,25 @@ const PrintingPage = () => {
     }
   };
 
-  // Load orders on component mount
+  // Load orders on component mount - fetch from DB first (fast), then sync in background
   useEffect(() => {
     if (user) {
-      loadProcessingOrders();
+      // First, fetch from database immediately (fast)
+      fetchProcessingOrdersFromDB();
+      
+      // Then sync in background (slow, but doesn't block UI)
+      setTimeout(async () => {
+        try {
+          await wooCommerceOrderService.syncOrdersFromWooCommerce();
+          // After sync, refresh from database
+          await fetchProcessingOrdersFromDB();
+        } catch (error) {
+          console.error('Background sync error:', error);
+          // Don't show error toast for background sync
+        }
+      }, 100);
     }
-  }, [user]);
+  }, [user, fetchProcessingOrdersFromDB]);
 
   // Apply filters when search query changes
   useEffect(() => {
@@ -792,7 +824,7 @@ const PrintingPage = () => {
                             try {
                               const targetStage = bypassPackingStage ? 'packed' : 'packing';
                               await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
-                              await loadProcessingOrders();
+                              await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
                               const stageMessage = bypassPackingStage 
                                 ? `Order ${order.order_number} moved to tracking stage` 
                                 : `Order ${order.order_number} moved to packing stage`;
