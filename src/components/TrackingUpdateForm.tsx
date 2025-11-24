@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Package, Send, User, Phone } from 'lucide-react';
+import { Package, Send } from 'lucide-react';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { useInteraktIntegration } from '@/hooks/useInteraktIntegration';
 import { useCompletedOrders } from '@/hooks/useCompletedOrders';
@@ -217,20 +217,11 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
       };
     }
 
-    const hasResellerDetails = order.reseller_name && order.reseller_number;
-
-    if (hasResellerDetails) {
-      return {
-        icon: <Send className="h-4 w-4" />,
-        text: 'WhatsApp notification will be sent to reseller',
-        className: 'text-blue-600'
-      };
-    }
-
+    // WhatsApp notifications are handled automatically in the background
     return {
-      icon: <Package className="h-4 w-4" />,
-      text: 'No reseller details available for WhatsApp notifications',
-      className: 'text-amber-600'
+      icon: <Send className="h-4 w-4" />,
+      text: 'WhatsApp notifications will be sent automatically',
+      className: 'text-blue-600'
     };
   };
 
@@ -247,30 +238,12 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
       <CardContent>
         {/* Order and Reseller Information Section */}
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-          <h3 className="font-semibold text-gray-800 mb-3">Order & Reseller Details</h3>
+          <h3 className="font-semibold text-gray-800 mb-3">Order Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
               <p><strong>Order Number:</strong> {order.order_number}</p>
               <p><strong>Customer:</strong> {order.customer_name}</p>
               <p><strong>Status:</strong> {order.status}</p>
-            </div>
-            <div>
-              {order.reseller_name ? (
-                <>
-                  <div className="flex items-center space-x-1">
-                    <User className="h-4 w-4 text-green-600" />
-                    <span><strong>Reseller:</strong> {order.reseller_name}</span>
-                  </div>
-                  {order.reseller_number && (
-                    <div className="flex items-center space-x-1 mt-1">
-                      <Phone className="h-4 w-4 text-blue-600" />
-                      <span><strong>Phone:</strong> {order.reseller_number}</span>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-gray-500 italic">No reseller assigned</p>
-              )}
             </div>
           </div>
           

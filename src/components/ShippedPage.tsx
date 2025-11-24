@@ -534,7 +534,7 @@ const ShippedPage = () => {
   const uniqueOrders = shippedOrders;
 
   return (
-    <div className="w-full min-h-screen space-y-4 p-2 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
+    <div className="w-full min-h-screen space-y-4 p-2 sm:p-4 md:p-6 max-w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
         <div className="min-w-0 flex-shrink">
@@ -769,19 +769,19 @@ const ShippedPage = () => {
           </div>
 
           {/* Orders Table */}
-          <div className="rounded-md border overflow-x-auto w-full">
-            <Table className="min-w-[800px]">
+          <div className="rounded-md border overflow-x-auto w-full -mx-2 sm:mx-0">
+            <Table className="w-full">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs sm:text-sm">Order</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Customer</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Items</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Total</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Carrier</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Tracking</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Shipped Date</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
-                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[100px]">Order</TableHead>
+                  <TableHead className="text-xs sm:text-sm min-w-[120px] max-w-[180px]">Customer</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[70px]">Items</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[80px]">Total</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[100px]">Carrier</TableHead>
+                  <TableHead className="text-xs sm:text-sm min-w-[120px] max-w-[150px]">Tracking</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[120px]">Shipped Date</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[100px]">Status</TableHead>
+                  <TableHead className="text-xs sm:text-sm w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -806,78 +806,76 @@ const ShippedPage = () => {
                 ) : (
                   filteredOrders.map((order, index) => (
                     <TableRow key={`${order.id}-${order.source}-${index}`}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">#{order.order_number}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(order.created_at)}
+                      <TableCell className="w-[100px]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-xs sm:text-sm truncate">#{order.order_number}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                           </span>
                           {order.source === 'completed' && (
                             <span className="text-xs text-orange-600 font-medium">Archived</span>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{order.customer_name}</span>
+                      <TableCell className="min-w-[120px] max-w-[180px]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-xs sm:text-sm truncate">{order.customer_name}</span>
                           {order.shipping_address && (
-                            <span className="text-xs text-muted-foreground flex items-center">
-                              <MapPin className="h-3 w-3 mr-1" />
-                              {order.shipping_address.length > 30 
-                                ? `${order.shipping_address.substring(0, 30)}...` 
+                            <span className="text-xs text-muted-foreground truncate" title={order.shipping_address}>
+                              <MapPin className="h-3 w-3 inline mr-1" />
+                              {order.shipping_address.length > 25 
+                                ? `${order.shipping_address.substring(0, 25)}...` 
                                 : order.shipping_address}
                             </span>
                           )}
-                          {order.reseller_name && (
-                            <span className="text-xs text-blue-600">
-                              Reseller: {order.reseller_name}
-                            </span>
-                          )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{order.items} items</Badge>
+                      <TableCell className="w-[70px]">
+                        <Badge variant="outline" className="text-xs">{order.items}</Badge>
                       </TableCell>
-                      <TableCell>
-                        <span className="font-medium">₹{order.total?.toFixed(2) || '0.00'}</span>
+                      <TableCell className="w-[80px]">
+                        <span className="font-medium text-xs sm:text-sm">₹{order.total?.toFixed(0) || '0'}</span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-[100px]">
                         <div className="flex flex-col">
-                          <span className="font-medium">{getCarrierDisplayName(order.carrier)}</span>
+                          <span className="font-medium text-xs sm:text-sm truncate">{getCarrierDisplayName(order.carrier)}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[120px] max-w-[150px]">
                         {order.tracking_number ? (
-                          <div className="flex flex-col">
+                          <div className="flex flex-col min-w-0">
                             <a
                               href={generateTrackingLink(order.tracking_number, order.carrier)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                              className="font-mono text-xs sm:text-sm text-blue-600 hover:text-blue-800 hover:underline truncate"
+                              title={order.tracking_number}
                             >
-                              {order.tracking_number}
+                              {order.tracking_number.length > 12 
+                                ? `${order.tracking_number.substring(0, 12)}...` 
+                                : order.tracking_number}
                             </a>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">No tracking</span>
+                          <span className="text-muted-foreground text-xs">No tracking</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center text-sm">
-                          {formatDate(order.shipped_at)}
+                      <TableCell className="w-[120px]">
+                        <div className="flex items-center text-xs sm:text-sm">
+                          {new Date(order.shipped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="w-[100px]">
                         {getStatusBadge(order.status, order.source)}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
+                      <TableCell className="w-[140px]">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleUpdateStatus(order)}
                             disabled={updatingStatus === order.id}
-                            className="h-8 px-2"
+                            className="h-7 px-1.5 text-xs"
                             title="Sync order data with WooCommerce"
                           >
                             {updatingStatus === order.id ? (
@@ -885,26 +883,26 @@ const ShippedPage = () => {
                             ) : (
                               <RotateCcw className="h-3 w-3" />
                             )}
-                            <span className="ml-1 text-xs">Update</span>
+                            <span className="ml-1 hidden sm:inline">Update</span>
                           </Button>
                           
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSendWhatsApp(order)}
-                            disabled={sendingMessage === order.id || !order.reseller_name || !order.reseller_number}
-                            className="h-8 px-2"
-                            title={!order.reseller_name || !order.reseller_number ? 'No reseller contact details' : 'Send WhatsApp notification to reseller'}
-                          >
-                            {sendingMessage === order.id ? (
-                              <RefreshCw className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <MessageSquare className="h-3 w-3" />
-                            )}
-                            <span className="ml-1 text-xs">
-                              {!order.reseller_name || !order.reseller_number ? 'No Contact' : 'WhatsApp'}
-                            </span>
-                          </Button>
+                          {order.reseller_name && order.reseller_number && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleSendWhatsApp(order)}
+                              disabled={sendingMessage === order.id}
+                              className="h-7 px-1.5 text-xs"
+                              title="Send WhatsApp notification to reseller"
+                            >
+                              {sendingMessage === order.id ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <MessageSquare className="h-3 w-3" />
+                              )}
+                              <span className="ml-1 hidden sm:inline">WhatsApp</span>
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

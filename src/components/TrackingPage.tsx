@@ -893,39 +893,6 @@ const TrackingPage = () => {
                   )}
               </div>
 
-                {/* Reseller Information Section */}
-                {(currentOrder.reseller_name || currentOrder.reseller_number) && (
-                  <div className="border-t pt-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <MessageCircle className="h-4 w-4 text-blue-600" />
-                      <span className="font-medium text-blue-800">Reseller Details</span>
-                    </div>
-                    {currentOrder.reseller_name && (
-                      <p className="font-medium text-blue-900">{currentOrder.reseller_name}</p>
-                    )}
-                    {currentOrder.reseller_number ? (
-                      <div className="flex items-center space-x-2 mt-1">
-                        <MessageCircle className="h-4 w-4 text-green-600" />
-                        <p className="text-sm text-green-600 font-medium">
-                          WhatsApp: {currentOrder.reseller_number}
-                        </p>
-                      </div>
-                    ) : (
-                      currentOrder.reseller_name && (
-                        <div className="flex items-center space-x-2 mt-1">
-                          <XCircle className="h-4 w-4 text-red-600" />
-                          <p className="text-sm text-red-600 font-medium">No reseller phone - WhatsApp unavailable</p>
-                        </div>
-                      )
-                    )}
-                    <div className="mt-2 p-2 bg-blue-50 rounded-lg">
-                      <p className="text-xs text-blue-700">
-                        📱 Tracking notifications will be sent to this reseller
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 {currentOrder.shipping_address && (
                   <div className="flex items-start space-x-2">
                     <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
@@ -953,7 +920,7 @@ const TrackingPage = () => {
                       <p><strong>Tracking Number:</strong> {trackingNumberInput}</p>
                       <p><strong>Courier:</strong> {getCourierDisplayName(selectedCarrier || detectedCarrier)}</p>
                       <p className="text-xs text-blue-600 mt-1">
-                        📱 WhatsApp notification will be sent to reseller when you add tracking
+                        📱 WhatsApp notification will be sent when you add tracking
                       </p>
                       <p className="text-xs text-blue-600">
                         🔄 Order will be moved to shipped status automatically
