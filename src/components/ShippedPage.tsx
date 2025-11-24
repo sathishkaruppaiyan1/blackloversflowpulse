@@ -4,7 +4,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, Search, Package, CheckCircle, Calendar, MapPin, Truck, MessageSquare, RotateCcw, Download } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { RefreshCw, Search, Package, CheckCircle, Calendar as CalendarIcon, MapPin, Truck, MessageSquare, RotateCcw, Download, X, ChevronDown } from 'lucide-react';
 import { useWooCommerceOrders } from '@/hooks/useWooCommerceOrders';
 import { useCompletedOrders } from '@/hooks/useCompletedOrders';
 import { WooCommerceOrder, wooCommerceOrderService } from '@/services/wooCommerceOrderService';
@@ -12,6 +15,9 @@ import { interaktService } from '@/services/interaktService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { exportOrdersToCSV } from '@/utils/csvExport';
+import { format } from 'date-fns';
+import { DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
 
 // Extended type for shipped orders with source information
 interface ShippedOrderWithSource extends WooCommerceOrder {
@@ -22,6 +28,9 @@ const ShippedPage = () => {
   const { orders: allOrders, loading, fetchOrdersFromWooCommerce, refetch } = useWooCommerceOrders();
   const { completedOrders, loading: completedLoading, refetch: refetchCompleted } = useCompletedOrders();
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
+  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [customRangeOpen, setCustomRangeOpen] = useState(false);
   const [filteredOrders, setFilteredOrders] = useState<ShippedOrderWithSource[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -116,22 +125,84 @@ const ShippedPage = () => {
     return sortedOrders;
   };
 
+  // Helper function to check if date range is this week
+  const isThisWeek = (from: Date, to: Date): boolean => {
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+    const weekStart = new Date(today);
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date();
+    weekEnd.setHours(23, 59, 59, 999);
+    
+    const fromTime = new Date(from).setHours(0, 0, 0, 0);
+    const toTime = new Date(to).setHours(23, 59, 59, 999);
+    const weekStartTime = weekStart.getTime();
+    const weekEndTime = weekEnd.getTime();
+    
+    return fromTime === weekStartTime && toTime === weekEndTime;
+  };
+
   const shippedOrders = getShippedOrders();
 
-  // Filter orders based on search term
+  // Sync selectedFilter with dateRange changes
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setFilteredOrders(shippedOrders);
-    } else {
-      const filtered = shippedOrders.filter(order =>
+    if (!dateRange?.from) {
+      setSelectedFilter('all');
+    } else if (dateRange?.from && dateRange?.to) {
+      if (isToday(dateRange.from, dateRange.to)) {
+        setSelectedFilter('today');
+      } else if (isThisWeek(dateRange.from, dateRange.to)) {
+        setSelectedFilter('thisWeek');
+      } else if (isThisMonth(dateRange.from, dateRange.to)) {
+        setSelectedFilter('thisMonth');
+      } else {
+        setSelectedFilter('custom');
+      }
+    } else if (dateRange?.from) {
+      setSelectedFilter('custom');
+    }
+  }, [dateRange]);
+
+  // Filter orders based on search term and date range
+  useEffect(() => {
+    let filtered = [...shippedOrders];
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      filtered = filtered.filter(order =>
         order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.carrier?.toLowerCase().includes(searchTerm.toLowerCase())
       );
-      setFilteredOrders(filtered);
     }
-  }, [searchTerm, shippedOrders]);
+
+    // Apply date range filter (filter by shipped_at date)
+    if (dateRange?.from) {
+      filtered = filtered.filter(order => {
+        const shippedDate = order.shipped_at ? new Date(order.shipped_at) : null;
+        if (!shippedDate) return false;
+        
+        const fromDate = new Date(dateRange.from);
+        fromDate.setHours(0, 0, 0, 0);
+        
+        if (dateRange.to) {
+          const toDate = new Date(dateRange.to);
+          toDate.setHours(23, 59, 59, 999);
+          return shippedDate >= fromDate && shippedDate <= toDate;
+        } else {
+          // If only from date is selected, filter for that single day
+          const fromDateEnd = new Date(dateRange.from);
+          fromDateEnd.setHours(23, 59, 59, 999);
+          return shippedDate >= fromDate && shippedDate <= fromDateEnd;
+        }
+      });
+    }
+
+    setFilteredOrders(filtered);
+  }, [searchTerm, dateRange, shippedOrders]);
 
   const getCarrierDisplayName = (carrier?: string) => {
     if (!carrier) return 'Unknown';
@@ -306,7 +377,14 @@ const ShippedPage = () => {
     setExporting(true);
     try {
       const timestamp = new Date().toISOString().split('T')[0];
-      const filename = `shipped-orders-${timestamp}.csv`;
+      let filename = `shipped-orders-${timestamp}.csv`;
+      
+      // Add date range to filename if filter is applied
+      if (dateRange?.from) {
+        const fromStr = format(dateRange.from, 'yyyy-MM-dd');
+        const toStr = dateRange.to ? format(dateRange.to, 'yyyy-MM-dd') : fromStr;
+        filename = `shipped-orders-${fromStr}-to-${toStr}.csv`;
+      }
       
       exportOrdersToCSV(filteredOrders, filename);
       toast.success(`Exported ${filteredOrders.length} orders to ${filename}`);
@@ -316,6 +394,68 @@ const ShippedPage = () => {
     } finally {
       setExporting(false);
     }
+  };
+
+  const clearDateRange = () => {
+    setDateRange(undefined);
+    setSelectedFilter('all');
+  };
+
+  const setTodayFilter = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    setDateRange({ from: today, to: todayEnd });
+    setSelectedFilter('today');
+  };
+
+  const setThisWeekFilter = () => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust to Monday
+    const weekStart = new Date(today);
+    weekStart.setDate(diff);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date();
+    weekEnd.setHours(23, 59, 59, 999);
+    setDateRange({ from: weekStart, to: weekEnd });
+    setSelectedFilter('thisWeek');
+  };
+
+  const setThisMonthFilter = () => {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+    setDateRange({ from: monthStart, to: monthEnd });
+    setSelectedFilter('thisMonth');
+  };
+
+  const handleCustomRangeSelect = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from && range?.to) {
+      setSelectedFilter('custom');
+    } else if (range?.from) {
+      setSelectedFilter('custom');
+    } else {
+      setSelectedFilter('all');
+    }
+  };
+
+  const getFilterLabel = () => {
+    if (!dateRange?.from) return 'All Dates';
+    if (selectedFilter === 'today') return 'Today';
+    if (selectedFilter === 'thisWeek') return 'This Week';
+    if (selectedFilter === 'thisMonth') return 'This Month';
+    if (selectedFilter === 'custom' && dateRange?.from && dateRange?.to) {
+      return `${format(dateRange.from, "dd-MM-yyyy")} - ${format(dateRange.to, "dd-MM-yyyy")}`;
+    }
+    if (selectedFilter === 'custom' && dateRange?.from) {
+      return format(dateRange.from, "dd-MM-yyyy");
+    }
+    return 'All Dates';
   };
 
   const getStatusBadge = (status: string, source: 'active' | 'completed') => {
@@ -355,6 +495,88 @@ const ShippedPage = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Combined Date Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-between text-left font-normal",
+                  !dateRange && "text-muted-foreground"
+                )}
+              >
+                <div className="flex items-center">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <span>{getFilterLabel()}</span>
+                </div>
+                <ChevronDown className="h-4 w-4 opacity-50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem onClick={clearDateRange}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                All Dates
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={setTodayFilter}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Today
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={setThisWeekFilter}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                This Week
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={setThisMonthFilter}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                This Month
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <Popover open={customRangeOpen} onOpenChange={setCustomRangeOpen}>
+                <PopoverTrigger asChild>
+                  <DropdownMenuItem 
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setCustomRangeOpen(true);
+                    }}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Custom Range
+                  </DropdownMenuItem>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end" side="right">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={(range) => {
+                      handleCustomRangeSelect(range);
+                      if (range?.from && range?.to) {
+                        setCustomRangeOpen(false);
+                      }
+                    }}
+                    numberOfMonths={2}
+                  />
+                  <div className="p-3 border-t flex items-center justify-between">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        clearDateRange();
+                        setCustomRangeOpen(false);
+                      }}
+                      className="w-full"
+                      disabled={!dateRange?.from}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Filter
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Button 
             onClick={handleExportCSV} 
             disabled={exporting || filteredOrders.length === 0}
