@@ -772,7 +772,6 @@ const ShippedPage = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center text-sm">
-                          <Calendar className="h-3 w-3 mr-1 text-blue-600" />
                           {formatDate(order.shipped_at)}
                         </div>
                       </TableCell>
