@@ -368,11 +368,123 @@ export const wooCommerceOrderService = {
       }
 
       console.log(`✅ Successfully synced ${ordersToSync.length} orders from WooCommerce`);
+      
+      // Now check existing orders in Supabase that are "processing" and verify their WooCommerce status
+      // This ensures that if an order's status changed in WooCommerce, it's updated in Supabase
+      await this.syncExistingProcessingOrders(settings, user.id);
+      
       toast.success(`Synced ${ordersToSync.length} orders from WooCommerce`);
       return ordersToSync.map((o: any) => o.woo_order_id as string);
     }
 
+    // Even if no new processing orders, still check existing ones
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: settings } = await supabase
+        .from('woocommerce_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (settings) {
+        await this.syncExistingProcessingOrders(settings, user.id);
+      }
+    }
+
     return [];
+  },
+
+  async syncExistingProcessingOrders(settings: any, userId: string): Promise<void> {
+    console.log('🔄 Checking existing processing orders for status changes...');
+    
+    // Get all orders in Supabase that are currently "processing"
+    const { data: existingProcessingOrders, error: fetchError } = await supabase
+      .from('orders')
+      .select('id, woo_order_id, order_number, status')
+      .eq('user_id', userId)
+      .eq('status', 'processing');
+    
+    if (fetchError || !existingProcessingOrders || existingProcessingOrders.length === 0) {
+      console.log('No existing processing orders to check');
+      return;
+    }
+    
+    console.log(`📋 Checking ${existingProcessingOrders.length} existing processing orders...`);
+    
+    let updatedCount = 0;
+    const batchSize = 10; // Process in batches to avoid overwhelming the API
+    
+    for (let i = 0; i < existingProcessingOrders.length; i += batchSize) {
+      const batch = existingProcessingOrders.slice(i, i + batchSize);
+      
+      await Promise.all(batch.map(async (order: any) => {
+        try {
+          // Fetch current status from WooCommerce
+          const { data, error } = await supabase.functions.invoke('fetch-woocommerce-orders', {
+            body: {
+              store_url: settings.store_url,
+              consumer_key: settings.consumer_key,
+              consumer_secret: settings.consumer_secret,
+              order_id: order.woo_order_id
+            }
+          });
+          
+          if (error || data?.error || !data?.order) {
+            console.log(`⚠️ Could not fetch WooCommerce status for order ${order.woo_order_id}:`, error || data?.error);
+            return;
+          }
+          
+          const wooOrder = data.order;
+          const wooStatus = wooOrder.status;
+          
+          // Map WooCommerce status to our status
+          // If WooCommerce status is no longer "processing", update Supabase
+          if (wooStatus !== 'processing') {
+            let newStatus = 'processing';
+            
+            // Map WooCommerce statuses to our statuses
+            if (wooStatus === 'completed' || wooStatus === 'delivered') {
+              newStatus = 'completed';
+            } else if (wooStatus === 'cancelled' || wooStatus === 'refunded' || wooStatus === 'failed') {
+              newStatus = 'completed'; // Treat cancelled/refunded as completed for our purposes
+            } else if (wooStatus === 'on-hold') {
+              newStatus = 'processing'; // Keep as processing
+            } else {
+              // For other statuses, keep as processing but log
+              console.log(`Order ${order.order_number} has WooCommerce status "${wooStatus}", keeping as processing`);
+              return;
+            }
+            
+            // Update order status in Supabase
+            const { error: updateError } = await supabase
+              .from('orders')
+              .update({ status: newStatus })
+              .eq('id', order.id);
+            
+            if (updateError) {
+              console.error(`Error updating order ${order.order_number}:`, updateError);
+            } else {
+              console.log(`✅ Updated order ${order.order_number} from "processing" to "${newStatus}" (WooCommerce status: ${wooStatus})`);
+              updatedCount++;
+            }
+          }
+        } catch (error) {
+          console.error(`Error checking order ${order.order_number}:`, error);
+        }
+      }));
+      
+      // Small delay between batches to avoid rate limiting
+      if (i + batchSize < existingProcessingOrders.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    if (updatedCount > 0) {
+      console.log(`✅ Updated ${updatedCount} orders that changed status in WooCommerce`);
+      toast.success(`Updated ${updatedCount} orders with status changes from WooCommerce`);
+    } else {
+      console.log('✅ All processing orders still match WooCommerce status');
+    }
   },
 
   async fetchOrders(): Promise<WooCommerceOrder[]> {
