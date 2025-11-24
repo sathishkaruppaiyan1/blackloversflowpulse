@@ -126,6 +126,21 @@ const ShippedPage = () => {
     return sortedOrders;
   };
 
+  // Helper function to check if date range is today
+  const isToday = (from: Date, to: Date): boolean => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    
+    const fromTime = new Date(from).setHours(0, 0, 0, 0);
+    const toTime = new Date(to).setHours(23, 59, 59, 999);
+    const todayStartTime = today.getTime();
+    const todayEndTime = todayEnd.getTime();
+    
+    return fromTime === todayStartTime && toTime === todayEndTime;
+  };
+
   // Helper function to check if date range is this week
   const isThisWeek = (from: Date, to: Date): boolean => {
     const today = new Date();
@@ -143,6 +158,22 @@ const ShippedPage = () => {
     const weekEndTime = weekEnd.getTime();
     
     return fromTime === weekStartTime && toTime === weekEndTime;
+  };
+
+  // Helper function to check if date range is this month
+  const isThisMonth = (from: Date, to: Date): boolean => {
+    const today = new Date();
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+    
+    const fromTime = new Date(from).setHours(0, 0, 0, 0);
+    const toTime = new Date(to).setHours(23, 59, 59, 999);
+    const monthStartTime = monthStart.getTime();
+    const monthEndTime = monthEnd.getTime();
+    
+    return fromTime === monthStartTime && toTime === monthEndTime;
   };
 
   const shippedOrders = getShippedOrders();
