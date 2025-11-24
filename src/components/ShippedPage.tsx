@@ -472,14 +472,14 @@ const ShippedPage = () => {
 
   const handleCustomRangeClick = () => {
     setDropdownOpen(false);
-    // Small delay to ensure dropdown closes before opening popover
+    // Longer delay to ensure dropdown fully closes before opening popover
     setTimeout(() => {
       setCustomRangeOpen(true);
       // Focus the hidden button to ensure popover positioning works
       if (customRangeButtonRef.current) {
         customRangeButtonRef.current.focus();
       }
-    }, 150);
+    }, 300);
   };
 
   const handleCustomRangeSelect = (range: DateRange | undefined) => {
@@ -534,31 +534,37 @@ const ShippedPage = () => {
   const uniqueOrders = shippedOrders;
 
   return (
-    <div className="w-full min-h-screen space-y-6 p-4 md:p-6">
+    <div className="w-full min-h-screen space-y-4 p-2 sm:p-4 md:p-6 max-w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Shipped Orders</h1>
-          <p className="text-muted-foreground">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+        <div className="min-w-0 flex-shrink">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight truncate">Shipped Orders</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             View all shipped and delivered orders with tracking information
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 relative">
+        <div className="flex flex-wrap items-center gap-2 relative min-w-0">
           {/* Combined Date Filter Dropdown */}
-          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+          <DropdownMenu open={dropdownOpen} onOpenChange={(open) => {
+            setDropdownOpen(open);
+            // Close custom range popover when dropdown opens
+            if (open) {
+              setCustomRangeOpen(false);
+            }
+          }}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[200px] justify-between text-left font-normal",
+                  "w-[160px] sm:w-[180px] md:w-[200px] justify-between text-left font-normal text-xs sm:text-sm",
                   !dateRange && "text-muted-foreground"
                 )}
               >
-                <div className="flex items-center">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  <span>{getFilterLabel()}</span>
+                <div className="flex items-center min-w-0">
+                  <CalendarIcon className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                  <span className="truncate">{getFilterLabel()}</span>
                 </div>
-                <ChevronDown className="h-4 w-4 opacity-50" />
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 opacity-50 flex-shrink-0 ml-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[200px]">
@@ -581,9 +587,13 @@ const ShippedPage = () => {
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCustomRangeClick();
+                }}
                 onSelect={(e) => {
                   e.preventDefault();
-                  handleCustomRangeClick();
                 }}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
@@ -593,13 +603,20 @@ const ShippedPage = () => {
           </DropdownMenu>
 
           {/* Custom Range Popover - Separate from dropdown */}
-          <Popover open={customRangeOpen} onOpenChange={setCustomRangeOpen}>
+          <Popover open={customRangeOpen} onOpenChange={(open) => {
+            // Only allow closing if user explicitly closes or both dates are selected
+            if (!open && dateRange?.from && dateRange?.to) {
+              setCustomRangeOpen(false);
+            } else {
+              setCustomRangeOpen(open);
+            }
+          }}>
             <PopoverTrigger asChild>
               <Button
                 ref={customRangeButtonRef}
                 variant="outline"
                 className={cn(
-                  "w-[200px] justify-between text-left font-normal absolute left-0 top-0 opacity-0 pointer-events-none",
+                  "w-[160px] sm:w-[180px] md:w-[200px] justify-between text-left font-normal absolute left-0 top-0 opacity-0 pointer-events-none",
                   !dateRange && "text-muted-foreground"
                 )}
                 aria-hidden="true"
@@ -611,7 +628,18 @@ const ShippedPage = () => {
                 </div>
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom" sideOffset={5}>
+            <PopoverContent 
+              className="w-auto p-0 z-[100]" 
+              align="start" 
+              side="bottom" 
+              sideOffset={5}
+              onInteractOutside={(e) => {
+                // Prevent closing when clicking outside if only one date is selected
+                if (dateRange?.from && !dateRange?.to) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <Calendar
                 initialFocus
                 mode="range"
@@ -650,23 +678,31 @@ const ShippedPage = () => {
             onClick={handleExportCSV} 
             disabled={exporting || filteredOrders.length === 0}
             variant="outline"
+            size="sm"
+            className="text-xs sm:text-sm"
           >
             {exporting ? (
-              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
             ) : (
-              <Download className="h-4 w-4 mr-2" />
+              <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
             )}
-            Export CSV
+            <span className="hidden sm:inline">Export CSV</span>
+            <span className="sm:hidden">Export</span>
           </Button>
-          <Button onClick={handleRefresh} disabled={loading || completedLoading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${(loading || completedLoading) ? 'animate-spin' : ''}`} />
+          <Button 
+            onClick={handleRefresh} 
+            disabled={loading || completedLoading}
+            size="sm"
+            className="text-xs sm:text-sm"
+          >
+            <RefreshCw className={`h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${(loading || completedLoading) ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Shipped</CardTitle>
@@ -712,40 +748,40 @@ const ShippedPage = () => {
       </div>
 
       {/* Search and Filter */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Truck className="h-5 w-5 text-blue-600" />
+      <Card className="w-full">
+        <CardHeader className="p-3 sm:p-6">
+          <CardTitle className="flex items-center space-x-2 text-base sm:text-lg">
+            <Truck className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
             <span>All Shipped Orders ({filteredOrders.length})</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 sm:p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2 sm:left-3 top-2.5 sm:top-3 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by order number, customer name, tracking number, or carrier..."
+                placeholder="Search orders..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-7 sm:pl-9 text-xs sm:text-sm"
               />
             </div>
           </div>
 
           {/* Orders Table */}
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
+          <div className="rounded-md border overflow-x-auto w-full">
+            <Table className="min-w-[800px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead>Total</TableHead>
-                  <TableHead>Carrier</TableHead>
-                  <TableHead>Tracking</TableHead>
-                  <TableHead>Shipped Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Order</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Customer</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Items</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Total</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Carrier</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Tracking</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Shipped Date</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
