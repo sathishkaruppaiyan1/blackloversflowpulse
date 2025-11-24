@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ const ShippedPage = () => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [customRangeOpen, setCustomRangeOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const customRangeButtonRef = useRef<HTMLButtonElement>(null);
   const [filteredOrders, setFilteredOrders] = useState<ShippedOrderWithSource[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -474,7 +475,11 @@ const ShippedPage = () => {
     // Small delay to ensure dropdown closes before opening popover
     setTimeout(() => {
       setCustomRangeOpen(true);
-    }, 100);
+      // Focus the hidden button to ensure popover positioning works
+      if (customRangeButtonRef.current) {
+        customRangeButtonRef.current.focus();
+      }
+    }, 150);
   };
 
   const handleCustomRangeSelect = (range: DateRange | undefined) => {
@@ -529,16 +534,16 @@ const ShippedPage = () => {
   const uniqueOrders = shippedOrders;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="w-full min-h-screen space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Shipped Orders</h1>
           <p className="text-muted-foreground">
             View all shipped and delivered orders with tracking information
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2 relative">
           {/* Combined Date Filter Dropdown */}
           <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
@@ -589,16 +594,36 @@ const ShippedPage = () => {
 
           {/* Custom Range Popover - Separate from dropdown */}
           <Popover open={customRangeOpen} onOpenChange={setCustomRangeOpen}>
-            <PopoverContent className="w-auto p-0" align="end" side="right">
+            <PopoverTrigger asChild>
+              <Button
+                ref={customRangeButtonRef}
+                variant="outline"
+                className={cn(
+                  "w-[200px] justify-between text-left font-normal absolute left-0 top-0 opacity-0 pointer-events-none",
+                  !dateRange && "text-muted-foreground"
+                )}
+                aria-hidden="true"
+                tabIndex={-1}
+              >
+                <div className="flex items-center">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <span>Custom Range</span>
+                </div>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 z-50" align="start" side="bottom" sideOffset={5}>
               <Calendar
                 initialFocus
                 mode="range"
-                defaultMonth={dateRange?.from}
+                defaultMonth={dateRange?.from || new Date()}
                 selected={dateRange}
                 onSelect={(range) => {
                   handleCustomRangeSelect(range);
+                  // Close popover when both dates are selected
                   if (range?.from && range?.to) {
-                    setCustomRangeOpen(false);
+                    setTimeout(() => {
+                      setCustomRangeOpen(false);
+                    }, 100);
                   }
                 }}
                 numberOfMonths={2}
@@ -708,7 +733,7 @@ const ShippedPage = () => {
           </div>
 
           {/* Orders Table */}
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
