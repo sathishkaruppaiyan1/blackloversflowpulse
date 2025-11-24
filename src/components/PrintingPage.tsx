@@ -86,21 +86,7 @@ const PrintingPage = () => {
 
   const handlePrint = async (order: WooCommerceOrder) => {
     console.log('Printing order:', order.order_number);
-    toast.success(`Printing order ${order.order_number}`);
-    
-    // Move to appropriate stage after printing based on bypass setting
-    try {
-      const targetStage = bypassPackingStage ? 'packed' : 'packing';
-      await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
-      await loadProcessingOrders();
-      const stageMessage = bypassPackingStage 
-        ? `Order ${order.order_number} moved to tracking stage` 
-        : `Order ${order.order_number} moved to packing stage`;
-      toast.success(stageMessage);
-    } catch (error: any) {
-      console.error('Error moving order:', error);
-      toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
-    }
+    // Don't move order here - wait for actual print confirmation
   };
 
   const moveToPackingStage = async (orderId: string) => {
@@ -224,7 +210,8 @@ const PrintingPage = () => {
             minHeight: format === 'A5' ? '8.27in' : '11in', // Minimum height for proper page sizing
             width: format === 'A5' ? '5.83in' : '8.27in',
             margin: '0 auto',
-            display: 'block'
+            display: 'block',
+            position: 'relative'
           }
         }, React.createElement(PrintComponent, {
           order: order,
@@ -270,26 +257,33 @@ const PrintingPage = () => {
                   box-sizing: border-box;
                 }
                 .packing-slip-page {
-                  page-break-before: always;
-                  page-break-after: always;
-                  page-break-inside: auto;
+                  page-break-before: always !important;
+                  page-break-after: always !important;
+                  page-break-inside: auto !important;
                   width: ${format === 'A5' ? '5.83in' : '8.27in'};
                   min-height: ${format === 'A5' ? '8.27in' : '11in'};
                   margin: 0 auto;
                   display: block;
+                  position: relative;
                 }
                 .packing-slip-page:first-child {
-                  page-break-before: auto;
+                  page-break-before: auto !important;
                 }
                 .packing-slip-page:last-child {
-                  page-break-after: auto;
+                  page-break-after: auto !important;
                 }
                 /* Override A5 component fixed height to allow multi-page content */
                 .packing-slip-page > div {
                   height: auto !important;
                   min-height: ${format === 'A5' ? '8.27in' : '11in'} !important;
+                  max-height: none !important;
                   overflow: visible !important;
                   page-break-inside: auto !important;
+                  page-break-after: auto !important;
+                }
+                /* Ensure each order wrapper forces a new page */
+                .packing-slip-page + .packing-slip-page {
+                  page-break-before: always !important;
                 }
                 img {
                   max-width: 100% !important;
@@ -302,6 +296,13 @@ const PrintingPage = () => {
                 }
                 tr {
                   page-break-inside: avoid;
+                }
+                /* Ensure proper spacing between orders */
+                .packing-slip-page {
+                  break-before: page;
+                }
+                .packing-slip-page:first-child {
+                  break-before: auto;
                 }
               }
               body { 
@@ -330,31 +331,42 @@ const PrintingPage = () => {
           toast.success(`Printing ${selectedOrders.length} packing slips...`);
         }, 2000);
 
+        // Track if print dialog was actually opened
+        let printDialogOpened = false;
+        
+        printWindow.addEventListener('beforeprint', () => {
+          printDialogOpened = true;
+        });
+
         // Handle after print - move orders to appropriate stage based on bypass setting
+        // Only move orders if print dialog was actually opened (user interacted with it)
         printWindow.addEventListener('afterprint', async () => {
-          printWindow.close();
-          
-          try {
-            const targetStage = bypassPackingStage ? 'packed' : 'packing';
-            for (const order of selectedOrders) {
-              await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
+          // Only move orders if print dialog was opened (user didn't just cancel immediately)
+          if (printDialogOpened) {
+            try {
+              const targetStage = bypassPackingStage ? 'packed' : 'packing';
+              for (const order of selectedOrders) {
+                await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
+              }
+              await loadProcessingOrders();
+              const stageMessage = bypassPackingStage
+                ? `Printed and moved ${selectedOrders.length} orders to tracking stage`
+                : `Printed and moved ${selectedOrders.length} orders to packing stage`;
+              toast.success(stageMessage);
+            } catch (error: any) {
+              console.error('Error moving orders:', error);
+              const errorMessage = bypassPackingStage
+                ? 'Printed successfully, but failed to move some orders to tracking stage'
+                : 'Printed successfully, but failed to move some orders to packing stage';
+              toast.error(errorMessage);
             }
-            await loadProcessingOrders();
-            const stageMessage = bypassPackingStage
-              ? `Printed and moved ${selectedOrders.length} orders to tracking stage`
-              : `Printed and moved ${selectedOrders.length} orders to packing stage`;
-            toast.success(stageMessage);
-          } catch (error: any) {
-            console.error('Error moving orders:', error);
-            const errorMessage = bypassPackingStage
-              ? 'Printed successfully, but failed to move some orders to tracking stage'
-              : 'Printed successfully, but failed to move some orders to packing stage';
-            toast.error(errorMessage);
+            
+            // Clear selection after printing
+            setSelectedOrderIds(new Set());
+            setSelectAll(false);
           }
           
-          // Clear selection after printing
-          setSelectedOrderIds(new Set());
-          setSelectAll(false);
+          printWindow.close();
         });
 
         // Fallback cleanup after 30 seconds if user doesn't print
@@ -775,7 +787,21 @@ const PrintingPage = () => {
                         <PackingSlipTemplate
                           order={order}
                           showPrintButton={true}
-                          onPrint={() => handlePrint(order)}
+                          onPrint={async () => {
+                            // Move order to appropriate stage after actual printing
+                            try {
+                              const targetStage = bypassPackingStage ? 'packed' : 'packing';
+                              await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
+                              await loadProcessingOrders();
+                              const stageMessage = bypassPackingStage 
+                                ? `Order ${order.order_number} moved to tracking stage` 
+                                : `Order ${order.order_number} moved to packing stage`;
+                              toast.success(stageMessage);
+                            } catch (error: any) {
+                              console.error('Error moving order:', error);
+                              toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
+                            }
+                          }}
                         />
                       </DialogContent>
                     </Dialog>

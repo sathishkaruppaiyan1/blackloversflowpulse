@@ -267,16 +267,35 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
 
         printWindow.document.close();
 
+        // Track if print dialog was actually opened
+        let printDialogOpened = false;
+        
+        printWindow.addEventListener('beforeprint', () => {
+          printDialogOpened = true;
+        });
+
         // Wait for content and images to load, then print
         setTimeout(() => {
           printWindow.focus();
           printWindow.print();
         }, 2000);
 
-        // Close window after printing and call onPrint callback
+        // Close window after printing and call onPrint callback only if print dialog was opened
         printWindow.addEventListener('afterprint', () => {
+          // Only move order if print dialog was actually opened (user interacted with it)
+          if (printDialogOpened && onPrint) {
+            // Small delay to ensure print actually happened
+            setTimeout(() => {
+              onPrint();
+            }, 500);
+          }
           printWindow.close();
-          if (onPrint) onPrint();
+        });
+        
+        // Fallback: if window is closed without afterprint (user cancelled), don't move order
+        printWindow.addEventListener('beforeunload', () => {
+          // If window closes without afterprint firing, it means user cancelled
+          // Don't call onPrint in this case
         });
 
         // Clean up
