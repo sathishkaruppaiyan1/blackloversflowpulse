@@ -810,7 +810,18 @@ const ShippedPage = () => {
                         <div className="flex flex-col min-w-0">
                           <span className="font-medium text-xs sm:text-sm truncate">#{order.order_number}</span>
                           <span className="text-xs text-muted-foreground truncate">
-                            {new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                            {new Date(order.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {(() => {
+                              const date = new Date(order.created_at);
+                              const hours = date.getHours();
+                              const minutes = date.getMinutes();
+                              const ampm = hours >= 12 ? 'PM' : 'AM';
+                              const displayHours = hours % 12 || 12;
+                              const displayMinutes = minutes.toString().padStart(2, '0');
+                              return `${displayHours}.${displayMinutes}${ampm}`;
+                            })()}
                           </span>
                           {order.source === 'completed' && (
                             <span className="text-xs text-orange-600 font-medium">Archived</span>
@@ -861,16 +872,27 @@ const ShippedPage = () => {
                         )}
                       </TableCell>
                       <TableCell className="w-[120px]">
-                        <div className="flex items-center text-xs sm:text-sm">
-                          {order.shipped_at ? (() => {
-                            const date = new Date(order.shipped_at);
-                            const hours = date.getHours();
-                            const minutes = date.getMinutes();
-                            const ampm = hours >= 12 ? 'PM' : 'AM';
-                            const displayHours = hours % 12 || 12;
-                            const displayMinutes = minutes.toString().padStart(2, '0');
-                            return `${displayHours}.${displayMinutes}${ampm}`;
-                          })() : 'N/A'}
+                        <div className="flex flex-col text-xs sm:text-sm">
+                          {order.shipped_at ? (
+                            <>
+                              <span className="font-medium">
+                                {new Date(order.shipped_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {(() => {
+                                  const date = new Date(order.shipped_at);
+                                  const hours = date.getHours();
+                                  const minutes = date.getMinutes();
+                                  const ampm = hours >= 12 ? 'PM' : 'AM';
+                                  const displayHours = hours % 12 || 12;
+                                  const displayMinutes = minutes.toString().padStart(2, '0');
+                                  return `${displayHours}.${displayMinutes}${ampm}`;
+                                })()}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="w-[100px]">
