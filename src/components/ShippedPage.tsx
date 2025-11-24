@@ -31,6 +31,7 @@ const ShippedPage = () => {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [customRangeOpen, setCustomRangeOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [filteredOrders, setFilteredOrders] = useState<ShippedOrderWithSource[]>([]);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
@@ -399,6 +400,7 @@ const ShippedPage = () => {
   const clearDateRange = () => {
     setDateRange(undefined);
     setSelectedFilter('all');
+    setDropdownOpen(false);
   };
 
   const setTodayFilter = () => {
@@ -408,6 +410,7 @@ const ShippedPage = () => {
     todayEnd.setHours(23, 59, 59, 999);
     setDateRange({ from: today, to: todayEnd });
     setSelectedFilter('today');
+    setDropdownOpen(false);
   };
 
   const setThisWeekFilter = () => {
@@ -421,6 +424,7 @@ const ShippedPage = () => {
     weekEnd.setHours(23, 59, 59, 999);
     setDateRange({ from: weekStart, to: weekEnd });
     setSelectedFilter('thisWeek');
+    setDropdownOpen(false);
   };
 
   const setThisMonthFilter = () => {
@@ -431,6 +435,15 @@ const ShippedPage = () => {
     monthEnd.setHours(23, 59, 59, 999);
     setDateRange({ from: monthStart, to: monthEnd });
     setSelectedFilter('thisMonth');
+    setDropdownOpen(false);
+  };
+
+  const handleCustomRangeClick = () => {
+    setDropdownOpen(false);
+    // Small delay to ensure dropdown closes before opening popover
+    setTimeout(() => {
+      setCustomRangeOpen(true);
+    }, 100);
   };
 
   const handleCustomRangeSelect = (range: DateRange | undefined) => {
@@ -496,7 +509,7 @@ const ShippedPage = () => {
         </div>
         <div className="flex items-center space-x-2">
           {/* Combined Date Filter Dropdown */}
-          <DropdownMenu>
+          <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -531,51 +544,51 @@ const ShippedPage = () => {
                 This Month
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <Popover open={customRangeOpen} onOpenChange={setCustomRangeOpen}>
-                <PopoverTrigger asChild>
-                  <DropdownMenuItem 
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setCustomRangeOpen(true);
-                    }}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    Custom Range
-                  </DropdownMenuItem>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="end" side="right">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={(range) => {
-                      handleCustomRangeSelect(range);
-                      if (range?.from && range?.to) {
-                        setCustomRangeOpen(false);
-                      }
-                    }}
-                    numberOfMonths={2}
-                  />
-                  <div className="p-3 border-t flex items-center justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        clearDateRange();
-                        setCustomRangeOpen(false);
-                      }}
-                      className="w-full"
-                      disabled={!dateRange?.from}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Clear Filter
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  handleCustomRangeClick();
+                }}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Custom Range
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Custom Range Popover - Separate from dropdown */}
+          <Popover open={customRangeOpen} onOpenChange={setCustomRangeOpen}>
+            <PopoverContent className="w-auto p-0" align="end" side="right">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={(range) => {
+                  handleCustomRangeSelect(range);
+                  if (range?.from && range?.to) {
+                    setCustomRangeOpen(false);
+                  }
+                }}
+                numberOfMonths={2}
+              />
+              <div className="p-3 border-t flex items-center justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    clearDateRange();
+                    setCustomRangeOpen(false);
+                  }}
+                  className="w-full"
+                  disabled={!dateRange?.from}
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filter
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
           
           <Button 
             onClick={handleExportCSV} 
