@@ -37,8 +37,11 @@ export const bulkOrderMovementService = {
     let failedCount = 0;
     const errors: string[] = [];
 
-    for (const orderId of orderIds) {
+    for (let i = 0; i < orderIds.length; i++) {
+      const orderId = orderIds[i];
       try {
+        console.log(`🔄 Processing order ${i + 1}/${orderIds.length}: ${orderId}`);
+        
         // Get current order info
         const { data: currentOrder, error: fetchError } = await supabase
           .from('orders')
@@ -47,7 +50,17 @@ export const bulkOrderMovementService = {
           .single();
 
         if (fetchError) {
-          errors.push(`Failed to fetch order ${orderId}: ${fetchError.message}`);
+          const errorMsg = `Failed to fetch order ${orderId}: ${fetchError.message}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
+          failedCount++;
+          continue;
+        }
+        
+        if (!currentOrder) {
+          const errorMsg = `Order ${orderId} not found in database`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
           failedCount++;
           continue;
         }
@@ -75,13 +88,34 @@ export const bulkOrderMovementService = {
         }
 
         // Update in database
-        const { error: updateError } = await supabase
+        const { data: updatedOrder, error: updateError } = await supabase
           .from('orders')
           .update(updateData)
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .select('id, status, order_number')
+          .single();
 
         if (updateError) {
-          errors.push(`Failed to update order ${currentOrder.order_number}: ${updateError.message}`);
+          const errorMsg = `Failed to update order ${currentOrder.order_number} (${orderId}): ${updateError.message}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
+          failedCount++;
+          continue;
+        }
+        
+        if (!updatedOrder) {
+          const errorMsg = `Order ${currentOrder.order_number} (${orderId}) update returned no data`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
+          failedCount++;
+          continue;
+        }
+        
+        // Verify the update was successful
+        if (updatedOrder.status !== targetStage) {
+          const errorMsg = `Order ${currentOrder.order_number} (${orderId}) status mismatch: expected ${targetStage}, got ${updatedOrder.status}`;
+          console.error(`❌ ${errorMsg}`);
+          errors.push(errorMsg);
           failedCount++;
           continue;
         }

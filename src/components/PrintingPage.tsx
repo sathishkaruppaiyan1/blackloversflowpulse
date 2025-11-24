@@ -20,6 +20,7 @@ import { PrintingSearchBar } from './PrintingSearchBar';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { supabase } from '@/integrations/supabase/client';
+import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
 
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
@@ -124,12 +125,29 @@ const PrintingPage = () => {
   };
 
   const handleBulkPrint = async () => {
+    // Get selected orders and ensure we have valid order IDs
     const selectedOrders = orders.filter(order => selectedOrderIds.has(order.id));
-    console.log('Bulk printing orders:', selectedOrders.map(o => o.order_number));
     
-    if (selectedOrders.length === 0) {
+    // Also capture order IDs directly from the Set to ensure we have the source of truth
+    const selectedOrderIdsArray = Array.from(selectedOrderIds);
+    
+    console.log('Bulk printing orders:', {
+      selectedOrdersCount: selectedOrders.length,
+      selectedOrderIdsCount: selectedOrderIdsArray.length,
+      orderNumbers: selectedOrders.map(o => o.order_number),
+      orderIds: selectedOrderIdsArray
+    });
+    
+    if (selectedOrders.length === 0 || selectedOrderIdsArray.length === 0) {
       toast.error('No orders selected for printing');
       return;
+    }
+    
+    // Validate that all selected order IDs have corresponding orders
+    if (selectedOrders.length !== selectedOrderIdsArray.length) {
+      console.warn('⚠️ Mismatch: Some selected order IDs do not have corresponding orders');
+      const missingIds = selectedOrderIdsArray.filter(id => !selectedOrders.some(o => o.id === id));
+      console.warn('Missing order IDs:', missingIds);
     }
 
     toast.success(`Preparing to print ${selectedOrders.length} packing slips...`);
@@ -342,6 +360,136 @@ const PrintingPage = () => {
 
         printWindow.document.close();
 
+        // Track print dialog state
+        let printDialogOpened = false;
+        let printStartTime = 0;
+        const PRINT_CONFIRMATION_DELAY = 500; // Minimum time to consider print as executed (ms)
+        
+        // Capture order IDs at the time of printing to avoid closure issues
+        // IMPORTANT: Use selectedOrders.map() to maintain the exact same order as printed
+        // This ensures we move the exact same orders that were printed, in the same order
+        const orderIdsToMove = selectedOrders
+          .map(order => order.id)
+          .filter(id => {
+            if (!id) {
+              console.warn(`⚠️ Found order with null/undefined ID`);
+              return false;
+            }
+            // Verify the ID is in the selectedOrderIds Set (double-check)
+            if (!selectedOrderIds.has(id)) {
+              console.warn(`⚠️ Order ID ${id} not in selectedOrderIds Set`);
+              return false;
+            }
+            return true;
+          });
+        const ordersCount = selectedOrders.length; // Use the actual printed count
+        
+        // Log order IDs being moved for debugging
+        console.log(`📋 Bulk print: Printing ${selectedOrders.length} orders, will move ${orderIdsToMove.length} orders:`, 
+          orderIdsToMove.map((id, idx) => {
+            const order = selectedOrders.find(o => o.id === id);
+            return { 
+              index: idx, 
+              id: id, 
+              order_number: order?.order_number || 'UNKNOWN',
+              exists: !!order
+            };
+          })
+        );
+        
+        // Validate we have the same count
+        if (orderIdsToMove.length !== selectedOrders.length) {
+          console.error(`❌ CRITICAL: Mismatch! Printing ${selectedOrders.length} orders but only ${orderIdsToMove.length} IDs to move`);
+          const missingIds = selectedOrders
+            .filter(o => !orderIdsToMove.includes(o.id))
+            .map(o => ({ id: o.id, order_number: o.order_number }));
+          console.error('Missing order IDs:', missingIds);
+        }
+        
+        // Set up event listeners BEFORE calling print()
+        printWindow.addEventListener('beforeprint', () => {
+          printDialogOpened = true;
+          printStartTime = Date.now();
+          console.log('📄 Print dialog opened');
+        });
+
+        // Handle after print - move orders ONLY if print was actually executed
+        printWindow.addEventListener('afterprint', async () => {
+          const printDuration = Date.now() - printStartTime;
+          console.log(`📄 Print dialog closed after ${printDuration}ms`);
+          
+          // Check if print dialog was opened (user interacted with it)
+          if (printDialogOpened) {
+            // Heuristic: If print dialog was open for less than 200ms, user likely canceled immediately
+            // If open for longer, assume print was executed (user had time to click print)
+            // This is a best-effort detection since browsers don't provide reliable cancel detection
+            if (printDuration > PRINT_CONFIRMATION_DELAY) {
+              console.log('✅ Print likely executed (dialog open >500ms) - moving orders to next stage');
+              await moveOrdersToNextStage();
+            } else {
+              console.log('❌ Print likely canceled (dialog closed quickly) - NOT moving orders');
+              toast.info('Print canceled. Orders were not moved to the next stage.');
+            }
+          } else {
+            // Print dialog never opened (window closed before print)
+            console.log('❌ Print dialog never opened - NOT moving orders');
+          }
+          
+          printWindow.close();
+        });
+        
+        // Function to move orders to next stage
+        const moveOrdersToNextStage = async () => {
+          try {
+            const targetStage = bypassPackingStage ? 'packed' : 'packing';
+            console.log(`🔄 Moving ${orderIdsToMove.length} orders to ${targetStage} stage...`);
+            
+            // Use bulk movement service for better performance and error handling
+            const result = await bulkOrderMovementService.bulkUpdateOrderStage(
+              orderIdsToMove,
+              targetStage,
+              { skipWooSync: true, notes: 'Bulk printed' }
+            );
+            
+            console.log(`📊 Bulk movement result:`, {
+              success: result.success,
+              processedCount: result.processedCount,
+              failedCount: result.failedCount,
+              expectedCount: ordersCount,
+              errors: result.errors
+            });
+            
+            await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
+            
+            // Check if all orders were moved successfully
+            if (result.processedCount !== ordersCount) {
+              const missingCount = ordersCount - result.processedCount;
+              toast.warning(
+                `Printed ${ordersCount} orders, but only ${result.processedCount} were moved. ${missingCount} order(s) may need manual movement.`
+              );
+              if (result.errors.length > 0) {
+                console.error('❌ Errors during bulk movement:', result.errors);
+              }
+            } else if (result.success) {
+              // Only show success message if bulk service didn't already show one
+              const stageMessage = bypassPackingStage
+                ? `Printed and moved ${ordersCount} orders to tracking stage`
+                : `Printed and moved ${ordersCount} orders to packing stage`;
+              toast.success(stageMessage);
+            }
+          } catch (error: any) {
+            console.error('❌ Error moving orders:', error);
+            const errorMessage = bypassPackingStage
+              ? 'Printed successfully, but failed to move some orders to tracking stage'
+              : 'Printed successfully, but failed to move some orders to packing stage';
+            toast.error(errorMessage);
+          }
+          
+          // Clear selection after printing
+          setSelectedOrderIds(new Set());
+          setSelectAll(false);
+        };
+
         // Wait for content to load, then print
         setTimeout(() => {
           printWindow.focus();
@@ -349,44 +497,6 @@ const PrintingPage = () => {
           
           toast.success(`Printing ${selectedOrders.length} packing slips...`);
         }, 2000);
-
-        // Track if print dialog was actually opened
-        let printDialogOpened = false;
-        
-        printWindow.addEventListener('beforeprint', () => {
-          printDialogOpened = true;
-        });
-
-        // Handle after print - move orders to appropriate stage based on bypass setting
-        // Only move orders if print dialog was actually opened (user interacted with it)
-        printWindow.addEventListener('afterprint', async () => {
-          // Only move orders if print dialog was opened (user didn't just cancel immediately)
-          if (printDialogOpened) {
-            try {
-              const targetStage = bypassPackingStage ? 'packed' : 'packing';
-              for (const order of selectedOrders) {
-                await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
-              }
-              await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
-              const stageMessage = bypassPackingStage
-                ? `Printed and moved ${selectedOrders.length} orders to tracking stage`
-                : `Printed and moved ${selectedOrders.length} orders to packing stage`;
-              toast.success(stageMessage);
-            } catch (error: any) {
-              console.error('Error moving orders:', error);
-              const errorMessage = bypassPackingStage
-                ? 'Printed successfully, but failed to move some orders to tracking stage'
-                : 'Printed successfully, but failed to move some orders to packing stage';
-              toast.error(errorMessage);
-            }
-            
-            // Clear selection after printing
-            setSelectedOrderIds(new Set());
-            setSelectAll(false);
-          }
-          
-          printWindow.close();
-        });
 
         // Fallback cleanup after 30 seconds if user doesn't print
         setTimeout(() => {

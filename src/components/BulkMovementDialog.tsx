@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, AlertTriangle, Settings } from 'lucide-react';
 import { bulkOrderMovementService, OrderStage, BulkMoveOptions } from '@/services/bulkOrderMovementService';
+import { toast } from 'sonner';
 
 interface BulkMovementDialogProps {
   isOpen: boolean;
@@ -63,9 +64,13 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
       if (result.success || result.processedCount > 0) {
         onSuccess?.();
         handleClose();
+      } else {
+        // Show error if no orders were processed
+        toast.error(`Failed to move orders: ${result.errors[0] || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Bulk movement error:', error);
+      toast.error(`Failed to move orders: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
