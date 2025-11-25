@@ -142,6 +142,23 @@ const ShippedPage = () => {
     return fromTime === todayStartTime && toTime === todayEndTime;
   };
 
+  // Helper function to check if date range is yesterday
+  const isYesterday = (from: Date, to: Date): boolean => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const yesterdayEnd = new Date();
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    yesterdayEnd.setHours(23, 59, 59, 999);
+    
+    const fromTime = new Date(from).setHours(0, 0, 0, 0);
+    const toTime = new Date(to).setHours(23, 59, 59, 999);
+    const yesterdayStartTime = yesterday.getTime();
+    const yesterdayEndTime = yesterdayEnd.getTime();
+    
+    return fromTime === yesterdayStartTime && toTime === yesterdayEndTime;
+  };
+
   // Helper function to check if date range is this week
   const isThisWeek = (from: Date, to: Date): boolean => {
     const today = new Date();
@@ -186,6 +203,8 @@ const ShippedPage = () => {
     } else if (dateRange?.from && dateRange?.to) {
       if (isToday(dateRange.from, dateRange.to)) {
         setSelectedFilter('today');
+      } else if (isYesterday(dateRange.from, dateRange.to)) {
+        setSelectedFilter('yesterday');
       } else if (isThisWeek(dateRange.from, dateRange.to)) {
         setSelectedFilter('thisWeek');
       } else if (isThisMonth(dateRange.from, dateRange.to)) {
@@ -445,6 +464,18 @@ const ShippedPage = () => {
     setDropdownOpen(false);
   };
 
+  const setYesterdayFilter = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    const yesterdayEnd = new Date();
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    yesterdayEnd.setHours(23, 59, 59, 999);
+    setDateRange({ from: yesterday, to: yesterdayEnd });
+    setSelectedFilter('yesterday');
+    setDropdownOpen(false);
+  };
+
   const setThisWeekFilter = () => {
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -471,15 +502,18 @@ const ShippedPage = () => {
   };
 
   const handleCustomRangeClick = () => {
+    // Prevent dropdown from closing immediately
     setDropdownOpen(false);
-    // Longer delay to ensure dropdown fully closes before opening popover
-    setTimeout(() => {
-      setCustomRangeOpen(true);
-      // Focus the hidden button to ensure popover positioning works
-      if (customRangeButtonRef.current) {
-        customRangeButtonRef.current.focus();
-      }
-    }, 300);
+    // Use requestAnimationFrame to ensure dropdown closes before opening popover
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        setCustomRangeOpen(true);
+        // Focus the hidden button to ensure popover positioning works
+        if (customRangeButtonRef.current) {
+          customRangeButtonRef.current.focus();
+        }
+      }, 200);
+    });
   };
 
   const handleCustomRangeSelect = (range: DateRange | undefined) => {
@@ -496,6 +530,7 @@ const ShippedPage = () => {
   const getFilterLabel = () => {
     if (!dateRange?.from) return 'All Dates';
     if (selectedFilter === 'today') return 'Today';
+    if (selectedFilter === 'yesterday') return 'Yesterday';
     if (selectedFilter === 'thisWeek') return 'This Week';
     if (selectedFilter === 'thisMonth') return 'This Month';
     if (selectedFilter === 'custom' && dateRange?.from && dateRange?.to) {
@@ -577,6 +612,10 @@ const ShippedPage = () => {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 Today
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={setYesterdayFilter}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Yesterday
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={setThisWeekFilter}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 This Week
@@ -604,12 +643,8 @@ const ShippedPage = () => {
 
           {/* Custom Range Popover - Separate from dropdown */}
           <Popover open={customRangeOpen} onOpenChange={(open) => {
-            // Only allow closing if user explicitly closes or both dates are selected
-            if (!open && dateRange?.from && dateRange?.to) {
-              setCustomRangeOpen(false);
-            } else {
-              setCustomRangeOpen(open);
-            }
+            // Always allow the popover to control its own state
+            setCustomRangeOpen(open);
           }}>
             <PopoverTrigger asChild>
               <Button
@@ -633,12 +668,6 @@ const ShippedPage = () => {
               align="start" 
               side="bottom" 
               sideOffset={5}
-              onInteractOutside={(e) => {
-                // Prevent closing when clicking outside if only one date is selected
-                if (dateRange?.from && !dateRange?.to) {
-                  e.preventDefault();
-                }
-              }}
             >
               <Calendar
                 initialFocus
