@@ -87,23 +87,13 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
 
     setUpdating(true);
     try {
-      // Clean tracking number to remove concatenated phone numbers
-      const { cleanTrackingNumber } = await import('@/utils/trackingNumberCleaner');
-      const cleanedTrackingNumber = cleanTrackingNumber(trackingNumber.trim());
-      
-      // Log if cleaning occurred
-      if (trackingNumber.trim() !== cleanedTrackingNumber) {
-        console.log(`🧹 Cleaned tracking number: "${trackingNumber.trim()}" → "${cleanedTrackingNumber}"`);
-        toast.info(`Tracking number cleaned: ${cleanedTrackingNumber}`);
-      }
-      
       console.log(`🚀 Updating tracking for order ${order.order_number}`);
       
-      // Update tracking in database with cleaned tracking number
+      // Update tracking in database
       const carrierCode = getCarrierCode(carrier.trim());
       const updatedOrder = await wooCommerceOrderService.updateTracking(
         order.id,
-        cleanedTrackingNumber,
+        trackingNumber.trim(),
         carrierCode
       );
 
@@ -152,7 +142,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
           const trackingData = {
             orderNumber: order.order_number,
             customerName: order.customer_name,
-            trackingNumber: cleanedTrackingNumber,
+            trackingNumber: trackingNumber.trim(),
             carrier: carrierCode,
             orderValue: String(order.total || '0'),
             shippingAddress: order.shipping_address || 'No address provided',
@@ -182,7 +172,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
           sendResellerTrackingNotification(
             order.order_number,
             order.customer_name,
-            cleanedTrackingNumber,
+            trackingNumber.trim(),
             carrierCode,
             order.total,
             order.shipping_address || '',

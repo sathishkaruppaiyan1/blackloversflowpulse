@@ -31,6 +31,7 @@ const TrackingPage = () => {
   const [autoFocusEnabled, setAutoFocusEnabled] = useState(true);
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [scannedTrackingNumbers, setScannedTrackingNumbers] = useState<Set<string>>(new Set());
   const { user } = useAuth();
 
   // Sound effect state
@@ -164,12 +165,18 @@ const TrackingPage = () => {
   // Helper function to check if input looks like a tracking number
   const looksLikeTrackingNumber = (input: string) => {
     const cleanInput = input.trim();
+    
+    // Reject if it's too short (likely an order number)
+    if (cleanInput.length < 8) {
+      return false;
+    }
+    
     const trackingPatterns = [
-      /^48\d{13}$/,        // Franch Express pattern
-      /^2158\d{10}$/,      // Delhivery pattern
-      /^[A-Z]{2}\d{9}[A-Z]{2}$/, // International tracking
+      /^48\d{13}$/,        // Franch Express pattern (16 digits starting with 48)
+      /^2158\d{10}$/,      // Delhivery pattern (14 digits starting with 2158)
+      /^[A-Z]{2}\d{9}[A-Z]{2}$/, // International tracking (e.g., AB123456789CD)
       /^\d{10,22}$/,       // Generic numeric tracking (10-22 digits)
-      /^[A-Z0-9]{8,30}$/   // Alphanumeric tracking codes
+      /^[A-Z0-9]{8,30}$/   // Alphanumeric tracking codes (8-30 chars)
     ];
     
     return trackingPatterns.some(pattern => pattern.test(cleanInput));
@@ -178,13 +185,53 @@ const TrackingPage = () => {
   // Helper function to check if input looks like an order ID
   const looksLikeOrderId = (input: string) => {
     const cleanInput = input.trim();
+    
+    // Check if it matches common order number patterns
     return (
       cleanInput.startsWith('#') ||           // Order numbers with #
-      /^[A-Z0-9]{1,10}$/.test(cleanInput) ||  // Short alphanumeric IDs
-      /^\d{1,8}$/.test(cleanInput) ||         // Short numeric IDs
+      /^[A-Z0-9]{1,10}$/.test(cleanInput) ||  // Short alphanumeric IDs (1-10 chars)
+      /^\d{1,8}$/.test(cleanInput) ||         // Short numeric IDs (1-8 digits)
       cleanInput.includes('ORDER') ||         // Contains ORDER keyword
-      cleanInput.includes('ORD')              // Contains ORD keyword
+      cleanInput.includes('ORD') ||           // Contains ORD keyword
+      cleanInput.length <= 8                  // Very short inputs (8 or less chars) are likely order IDs
     );
+  };
+
+  // Helper function to check if input matches any order number in the system
+  const isOrderNumber = async (input: string): Promise<boolean> => {
+    const cleanInput = input.trim();
+    // Check if it matches any order number (with or without #)
+    const normalizedInput = cleanInput.replace(/^#/, '');
+    
+    // Check against current orders list
+    const matchesOrder = allOrders.some(order => 
+      order.order_number === cleanInput ||
+      order.order_number === `#${cleanInput}` ||
+      order.order_number.replace('#', '') === normalizedInput ||
+      order.id === cleanInput
+    );
+    
+    return matchesOrder;
+  };
+
+  // Helper function to check if tracking number already exists
+  const isTrackingNumberDuplicate = async (trackingNumber: string): Promise<{ isDuplicate: boolean; existingOrder?: string }> => {
+    const cleanTracking = trackingNumber.trim();
+    
+    // Check if this tracking number is already assigned to any order
+    const existingOrder = allOrders.find(order => 
+      order.tracking_number && 
+      order.tracking_number.trim().toLowerCase() === cleanTracking.toLowerCase()
+    );
+    
+    if (existingOrder) {
+      return { 
+        isDuplicate: true, 
+        existingOrder: existingOrder.order_number 
+      };
+    }
+    
+    return { isDuplicate: false };
   };
 
   // Enhanced focus management for order input
@@ -334,19 +381,46 @@ const TrackingPage = () => {
   const handleTrackingNumberScan = async () => {
     if (!trackingNumberInput.trim() || !currentOrder) return;
     
-    // Clean tracking number to remove concatenated phone numbers
-    const { cleanTrackingNumber } = await import('@/utils/trackingNumberCleaner');
-    const trackingNumber = cleanTrackingNumber(trackingNumberInput.trim());
+    const trackingNumber = trackingNumberInput.trim();
     
-    // Log if cleaning occurred
-    if (trackingNumberInput.trim() !== trackingNumber) {
-      console.log(`🧹 Cleaned tracking number: "${trackingNumberInput.trim()}" → "${trackingNumber}"`);
-    }
-    
-    // Check if input looks like an order ID instead of tracking number
+    // VALIDATION 1: Check if input looks like an order ID instead of tracking number
     if (looksLikeOrderId(trackingNumber)) {
       playErrorSound();
       toast.error("This looks like an order ID, not a tracking number. Please scan the tracking barcode.");
+      setTrackingNumberInput('');
+      return;
+    }
+    
+    // VALIDATION 2: Check if the scanned value matches any order number in the system
+    const isOrderNum = await isOrderNumber(trackingNumber);
+    if (isOrderNum) {
+      playErrorSound();
+      toast.error("This is an order number, not a tracking number. Please scan the tracking barcode.");
+      setTrackingNumberInput('');
+      return;
+    }
+    
+    // VALIDATION 3: Check if this tracking number was already scanned in this session (prevent immediate re-scan)
+    if (scannedTrackingNumbers.has(trackingNumber.toLowerCase())) {
+      playErrorSound();
+      toast.error("This tracking number was already scanned. Each tracking number can only be used once.");
+      setTrackingNumberInput('');
+      return;
+    }
+    
+    // VALIDATION 4: Check if this tracking number has already been used for another order in the database
+    const duplicateCheck = await isTrackingNumberDuplicate(trackingNumber);
+    if (duplicateCheck.isDuplicate) {
+      playErrorSound();
+      toast.error(`This tracking number is already assigned to order ${duplicateCheck.existingOrder}. Each tracking number can only be used once.`);
+      setTrackingNumberInput('');
+      return;
+    }
+    
+    // VALIDATION 5: Ensure it looks like a valid tracking number
+    if (!looksLikeTrackingNumber(trackingNumber)) {
+      playErrorSound();
+      toast.error("This doesn't look like a valid tracking number. Please scan the tracking barcode.");
       setTrackingNumberInput('');
       return;
     }
@@ -372,6 +446,9 @@ const TrackingPage = () => {
     try {
       console.log('🚀 Starting tracking update process...');
       
+      // Mark this tracking number as scanned to prevent duplicate scans
+      setScannedTrackingNumbers(prev => new Set(prev).add(trackingNumber.toLowerCase()));
+      
       // Update tracking information using WooCommerce service (this updates status immediately)
       await wooCommerceOrderService.updateTracking(currentOrder.id, trackingNumber, carrier);
       
@@ -385,11 +462,11 @@ const TrackingPage = () => {
       // Refresh orders to show updated status immediately
       await fetchOrders();
       
-      // Prepare tracking data for WhatsApp notifications (use cleaned tracking number)
+      // Prepare tracking data for WhatsApp notifications
       const trackingData = {
         orderNumber: currentOrder.order_number,
         customerName: currentOrder.customer_name,
-        trackingNumber: trackingNumber, // Already cleaned above
+        trackingNumber: trackingNumber,
         carrier: carrier,
         orderValue: String(currentOrder.total || '0'),
         shippingAddress: currentOrder.shipping_address || 'No address provided',
@@ -476,6 +553,7 @@ const TrackingPage = () => {
     setShopifyStatus(null);
     setFocusLocked(false);
     setAutoFocusEnabled(true);
+    // Note: We don't clear scannedTrackingNumbers here to maintain the one-time scan rule
   };
 
   // Handle individual order selection

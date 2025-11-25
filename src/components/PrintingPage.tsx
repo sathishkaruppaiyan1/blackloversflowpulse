@@ -25,6 +25,7 @@ import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
 const PrintingPage = () => {
   const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>([]);
+  const [allOrdersForAnalytics, setAllOrdersForAnalytics] = useState<WooCommerceOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const { user } = useAuth();
@@ -51,6 +52,23 @@ const PrintingPage = () => {
       const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
+      
+      // Also fetch all orders for analytics calculation
+      const allOrders = await wooCommerceOrderService.fetchOrders();
+      setAllOrdersForAnalytics(allOrders);
+      
+      // Debug: Log orders with printed_at for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayPrintedCount = allOrders.filter(order => {
+        if (!order.printed_at) return false;
+        const printedDate = new Date(order.printed_at);
+        return printedDate >= today && printedDate < tomorrow;
+      }).length;
+      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders, ${todayPrintedCount} printed today`);
+      
       console.log(`✅ Loaded ${processingOrders.length} processing orders from database`);
     } catch (error: any) {
       console.error('Error fetching processing orders:', error);
@@ -76,6 +94,23 @@ const PrintingPage = () => {
       const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
+      
+      // Also fetch all orders for analytics calculation
+      const allOrders = await wooCommerceOrderService.fetchOrders();
+      setAllOrdersForAnalytics(allOrders);
+      
+      // Debug: Log orders with printed_at for today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayPrintedCount = allOrders.filter(order => {
+        if (!order.printed_at) return false;
+        const printedDate = new Date(order.printed_at);
+        return printedDate >= today && printedDate < tomorrow;
+      }).length;
+      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders, ${todayPrintedCount} printed today`);
+      
       console.log(`✅ Loaded ${processingOrders.length} processing orders`);
     } catch (error: any) {
       console.error('Error loading processing orders:', error);
@@ -792,7 +827,8 @@ const PrintingPage = () => {
       {/* Analytics Cards */}
       <PrintingAnalytics 
         totalOrders={orders.length} 
-        selectedCount={selectedOrderIds.size} 
+        selectedCount={selectedOrderIds.size}
+        allOrders={allOrdersForAnalytics}
       />
 
       {/* Search Bar */}

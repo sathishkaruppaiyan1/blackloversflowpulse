@@ -56,11 +56,6 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
     return address.split(',').map(line => line.trim());
   };
 
-  const formatBillingAddress = (address?: string) => {
-    if (!address) return ['No billing address provided'];
-    return address.split(',').map(line => line.trim());
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     return new Date(dateString).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
@@ -155,15 +150,15 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
         </div>
       </div>
 
-      {/* Address Section - Three Columns */}
+      {/* Address Section - Two Columns: From and To */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
+        gridTemplateColumns: '1fr 1fr',
         gap: '32px',
         marginBottom: '32px'
       }}>
         {/* From Address */}
-        <div>
+        <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
             color: '#1f2937',
@@ -188,20 +183,28 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           </div>
         </div>
 
-        {/* Bill To Address */}
-        <div>
+        {/* To Address */}
+        <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
             color: '#1f2937',
             marginBottom: '12px',
             fontSize: '18px',
             margin: '0 0 12px 0'
-          }}>Bill to</h3>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
+          }}>To</h3>
+          <div style={{ minWidth: 0, overflow: 'visible' }}>
+            <div style={{ 
+              fontWeight: '600', 
+              marginBottom: '4px', 
+              fontSize: '14px',
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              overflow: 'visible',
+              width: '100%'
+            }}>
               {order.customer_name}
             </div>
-            {formatBillingAddress(order.billing_address || order.shipping_address).map((line, index) => (
+            {formatShippingAddress(order.shipping_address).map((line, index) => (
               <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>
                 {line}
               </div>
@@ -216,27 +219,6 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                 Phone: {order.customer_phone}
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Ship To Address */}
-        <div>
-          <h3 style={{
-            fontWeight: 'bold',
-            color: '#1f2937',
-            marginBottom: '12px',
-            fontSize: '18px',
-            margin: '0 0 12px 0'
-          }}>Ship to</h3>
-          <div>
-            <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
-              {order.customer_name}
-            </div>
-            {formatShippingAddress(order.shipping_address).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>
-                {line}
-              </div>
-            ))}
           </div>
         </div>
       </div>
