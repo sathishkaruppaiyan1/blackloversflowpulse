@@ -63,22 +63,34 @@ export const exportOrdersToCSV = (orders: WooCommerceOrder[], filename: string =
     'Delivered Date'
   ];
 
+  // Helper function to format numeric strings as text for Excel (prevents scientific notation)
+  // Prefixes with tab character (\t) which forces Excel to treat the value as text
+  // This prevents Excel from converting long numbers (like phone/tracking numbers) to scientific notation
+  // Example: Phone "919952123456" becomes "\t919952123456" in CSV, Excel displays as "919952123456" (text)
+  const formatAsText = (value: string): string => {
+    if (!value || value.trim() === '') return '""';
+    const cleanValue = value.replace(/"/g, '""').trim();
+    // Prefix with tab character - Excel treats this as text, tab is invisible in display
+    // This is the most reliable cross-platform method that works with Excel, Google Sheets, etc.
+    return `"\t${cleanValue}"`;
+  };
+
   // Convert to CSV string
   const csvContent = [
     headers.join(','),
     ...csvData.map(row => [
       `"${row.order_number}"`,
-      `"${row.customer_name}"`,
-      `"${row.customer_email}"`,
-      `"${row.customer_phone}"`,
-      `"${row.reseller_name}"`,
-      `"${row.reseller_number}"`,
+      `"${row.customer_name.replace(/"/g, '""')}"`,
+      `"${row.customer_email.replace(/"/g, '""')}"`,
+      formatAsText(row.customer_phone), // Format phone as text to prevent scientific notation
+      `"${row.reseller_name.replace(/"/g, '""')}"`,
+      formatAsText(row.reseller_number), // Format reseller number as text
       `"${row.total}"`,
       `"${row.items}"`,
-      `"${row.carrier}"`,
-      `"${row.tracking_number}"`,
+      `"${row.carrier.replace(/"/g, '""')}"`,
+      formatAsText(row.tracking_number), // Format tracking number as text to prevent scientific notation
       `"${row.shipping_address.replace(/"/g, '""')}"`, // Escape quotes in address
-      `"${row.status}"`,
+      `"${row.status.replace(/"/g, '""')}"`,
       `"${row.created_at}"`,
       `"${row.shipped_at}"`,
       `"${row.delivered_at}"`
