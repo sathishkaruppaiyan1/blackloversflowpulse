@@ -683,7 +683,14 @@ export const wooCommerceOrderService = {
   },
 
   async updateTracking(orderId: string, trackingNumber: string, carrier: string): Promise<WooCommerceOrder> {
-    console.log(`🚀 Starting tracking update for order ${orderId}: ${trackingNumber} via ${carrier}`);
+    // Clean tracking number to remove concatenated phone numbers
+    const { cleanTrackingNumber } = await import('@/utils/trackingNumberCleaner');
+    const cleanedTrackingNumber = cleanTrackingNumber(trackingNumber.trim());
+    
+    console.log(`🚀 Starting tracking update for order ${orderId}: ${cleanedTrackingNumber} via ${carrier}`);
+    if (trackingNumber.trim() !== cleanedTrackingNumber) {
+      console.log(`🧹 Cleaned tracking number: "${trackingNumber.trim()}" → "${cleanedTrackingNumber}"`);
+    }
     
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
@@ -700,7 +707,7 @@ export const wooCommerceOrderService = {
     
     const updateData: any = {
       status: 'shipped', // Keep local status as shipped, not completed
-      tracking_number: trackingNumber,
+      tracking_number: cleanedTrackingNumber, // Use cleaned tracking number
       carrier: carrier,
       shipped_at: new Date().toISOString()
     };

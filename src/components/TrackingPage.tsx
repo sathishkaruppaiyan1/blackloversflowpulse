@@ -334,7 +334,14 @@ const TrackingPage = () => {
   const handleTrackingNumberScan = async () => {
     if (!trackingNumberInput.trim() || !currentOrder) return;
     
-    const trackingNumber = trackingNumberInput.trim();
+    // Clean tracking number to remove concatenated phone numbers
+    const { cleanTrackingNumber } = await import('@/utils/trackingNumberCleaner');
+    const trackingNumber = cleanTrackingNumber(trackingNumberInput.trim());
+    
+    // Log if cleaning occurred
+    if (trackingNumberInput.trim() !== trackingNumber) {
+      console.log(`🧹 Cleaned tracking number: "${trackingNumberInput.trim()}" → "${trackingNumber}"`);
+    }
     
     // Check if input looks like an order ID instead of tracking number
     if (looksLikeOrderId(trackingNumber)) {
@@ -378,11 +385,11 @@ const TrackingPage = () => {
       // Refresh orders to show updated status immediately
       await fetchOrders();
       
-      // Prepare tracking data for WhatsApp notifications
+      // Prepare tracking data for WhatsApp notifications (use cleaned tracking number)
       const trackingData = {
         orderNumber: currentOrder.order_number,
         customerName: currentOrder.customer_name,
-        trackingNumber: trackingNumber,
+        trackingNumber: trackingNumber, // Already cleaned above
         carrier: carrier,
         orderValue: String(currentOrder.total || '0'),
         shippingAddress: currentOrder.shipping_address || 'No address provided',
