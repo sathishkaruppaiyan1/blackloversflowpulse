@@ -268,29 +268,18 @@ const PrintingPage = () => {
       const root = createRoot(printContainer);
 
       // Create bulk print content with all selected orders, each wrapped in a page-break div
-      // CRITICAL: Each order must start on a NEW page, even if previous order spans multiple pages
+      // Use page-break-before to ensure each order starts on a new page
       const bulkPrintContent = React.createElement('div', {
         style: { width: '100%' }
       }, ordersWithBarcodes.map((order, index) => 
         React.createElement('div', {
           key: order.id,
-          className: 'packing-slip-order-wrapper',
-          style: {
-            // Force each order to start on a new page (except first)
-            pageBreakBefore: index > 0 ? 'always' : 'auto',
-            // CRITICAL: Force page break AFTER each order wrapper (except last)
-            // This ensures next order ALWAYS starts on fresh page, even if this order's products span pages
-            pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto',
-            // Allow order content to span multiple pages if needed (for orders with many products)
-            pageBreakInside: 'auto',
-            width: '100%',
-            display: 'block'
-          }
-        }, React.createElement('div', {
           className: 'packing-slip-page',
           style: {
-            pageBreakInside: 'auto', // Allow products to span pages within this order
-            minHeight: format === 'A5' ? '8.27in' : '11in',
+            pageBreakBefore: index > 0 ? 'always' : 'auto', // Force new page for each order except first
+            pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto', // Also add after for safety
+            pageBreakInside: 'auto', // Allow content to span multiple pages if needed
+            minHeight: format === 'A5' ? '8.27in' : '11in', // Minimum height for proper page sizing
             width: format === 'A5' ? '5.83in' : '8.27in',
             margin: '0 auto',
             display: 'block',
@@ -300,7 +289,7 @@ const PrintingPage = () => {
           order: order,
           companySettings: companySettings,
           barcodeDataUrl: order.barcodeDataUrl
-        })))
+        }))
       ));
 
       // Render the bulk content
@@ -339,25 +328,9 @@ const PrintingPage = () => {
                   color-adjust: exact !important;
                   box-sizing: border-box;
                 }
-                /* Order wrapper - ensures each order starts on new page and next order starts on new page */
-                .packing-slip-order-wrapper {
+                .packing-slip-page {
                   page-break-before: always !important;
                   page-break-after: always !important;
-                  page-break-inside: auto !important;
-                  width: 100% !important;
-                  display: block !important;
-                }
-                .packing-slip-order-wrapper:first-child {
-                  page-break-before: auto !important;
-                }
-                .packing-slip-order-wrapper:last-child {
-                  page-break-after: auto !important;
-                }
-                
-                /* Packing slip page - allows products to span multiple pages within an order */
-                .packing-slip-page {
-                  page-break-before: auto !important;
-                  page-break-after: auto !important;
                   page-break-inside: auto !important;
                   width: ${format === 'A5' ? '5.83in' : '8.27in'};
                   min-height: ${format === 'A5' ? '8.27in' : '11in'};
@@ -365,7 +338,12 @@ const PrintingPage = () => {
                   display: block;
                   position: relative;
                 }
-                
+                .packing-slip-page:first-child {
+                  page-break-before: auto !important;
+                }
+                .packing-slip-page:last-child {
+                  page-break-after: auto !important;
+                }
                 /* Override A5 component fixed height to allow multi-page content */
                 .packing-slip-page > div {
                   height: auto !important;
@@ -375,9 +353,8 @@ const PrintingPage = () => {
                   page-break-inside: auto !important;
                   page-break-after: auto !important;
                 }
-                
-                /* Ensure each order wrapper forces a new page for next order */
-                .packing-slip-order-wrapper + .packing-slip-order-wrapper {
+                /* Ensure each order wrapper forces a new page */
+                .packing-slip-page + .packing-slip-page {
                   page-break-before: always !important;
                 }
                 img {
