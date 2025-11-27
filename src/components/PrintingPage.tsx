@@ -22,11 +22,43 @@ import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { supabase } from '@/integrations/supabase/client';
 import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
 
+// Load cached orders for instant display in Printing page
+const loadCachedOrders = (): { processingOrders: WooCommerceOrder[]; allOrders: WooCommerceOrder[] } => {
+  try {
+    const cached = localStorage.getItem('orders_cache');
+    if (!cached) return { processingOrders: [], allOrders: [] };
+
+    const parsed = JSON.parse(cached);
+    const cacheTime = parsed.timestamp || 0;
+    const now = Date.now();
+
+    // Use cache if less than 5 minutes old
+    if (now - cacheTime < 5 * 60 * 1000 && Array.isArray(parsed.orders)) {
+      const allOrders = parsed.orders as WooCommerceOrder[];
+      const processingOrders = allOrders.filter(order => {
+        const stage = (order as any).stage || order.status || 'processing';
+        return stage === 'processing';
+      });
+
+      console.log(`📦 PrintingPage: Loading ${processingOrders.length} cached processing orders for instant display`);
+      return { processingOrders, allOrders };
+    }
+  } catch (error) {
+    console.error('PrintingPage: Error loading cached orders:', error);
+  }
+
+  return { processingOrders: [], allOrders: [] };
+};
+
+const initialCached = typeof window !== 'undefined'
+  ? loadCachedOrders()
+  : { processingOrders: [], allOrders: [] };
+
 const PrintingPage = () => {
-  const [orders, setOrders] = useState<WooCommerceOrder[]>([]);
-  const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>([]);
-  const [allOrdersForAnalytics, setAllOrdersForAnalytics] = useState<WooCommerceOrder[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [orders, setOrders] = useState<WooCommerceOrder[]>(initialCached.processingOrders);
+  const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>(initialCached.processingOrders);
+  const [allOrdersForAnalytics, setAllOrdersForAnalytics] = useState<WooCommerceOrder[]>(initialCached.allOrders);
+  const [loading, setLoading] = useState(initialCached.processingOrders.length === 0);
   const [syncing, setSyncing] = useState(false);
   const { user } = useAuth();
   
@@ -56,6 +88,16 @@ const PrintingPage = () => {
       // Also fetch all orders for analytics calculation (including all stages)
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
+
+      // Cache orders for instant load next time
+      try {
+        localStorage.setItem('orders_cache', JSON.stringify({
+          orders: allOrders,
+          timestamp: Date.now(),
+        }));
+      } catch (e) {
+        console.warn('PrintingPage: Failed to cache orders:', e);
+      }
       
       // Debug: Log orders with printed_at for today
       const todayStr = new Date().toLocaleDateString('en-CA');
@@ -108,6 +150,16 @@ const PrintingPage = () => {
       // Also fetch all orders for analytics calculation (including all stages)
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
+
+      // Cache orders for instant load next time
+      try {
+        localStorage.setItem('orders_cache', JSON.stringify({
+          orders: allOrders,
+          timestamp: Date.now(),
+        }));
+      } catch (e) {
+        console.warn('PrintingPage: Failed to cache orders:', e);
+      }
       
       // Debug: Log orders with printed_at for today
       const todayStr = new Date().toLocaleDateString('en-CA');
@@ -711,22 +763,42 @@ const PrintingPage = () => {
 
   // Load orders on component mount - fetch from DB first (fast), then sync in background
   useEffect(() => {
-    if (user) {
-      // First, fetch from database immediately (fast)
-      fetchProcessingOrdersFromDB();
-      
-      // Then sync in background (slow, but doesn't block UI)
-      setTimeout(async () => {
-        try {
-          await wooCommerceOrderService.syncOrdersFromWooCommerce();
-          // After sync, refresh from database
-          await fetchProcessingOrdersFromDB();
-        } catch (error) {
-          console.error('Background sync error:', error);
-          // Don't show error toast for background sync
+    if (!user) return;
+
+    let isMounted = true;
+
+    const loadInitial = async () => {
+      // If we don't have any cached processing orders, show loader until first DB load completes
+      if (initialCached.processingOrders.length === 0) {
+        setLoading(true);
+      }
+
+      try {
+        await fetchProcessingOrdersFromDB();
+      } finally {
+        if (isMounted && initialCached.processingOrders.length === 0) {
+          setLoading(false);
         }
-      }, 100);
-    }
+      }
+    };
+
+    loadInitial();
+    
+    // Then sync in background (slow, but doesn't block UI)
+    setTimeout(async () => {
+      try {
+        await wooCommerceOrderService.syncOrdersFromWooCommerce();
+        // After sync, refresh from database
+        await fetchProcessingOrdersFromDB();
+      } catch (error) {
+        console.error('Background sync error:', error);
+        // Don't show error toast for background sync
+      }
+    }, 100);
+
+    return () => {
+      isMounted = false;
+    };
   }, [user, fetchProcessingOrdersFromDB]);
 
   // Apply filters when search query changes
