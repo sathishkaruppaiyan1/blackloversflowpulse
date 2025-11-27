@@ -158,7 +158,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
   return (
     <div style={{
       width: '5.83in',
-      height: '8.27in',
+      minHeight: '8.27in',
       margin: '0',
       padding: '16px',
       backgroundColor: 'white',
@@ -167,9 +167,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
       lineHeight: '1.3',
       color: '#000',
       boxSizing: 'border-box',
-      overflow: 'hidden',
-      pageBreakInside: 'avoid',
-      pageBreakAfter: 'avoid'
+      pageBreakAfter: 'always'
     }}>
       {/* Header Section */}
       <div style={{
@@ -394,7 +392,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           </thead>
           <tbody>
             {order.line_items && order.line_items.length > 0 ? (
-              order.line_items.slice(0, 6).map((item: any, index: number) => (
+              order.line_items.map((item: any, index: number) => (
                 <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '4px 2px', color: '#374151' }}>{index + 1}</td>
                   <td style={{ padding: '4px 2px' }}>
@@ -423,13 +421,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 </td>
                 <td style={{ padding: '4px 2px', textAlign: 'center', color: '#374151' }}>1</td>
                 <td style={{ padding: '4px 2px', textAlign: 'right', color: '#374151' }}>0.5 kg</td>
-              </tr>
-            )}
-            {order.line_items && order.line_items.length > 6 && (
-              <tr>
-                <td colSpan={4} style={{ fontSize: '12px', color: '#6b7280', padding: '8px', textAlign: 'center' }}>
-                  ... and {order.line_items.length - 6} more items
-                </td>
               </tr>
             )}
           </tbody>
