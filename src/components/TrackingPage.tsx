@@ -13,6 +13,7 @@ import { detectCourierFromTracking, getCouriers } from '@/services/courierDetect
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
+import { syncCoordinator } from '@/services/syncCoordinator';
 
 const TrackingPage = () => {
   // Load cached orders immediately for instant display
@@ -143,14 +144,30 @@ const TrackingPage = () => {
     try {
       if (shouldSync) {
         console.log('📖 Syncing and fetching orders from WooCommerce...');
+        syncCoordinator.markSyncStarted();
         await wooCommerceOrderService.syncOrdersFromWooCommerce();
+        syncCoordinator.markSyncCompleted();
       }
       // Fetch all orders (needed to get packed orders)
       const orders = await wooCommerceOrderService.fetchOrders();
       setAllOrders(orders);
+      
+      // Cache orders
+      try {
+        localStorage.setItem('tracking_orders_cache', JSON.stringify({
+          orders: orders,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('Error caching orders:', error);
+      }
+      
       console.log(`✅ Loaded ${orders.length} orders`);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      if (shouldSync) {
+        syncCoordinator.markSyncFailed();
+      }
       toast.error("Failed to fetch orders");
     } finally {
       setLoading(false);
@@ -168,14 +185,34 @@ const TrackingPage = () => {
       // This updates the cached data with fresh data
       fetchOrdersFromDB();
       
-      // Then sync in background (slow, but doesn't block UI)
+      // Smart background sync - only sync from WooCommerce if needed
       setTimeout(async () => {
+        // Check if sync is needed (hasn't been done recently)
+        if (!syncCoordinator.shouldSync()) {
+          console.log('⏭️ Skipping WooCommerce sync - recently synced');
+          return;
+        }
+
+        // Check if another tab/page is already syncing
+        if (syncCoordinator.isSyncInProgress()) {
+          console.log('⏭️ Skipping WooCommerce sync - already in progress');
+          return;
+        }
+
         try {
+          console.log('🔄 Starting background WooCommerce sync...');
+          syncCoordinator.markSyncStarted();
+          
           await wooCommerceOrderService.syncOrdersFromWooCommerce();
+          
+          syncCoordinator.markSyncCompleted();
+          console.log('✅ Background sync completed');
+          
           // After sync, refresh from database
           await fetchOrdersFromDB();
         } catch (error) {
           console.error('Background sync error:', error);
+          syncCoordinator.markSyncFailed();
           // Don't show error toast for background sync
         }
       }, 100);

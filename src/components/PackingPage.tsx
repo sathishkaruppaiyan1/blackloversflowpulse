@@ -11,6 +11,7 @@ import { wooCommerceOrderService, type WooCommerceOrder } from "@/services/wooCo
 import { Progress } from "@/components/ui/progress";
 import { BulkMovementTrigger } from "./BulkMovementTrigger";
 import { useBypassPackingStage } from "@/hooks/useBypassPackingStage";
+import { syncCoordinator } from "@/services/syncCoordinator";
 
 interface ScannedProduct {
   id: string;
