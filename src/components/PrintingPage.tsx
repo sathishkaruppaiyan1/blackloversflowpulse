@@ -21,6 +21,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { supabase } from '@/integrations/supabase/client';
 import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
+import { syncCoordinator } from '@/services/syncCoordinator';
 
 // Load cached orders for instant display in Printing page
 const loadCachedOrders = (): { processingOrders: WooCommerceOrder[]; allOrders: WooCommerceOrder[] } => {
@@ -192,11 +193,17 @@ const PrintingPage = () => {
 
     setSyncing(true);
     try {
-      console.log('🔄 Starting WooCommerce sync...');
+      console.log('🔄 Starting manual WooCommerce sync...');
+      
+      // Force sync regardless of last sync time
+      syncCoordinator.markSyncStarted();
       await loadProcessingOrders(true); // Pass true to sync
+      syncCoordinator.markSyncCompleted();
+      
       toast.success('Successfully synced orders from WooCommerce');
     } catch (error: any) {
       console.error('Error syncing from WooCommerce:', error);
+      syncCoordinator.markSyncFailed();
       toast.error(`Failed to sync orders: ${error.message}`);
     } finally {
       setSyncing(false);
@@ -761,7 +768,7 @@ const PrintingPage = () => {
     }
   };
 
-  // Load orders on component mount - fetch from DB first (fast), then sync in background
+  // Load orders on component mount - fetch from DB first (fast), then sync in background ONLY IF NEEDED
   useEffect(() => {
     if (!user) return;
 
@@ -774,6 +781,7 @@ const PrintingPage = () => {
       }
 
       try {
+        // Always fetch from DB first (fast - instant from cache or DB)
         await fetchProcessingOrdersFromDB();
       } finally {
         if (isMounted && initialCached.processingOrders.length === 0) {
@@ -784,14 +792,36 @@ const PrintingPage = () => {
 
     loadInitial();
     
-    // Then sync in background (slow, but doesn't block UI)
+    // Smart background sync - only sync from WooCommerce if needed
     setTimeout(async () => {
+      // Check if sync is needed (hasn't been done recently)
+      if (!syncCoordinator.shouldSync()) {
+        console.log('⏭️ Skipping WooCommerce sync - recently synced');
+        return;
+      }
+
+      // Check if another tab/page is already syncing
+      if (syncCoordinator.isSyncInProgress()) {
+        console.log('⏭️ Skipping WooCommerce sync - already in progress');
+        return;
+      }
+
       try {
+        console.log('🔄 Starting background WooCommerce sync...');
+        syncCoordinator.markSyncStarted();
+        
         await wooCommerceOrderService.syncOrdersFromWooCommerce();
+        
+        syncCoordinator.markSyncCompleted();
+        console.log('✅ Background sync completed');
+        
         // After sync, refresh from database
-        await fetchProcessingOrdersFromDB();
+        if (isMounted) {
+          await fetchProcessingOrdersFromDB();
+        }
       } catch (error) {
         console.error('Background sync error:', error);
+        syncCoordinator.markSyncFailed();
         // Don't show error toast for background sync
       }
     }, 100);
