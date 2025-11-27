@@ -325,11 +325,34 @@ export const wooCommerceOrderService = {
         // Use billing address as fallback if shipping is not available
         const finalShippingAddress = shippingAddress || billingAddress || 'Address not available';
 
+        // Combine first name and last name for customer_name
+        const firstName = (order.billing?.first_name || '').trim();
+        const lastName = (order.billing?.last_name || '').trim();
+        
+        // Debug logging to verify we're getting both names
+        if (order.number) {
+          console.log(`📝 Order ${order.number}: firstName="${firstName}", lastName="${lastName}"`);
+        }
+        
+        // Combine names - handle cases where one or both might be empty
+        let fullName = '';
+        if (firstName && lastName) {
+          fullName = `${firstName} ${lastName}`;
+        } else if (firstName) {
+          fullName = firstName;
+        } else if (lastName) {
+          fullName = lastName;
+        } else {
+          fullName = 'Unknown Customer';
+        }
+        
+        console.log(`✅ Order ${order.number}: Full name set to "${fullName}"`);
+
         return {
           user_id: user.id,
           woo_order_id: wooOrderId,
           order_number: order.number || order.id.toString(),
-          customer_name: order.billing?.first_name?.trim() || 'Unknown Customer',
+          customer_name: fullName,
           customer_email: order.billing?.email || 'No email provided',
           customer_phone: order.billing?.phone || null,
           total: parseFloat(order.total || '0'),
@@ -576,6 +599,7 @@ export const wooCommerceOrderService = {
     switch (stage) {
       case 'packing':
         updateData.printed_at = now;
+        console.log(`📝 Setting printed_at for order ${orderId} to ${now}`);
         break;
       case 'packed':
         updateData.packed_at = now;
@@ -588,6 +612,11 @@ export const wooCommerceOrderService = {
         break;
     }
 
+    // Log what we're updating
+    if (updateData.printed_at) {
+      console.log(`🖨️ Updating order ${orderId} with printed_at: ${updateData.printed_at}`);
+    }
+
     // Update in database
     const { data, error } = await supabase
       .from('orders')
@@ -595,6 +624,14 @@ export const wooCommerceOrderService = {
       .eq('id', orderId)
       .select('*')
       .single();
+    
+    // Verify printed_at was set
+    if (updateData.printed_at && data) {
+      console.log(`✅ Order ${orderId} updated. printed_at in response: ${data.printed_at || 'MISSING!'}`);
+      if (!data.printed_at) {
+        console.error(`❌ WARNING: printed_at was not set for order ${orderId} even though we tried to set it!`);
+      }
+    }
 
     if (error) {
       console.error('Error updating order stage:', error);

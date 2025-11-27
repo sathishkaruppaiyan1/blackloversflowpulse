@@ -15,6 +15,22 @@ export const PrintingAnalytics: React.FC<PrintingAnalyticsProps> = ({
   selectedCount,
   allOrders = []
 }) => {
+  // Debug: Log when allOrders changes
+  React.useEffect(() => {
+    console.log(`🔍 PrintingAnalytics: allOrders prop changed. Length: ${allOrders.length}`);
+    if (allOrders.length > 0) {
+      const withPrintedAt = allOrders.filter(o => o.printed_at);
+      console.log(`🔍 PrintingAnalytics: Orders with printed_at: ${withPrintedAt.length}`);
+      if (withPrintedAt.length > 0) {
+        console.log(`🔍 PrintingAnalytics: First order with printed_at:`, {
+          order: withPrintedAt[0].order_number,
+          printed_at: withPrintedAt[0].printed_at,
+          stage: withPrintedAt[0].stage || withPrintedAt[0].status
+        });
+      }
+    }
+  }, [allOrders]);
+
   // Calculate today's printed count based on printed_at field
   const todayPrinted = useMemo(() => {
     if (!allOrders || allOrders.length === 0) {
@@ -22,26 +38,41 @@ export const PrintingAnalytics: React.FC<PrintingAnalyticsProps> = ({
       return 0;
     }
     
-    // Get today's date range (start of today to start of tomorrow) in local timezone
+    // Get today's date string in local timezone (YYYY-MM-DD format)
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr = now.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD format
     
-    // Filter orders printed today
+    // Also get today's date components for alternative comparison
+    const todayYear = now.getFullYear();
+    const todayMonth = now.getMonth();
+    const todayDay = now.getDate();
+    
+    console.log(`🔍 PrintingAnalytics: Calculating today printed. Today: ${todayStr} (${todayYear}-${todayMonth + 1}-${todayDay})`);
+    
+    // Filter orders printed today by comparing date strings
     const printedToday = allOrders.filter(order => {
-      if (!order.printed_at) return false;
+      if (!order.printed_at) {
+        return false;
+      }
       
       try {
-        // Parse the printed_at date (ISO string from database)
+        // Parse the printed_at date (ISO string from database, may be in UTC)
         const printedDate = new Date(order.printed_at);
         
-        // Check if printed date is within today's range
-        // Compare dates by converting to local date strings (YYYY-MM-DD) for timezone-independent comparison
-        const printedDateStr = printedDate.toLocaleDateString('en-CA'); // YYYY-MM-DD format
-        const todayStr = today.toLocaleDateString('en-CA');
+        // Method 1: Compare using toLocaleDateString
+        const printedDateStr = printedDate.toLocaleDateString('en-CA');
+        const isTodayByString = printedDateStr === todayStr;
         
-        const isToday = printedDateStr === todayStr;
+        // Method 2: Compare using date components (backup method)
+        const printedYear = printedDate.getFullYear();
+        const printedMonth = printedDate.getMonth();
+        const printedDay = printedDate.getDate();
+        const isTodayByComponents = printedYear === todayYear && 
+                                    printedMonth === todayMonth && 
+                                    printedDay === todayDay;
+        
+        // Use either method (they should match, but this is more robust)
+        const isToday = isTodayByString || isTodayByComponents;
         
         return isToday;
       } catch (error) {
@@ -50,22 +81,43 @@ export const PrintingAnalytics: React.FC<PrintingAnalyticsProps> = ({
       }
     });
     
-    console.log(`📊 PrintingAnalytics: Today printed count: ${printedToday.length} out of ${allOrders.length} total orders`);
-    console.log(`📊 PrintingAnalytics: Today's date: ${today.toLocaleDateString('en-CA')}`);
-    if (printedToday.length > 0) {
-      console.log(`📊 PrintingAnalytics: Sample printed orders:`, printedToday.slice(0, 3).map(o => ({
-        order: o.order_number,
-        printed_at: o.printed_at,
-        date: new Date(o.printed_at).toLocaleDateString('en-CA')
-      })));
-    } else {
-      // Debug: Show some orders with printed_at to see what we're getting
-      const ordersWithPrintedAt = allOrders.filter(o => o.printed_at).slice(0, 3);
-      if (ordersWithPrintedAt.length > 0) {
-        console.log(`📊 PrintingAnalytics: Sample orders with printed_at (not today):`, ordersWithPrintedAt.map(o => ({
+    const todayCount = printedToday.length;
+    console.log(`📊 PrintingAnalytics: Today printed count: ${todayCount} out of ${allOrders.length} total orders`);
+    console.log(`📊 PrintingAnalytics: Today's date: ${todayStr}`);
+    console.log(`📊 PrintingAnalytics: Total orders with printed_at: ${allOrders.filter(o => o.printed_at).length}`);
+    
+    if (todayCount > 0) {
+      console.log(`📊 PrintingAnalytics: ✅ Sample printed orders TODAY:`, printedToday.slice(0, 5).map(o => {
+        const d = new Date(o.printed_at);
+        return {
           order: o.order_number,
           printed_at: o.printed_at,
-          date: new Date(o.printed_at).toLocaleDateString('en-CA')
+          date: d.toLocaleDateString('en-CA'),
+          dateComponents: `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
+          stage: o.stage || o.status
+        };
+      }));
+    } else {
+      // Debug: Show some orders with printed_at to see what we're getting
+      const ordersWithPrintedAt = allOrders.filter(o => o.printed_at).slice(0, 10);
+      if (ordersWithPrintedAt.length > 0) {
+        console.log(`📊 PrintingAnalytics: ⚠️ Sample orders with printed_at (NOT today):`, ordersWithPrintedAt.map(o => {
+          const d = new Date(o.printed_at);
+          return {
+            order: o.order_number,
+            printed_at: o.printed_at,
+            date: d.toLocaleDateString('en-CA'),
+            stage: o.stage || o.status,
+            isToday: d.toLocaleDateString('en-CA') === todayStr
+          };
+        }));
+      } else {
+        console.log(`📊 PrintingAnalytics: ❌ No orders found with printed_at field in allOrders array`);
+        console.log(`📊 PrintingAnalytics: Debug - allOrders array length: ${allOrders.length}`);
+        console.log(`📊 PrintingAnalytics: Debug - Sample order stages:`, allOrders.slice(0, 5).map(o => ({
+          order: o.order_number,
+          stage: o.stage || o.status,
+          printed_at: o.printed_at || 'NULL'
         })));
       }
     }

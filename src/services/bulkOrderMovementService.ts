@@ -74,6 +74,7 @@ export const bulkOrderMovementService = {
           switch (targetStage) {
             case 'packing':
               updateData.printed_at = now;
+              console.log(`📝 Setting printed_at for order ${currentOrder.order_number} to ${now}`);
               break;
             case 'packed':
               updateData.packed_at = now;
@@ -87,13 +88,26 @@ export const bulkOrderMovementService = {
           }
         }
 
+        // Log what we're updating
+        if (updateData.printed_at) {
+          console.log(`🖨️ Updating order ${currentOrder.order_number} with printed_at: ${updateData.printed_at}`);
+        }
+
         // Update in database
         const { data: updatedOrder, error: updateError } = await supabase
           .from('orders')
           .update(updateData)
           .eq('id', orderId)
-          .select('id, status, order_number')
+          .select('id, status, order_number, printed_at')
           .single();
+        
+        // Verify printed_at was set
+        if (updateData.printed_at && updatedOrder) {
+          console.log(`✅ Order ${currentOrder.order_number} updated. printed_at in response: ${updatedOrder.printed_at || 'MISSING!'}`);
+          if (!updatedOrder.printed_at) {
+            console.error(`❌ WARNING: printed_at was not set for order ${currentOrder.order_number} even though we tried to set it!`);
+          }
+        }
 
         if (updateError) {
           const errorMsg = `Failed to update order ${currentOrder.order_number} (${orderId}): ${updateError.message}`;

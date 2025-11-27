@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Truck, Scan, Package, MapPin, CheckCircle, XCircle, MessageCircle, Settings, ExternalLink, RefreshCw, Volume2, VolumeX } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,27 @@ import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
 
 const TrackingPage = () => {
-  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>([]);
+  // Load cached orders immediately for instant display
+  const loadCachedOrders = (): WooCommerceOrder[] => {
+    try {
+      const cached = localStorage.getItem('tracking_orders_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        // Check if cache is recent (less than 5 minutes old)
+        const cacheTime = parsed.timestamp || 0;
+        const now = Date.now();
+        if (now - cacheTime < 5 * 60 * 1000) {
+          console.log(`📦 Loading ${parsed.orders.length} cached orders for instant display`);
+          return parsed.orders;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading cached orders:', error);
+    }
+    return [];
+  };
+
+  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>(loadCachedOrders());
   const [loading, setLoading] = useState(false);
   const [orderIdInput, setOrderIdInput] = useState('');
   const [trackingNumberInput, setTrackingNumberInput] = useState('');
@@ -87,12 +107,48 @@ const TrackingPage = () => {
   );
   
 
-  // Fetch orders function
-  const fetchOrders = async () => {
+  // Fast function to fetch from database without syncing
+  const fetchOrdersFromDB = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch all orders (needed for stats and filtering)
+      const orders = await wooCommerceOrderService.fetchOrders();
+      
+      // Update state immediately
+      setAllOrders(orders);
+      
+      // Cache for next time (instant load on next visit)
+      try {
+        localStorage.setItem('tracking_orders_cache', JSON.stringify({
+          orders: orders,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.error('Error caching orders:', error);
+      }
+      
+      console.log(`✅ Loaded ${orders.length} orders from database (fast fetch)`);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error("Failed to fetch orders");
+    }
+  }, [user]);
+
+  // Full fetch function (with optional sync)
+  const fetchOrders = async (shouldSync: boolean = false) => {
+    if (!user) return;
+    
     setLoading(true);
     try {
+      if (shouldSync) {
+        console.log('📖 Syncing and fetching orders from WooCommerce...');
+        await wooCommerceOrderService.syncOrdersFromWooCommerce();
+      }
+      // Fetch all orders (needed to get packed orders)
       const orders = await wooCommerceOrderService.fetchOrders();
       setAllOrders(orders);
+      console.log(`✅ Loaded ${orders.length} orders`);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error("Failed to fetch orders");
@@ -101,14 +157,30 @@ const TrackingPage = () => {
     }
   };
 
-  // Load orders when component mounts and initialize services
+  // Load orders on component mount - show cached data instantly, fetch fresh in background
   useEffect(() => {
-    fetchOrders();
     if (user) {
+      // Initialize services immediately (don't wait)
       interaktService.initialize(user.id);
       loadCouriers();
+      
+      // Fetch fresh data from database (fast, no sync, no loading state)
+      // This updates the cached data with fresh data
+      fetchOrdersFromDB();
+      
+      // Then sync in background (slow, but doesn't block UI)
+      setTimeout(async () => {
+        try {
+          await wooCommerceOrderService.syncOrdersFromWooCommerce();
+          // After sync, refresh from database
+          await fetchOrdersFromDB();
+        } catch (error) {
+          console.error('Background sync error:', error);
+          // Don't show error toast for background sync
+        }
+      }, 100);
     }
-  }, [user]);
+  }, [user, fetchOrdersFromDB]);
 
   // Load available couriers
   const loadCouriers = async () => {
@@ -459,8 +531,8 @@ const TrackingPage = () => {
       // Play success sound immediately
       playSuccessSound();
       
-      // Refresh orders to show updated status immediately
-      await fetchOrders();
+      // Refresh orders to show updated status immediately (fast fetch)
+      await fetchOrdersFromDB();
       
       // Prepare tracking data for WhatsApp notifications
       const trackingData = {
@@ -597,7 +669,8 @@ const TrackingPage = () => {
     });
   };
 
-  if (loading) {
+  // Only show loading screen if we have no data at all (not even cached)
+  if (loading && allOrders.length === 0) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
@@ -644,11 +717,11 @@ const TrackingPage = () => {
           
           <Button 
             variant="outline"
-            onClick={fetchOrders}
+            onClick={() => fetchOrders(true)}
             disabled={loading}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {loading ? 'Syncing...' : 'Sync'}
           </Button>
         </div>
       </div>
@@ -1053,7 +1126,7 @@ const TrackingPage = () => {
                     selectedOrderIds={Array.from(selectedOrderIds)}
                     selectedOrders={trackingOrders.filter(order => selectedOrderIds.has(order.id))}
                     currentStage="packed"
-                    onSuccess={fetchOrders}
+                    onSuccess={fetchOrdersFromDB}
                     variant="small"
                   />
                 </div>

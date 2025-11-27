@@ -86,6 +86,35 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
     return addressLines;
   };
 
+  const formatBillingAddress = (address?: string, postcode?: string, city?: string, state?: string) => {
+    if (!address) return ['No billing address provided'];
+    const addressLines = address.split(',').map(line => line.trim()).filter(Boolean);
+    
+    // Ensure postcode is included - check if it's already in the address or add it separately
+    const hasPostcode = addressLines.some(line => /\d{6}/.test(line)); // Check if any line has 6-digit pincode
+    
+    // If postcode is provided separately and not in address, add it
+    if (postcode && !hasPostcode) {
+      // Try to add postcode to the city/state line or as a separate line
+      if (city && state) {
+        const locationLine = `${city}, ${state} ${postcode}`;
+        // Replace city/state line if exists, otherwise add at end
+        const cityStateIndex = addressLines.findIndex(line => 
+          line.includes(city) || line.includes(state)
+        );
+        if (cityStateIndex >= 0) {
+          addressLines[cityStateIndex] = locationLine;
+        } else {
+          addressLines.push(locationLine);
+        }
+      } else {
+        addressLines.push(postcode);
+      }
+    }
+    
+    return addressLines;
+  };
+
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
@@ -210,11 +239,11 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         </div>
       </div>
 
-      {/* Address Section - Two Columns: From and To */}
+      {/* Address Section - Three Columns: From, Bill to, and Ship to */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '16px',
+        gridTemplateColumns: '1fr 1fr 1fr',
+        gap: '12px',
         marginBottom: '12px',
         fontSize: '12px'
       }}>
@@ -244,7 +273,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           </div>
         </div>
 
-        {/* To Address */}
+        {/* Bill To Address */}
         <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
@@ -252,7 +281,51 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             marginBottom: '8px',
             fontSize: '16px',
             margin: '0 0 8px 0'
-          }}>To</h3>
+          }}>Bill to</h3>
+          <div style={{ minWidth: 0, overflow: 'visible' }}>
+            <div style={{ 
+              fontWeight: '500', 
+              fontSize: '14px', 
+              marginBottom: '2px',
+              wordBreak: 'break-word',
+              whiteSpace: 'normal',
+              overflow: 'visible',
+              width: '100%'
+            }}>
+              {order.customer_name}
+            </div>
+            {formatBillingAddress(
+              order.billing_address || order.shipping_address,
+              order.billing_postcode || order.shipping_postcode,
+              order.billing_city || order.shipping_city,
+              order.billing_state || order.shipping_state
+            ).map((line, index) => (
+              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
+                {line}
+              </div>
+            ))}
+            {order.customer_email && (
+              <div style={{ fontSize: '14px', color: '#374151', marginBottom: '1px' }}>
+                Email: {order.customer_email}
+              </div>
+            )}
+            {order.customer_phone && (
+              <div style={{ fontSize: '14px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
+                Phone: {order.customer_phone}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Ship To Address */}
+        <div style={{ minWidth: 0, overflow: 'visible' }}>
+          <h3 style={{
+            fontWeight: 'bold',
+            color: '#1f2937',
+            marginBottom: '8px',
+            fontSize: '16px',
+            margin: '0 0 8px 0'
+          }}>Ship to</h3>
           <div style={{ minWidth: 0, overflow: 'visible' }}>
             <div style={{ 
               fontWeight: '500', 
@@ -275,16 +348,6 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 {line}
               </div>
             ))}
-            {order.customer_email && (
-              <div style={{ fontSize: '14px', color: '#374151', marginBottom: '1px' }}>
-                Email: {order.customer_email}
-              </div>
-            )}
-            {order.customer_phone && (
-              <div style={{ fontSize: '14px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
-                Phone: {order.customer_phone}
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -67,7 +67,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   const sampleOrder: Order = {
     id: '69478',
     order_number: '69478',
-    customer_name: 'Vidhya D',
+    customer_name: 'Vidhya Devi',
     customer_email: 'vidhya@example.com',
     customer_phone: '+91 9876543210',
     shipping_address: 'Chennai, Tamil Nadu, 600001, India',

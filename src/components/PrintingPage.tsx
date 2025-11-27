@@ -53,21 +53,31 @@ const PrintingPage = () => {
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
       
-      // Also fetch all orders for analytics calculation
+      // Also fetch all orders for analytics calculation (including all stages)
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
       
       // Debug: Log orders with printed_at for today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayStr = new Date().toLocaleDateString('en-CA');
       const todayPrintedCount = allOrders.filter(order => {
         if (!order.printed_at) return false;
         const printedDate = new Date(order.printed_at);
-        return printedDate >= today && printedDate < tomorrow;
+        const printedDateStr = printedDate.toLocaleDateString('en-CA');
+        return printedDateStr === todayStr;
       }).length;
-      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders, ${todayPrintedCount} printed today`);
+      
+      const ordersWithPrintedAt = allOrders.filter(o => o.printed_at).length;
+      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders (all stages)`);
+      console.log(`📊 PrintingPage: Orders with printed_at: ${ordersWithPrintedAt}`);
+      console.log(`📊 PrintingPage: Orders printed today: ${todayPrintedCount}`);
+      
+      // Debug: Show stage distribution
+      const stageCounts = allOrders.reduce((acc, o) => {
+        const stage = o.stage || o.status || 'unknown';
+        acc[stage] = (acc[stage] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log(`📊 PrintingPage: Stage distribution:`, stageCounts);
       
       console.log(`✅ Loaded ${processingOrders.length} processing orders from database`);
     } catch (error: any) {
@@ -95,21 +105,23 @@ const PrintingPage = () => {
       setOrders(processingOrders);
       setFilteredOrders(processingOrders);
       
-      // Also fetch all orders for analytics calculation
+      // Also fetch all orders for analytics calculation (including all stages)
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
       
       // Debug: Log orders with printed_at for today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      const todayStr = new Date().toLocaleDateString('en-CA');
       const todayPrintedCount = allOrders.filter(order => {
         if (!order.printed_at) return false;
         const printedDate = new Date(order.printed_at);
-        return printedDate >= today && printedDate < tomorrow;
+        const printedDateStr = printedDate.toLocaleDateString('en-CA');
+        return printedDateStr === todayStr;
       }).length;
-      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders, ${todayPrintedCount} printed today`);
+      
+      const ordersWithPrintedAt = allOrders.filter(o => o.printed_at).length;
+      console.log(`📊 PrintingPage: Fetched ${allOrders.length} total orders (all stages)`);
+      console.log(`📊 PrintingPage: Orders with printed_at: ${ordersWithPrintedAt}`);
+      console.log(`📊 PrintingPage: Orders printed today: ${todayPrintedCount}`);
       
       console.log(`✅ Loaded ${processingOrders.length} processing orders`);
     } catch (error: any) {
