@@ -3,10 +3,12 @@ import DisplayPackingSlipA4 from './display/DisplayPackingSlipA4';
 import DisplayPackingSlipA5 from './display/DisplayPackingSlipA5';
 import PrintPackingSlipA4 from './print/PrintPackingSlipA4';
 import PrintPackingSlipA5 from './print/PrintPackingSlipA5';
+import PrintPreviewA5 from './print/PrintPreviewA5';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import JsBarcode from 'jsbarcode';
+import { Eye } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -61,6 +63,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   });
   const [loading, setLoading] = useState(true);
   const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>('');
+  const [showPreview, setShowPreview] = useState(false);
   const { user } = useAuth();
 
   // Sample order data for preview
@@ -375,6 +378,16 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
       {showPrintButton && (
         <div className="mt-6 text-center print-hidden space-y-2">
           <div className="flex items-center justify-center gap-3">
+            {format === 'A5' && (
+              <Button
+                onClick={() => setShowPreview(true)}
+                variant="outline"
+                className="px-6 py-2 rounded-lg font-medium gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                Preview Pages
+              </Button>
+            )}
             <Button
               onClick={handlePrint}
               className="bg-navy-600 hover:bg-navy-700 text-white px-8 py-2 rounded-lg font-medium"
@@ -398,6 +411,20 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
             Current format: {format} • Updates automatically every 3 seconds
           </p>
         </div>
+      )}
+      
+      {/* Print Preview Modal */}
+      {showPreview && format === 'A5' && (
+        <PrintPreviewA5
+          order={order}
+          companySettings={companySettings}
+          barcodeDataUrl={barcodeDataUrl}
+          onPrint={() => {
+            setShowPreview(false);
+            handlePrint();
+          }}
+          onClose={() => setShowPreview(false)}
+        />
       )}
     </div>
   );
