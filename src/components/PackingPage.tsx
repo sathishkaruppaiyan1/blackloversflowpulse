@@ -96,21 +96,33 @@ export const PackingPage = () => {
     }
   };
 
-  // Fetch orders function
-  const fetchOrders = async () => {
-    setLoading(true);
+  // Fast fetch orders function (no loading state for silent updates)
+  const fetchOrders = async (silent: boolean = false) => {
+    if (!silent) setLoading(true);
     try {
       const orders = await wooCommerceOrderService.fetchOrders();
       setAllOrders(orders);
+      
+      // Cache orders
+      try {
+        localStorage.setItem('packing_orders_cache', JSON.stringify({
+          orders: orders,
+          timestamp: Date.now()
+        }));
+      } catch (e) {
+        console.warn('Failed to cache orders:', e);
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch orders",
-        variant: "destructive",
-      });
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "Failed to fetch orders",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -254,8 +266,8 @@ export const PackingPage = () => {
               // Update order stage to 'packed' (ready for tracking stage)
               await wooCommerceOrderService.updateOrderStage(currentOrder.id, 'packed');
               
-              // Refresh orders to show updated status
-              await fetchOrders();
+              // Fast silent refresh
+              await fetchOrders(true);
 
               toast({
                 title: "Packing Complete! 🎉",
@@ -349,8 +361,8 @@ export const PackingPage = () => {
       // Update order stage to 'packed' (ready for tracking stage)
       await wooCommerceOrderService.updateOrderStage(currentOrder.id, 'packed');
       
-      // Refresh orders to show updated status
-      await fetchOrders();
+      // Fast silent refresh
+      await fetchOrders(true);
 
       toast({
         title: "Packing Complete",
@@ -489,7 +501,7 @@ export const PackingPage = () => {
           </Button>
           <Button 
             variant="outline"
-            onClick={fetchOrders}
+            onClick={() => fetchOrders(false)}
             disabled={loading}
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
