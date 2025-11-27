@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Load cached orders for instant display
 const loadCachedOrders = (): WooCommerceOrder[] => {
@@ -115,6 +116,76 @@ export const useWooCommerceOrders = () => {
     } else {
       setOrders([]);
     }
+  }, [user]);
+
+  // Set up realtime subscription for order changes
+  useEffect(() => {
+    if (!user) return;
+
+    console.log('🔴 Setting up realtime subscription for orders');
+    
+    const channel = supabase
+      .channel('orders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('⚡ Realtime order change:', payload.eventType, payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newOrder = payload.new as WooCommerceOrder;
+            setOrders(prev => {
+              if (prev.some(o => o.id === newOrder.id)) return prev;
+              const updated = [newOrder, ...prev];
+              try {
+                localStorage.setItem('orders_cache', JSON.stringify({
+                  orders: updated,
+                  timestamp: Date.now()
+                }));
+              } catch (e) {}
+              return updated;
+            });
+            toast.success(`New order #${newOrder.order_number} received`);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedOrder = payload.new as WooCommerceOrder;
+            setOrders(prev => {
+              const updated = prev.map(order => 
+                order.id === updatedOrder.id ? updatedOrder : order
+              );
+              try {
+                localStorage.setItem('orders_cache', JSON.stringify({
+                  orders: updated,
+                  timestamp: Date.now()
+                }));
+              } catch (e) {}
+              return updated;
+            });
+          } else if (payload.eventType === 'DELETE') {
+            const deletedOrder = payload.old as WooCommerceOrder;
+            setOrders(prev => {
+              const updated = prev.filter(order => order.id !== deletedOrder.id);
+              try {
+                localStorage.setItem('orders_cache', JSON.stringify({
+                  orders: updated,
+                  timestamp: Date.now()
+                }));
+              } catch (e) {}
+              return updated;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔴 Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   return {
