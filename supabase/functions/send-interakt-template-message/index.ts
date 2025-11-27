@@ -57,7 +57,7 @@ serve(async (req) => {
     }
 
     console.log('🚀 Starting Interakt template message send...');
-    console.log('📱 Target phone:', templateData.fullPhoneNumber);
+    console.log('📱 Target phone:', templateData.phoneNumber);
     console.log('📋 Template name:', templateData.template.name);
     console.log('🔑 API Key first 10 chars:', settings.api_key.substring(0, 10) + '...');
     console.log('🔗 Base URL:', settings.base_url);
@@ -126,7 +126,7 @@ serve(async (req) => {
           details: responseData,
           status_code: response.status,
           debug_info: {
-            phone: templateData.fullPhoneNumber,
+            phone: templateData.phoneNumber,
             template: templateData.template.name,
             body_values_count: templateData.template.bodyValues.length
           }
@@ -147,7 +147,7 @@ serve(async (req) => {
         message_id: responseData?.messageId || responseData?.id || 'unknown',
         interakt_response: responseData,
         debug_info: {
-          phone: templateData.fullPhoneNumber,
+          phone: templateData.phoneNumber,
           template: templateData.template.name,
           status: response.status
         }
