@@ -7,7 +7,7 @@ import { useWooCommerceOrders } from "@/hooks/useWooCommerceOrders";
 import { useMemo } from "react";
 
 export const Dashboard = () => {
-  const { orders, loading } = useWooCommerceOrders();
+  const { orders, loading, refetch } = useWooCommerceOrders();
 
   const stats = useMemo(() => {
     const newOrders = orders.filter(order => order.stage === 'processing').length;
