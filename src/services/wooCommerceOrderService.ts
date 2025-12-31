@@ -598,11 +598,15 @@ export const wooCommerceOrderService = {
     const now = new Date().toISOString();
     switch (stage) {
       case 'packing':
+        // Moving to packing means printing is done
         updateData.printed_at = now;
         console.log(`📝 Setting printed_at for order ${orderId} to ${now}`);
         break;
       case 'packed':
+        // If going directly to packed (bypass packing), still set printed_at
+        updateData.printed_at = now;
         updateData.packed_at = now;
+        console.log(`📝 Setting printed_at AND packed_at for order ${orderId} to ${now} (bypass packing)`);
         break;
       case 'shipped':
         updateData.shipped_at = now;
