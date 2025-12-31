@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { clearAllCaches } from '@/services/orderCacheService';
 
 interface AuthContextType {
   user: User | null;
@@ -72,6 +73,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const signOut = async () => {
+    // Clear order caches on sign out
+    clearAllCaches();
     await supabase.auth.signOut();
   };
 

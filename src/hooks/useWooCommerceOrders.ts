@@ -4,25 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedOrders, setCachedOrders } from '@/services/orderCacheService';
 
-// Load cached orders for instant display
+// Load cached orders for instant display using smart cache
 const loadCachedOrders = (): WooCommerceOrder[] => {
-  try {
-    const cached = localStorage.getItem('orders_cache');
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      const cacheTime = parsed.timestamp || 0;
-      const now = Date.now();
-      // Use cache if less than 5 minutes old
-      if (now - cacheTime < 5 * 60 * 1000) {
-        console.log(`📦 Loading ${parsed.orders.length} cached orders for instant display`);
-        return parsed.orders;
-      }
-    }
-  } catch (error) {
-    console.error('Error loading cached orders:', error);
+  const cached = getCachedOrders();
+  if (cached.length > 0) {
+    console.log(`📦 useWooCommerceOrders: Loading ${cached.length} cached orders for instant display`);
   }
-  return [];
+  return cached;
 };
 
 export const useWooCommerceOrders = () => {
@@ -65,15 +55,8 @@ export const useWooCommerceOrders = () => {
       const fetchedOrders = await wooCommerceOrderService.fetchOrders();
       setOrders(fetchedOrders);
       
-      // Cache orders for instant load next time
-      try {
-        localStorage.setItem('orders_cache', JSON.stringify({
-          orders: fetchedOrders,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        console.warn('Failed to cache orders:', e);
-      }
+      // Cache using smart cache service (only caches active orders)
+      setCachedOrders(fetchedOrders);
       
       console.log(`✅ Loaded ${fetchedOrders.length} orders from database`);
     } catch (error: any) {
@@ -142,12 +125,7 @@ export const useWooCommerceOrders = () => {
             setOrders(prev => {
               if (prev.some(o => o.id === newOrder.id)) return prev;
               const updated = [newOrder, ...prev];
-              try {
-                localStorage.setItem('orders_cache', JSON.stringify({
-                  orders: updated,
-                  timestamp: Date.now()
-                }));
-              } catch (e) {}
+              setCachedOrders(updated);
               return updated;
             });
             toast.success(`New order #${newOrder.order_number} received`);
@@ -157,24 +135,14 @@ export const useWooCommerceOrders = () => {
               const updated = prev.map(order => 
                 order.id === updatedOrder.id ? updatedOrder : order
               );
-              try {
-                localStorage.setItem('orders_cache', JSON.stringify({
-                  orders: updated,
-                  timestamp: Date.now()
-                }));
-              } catch (e) {}
+              setCachedOrders(updated);
               return updated;
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedOrder = payload.old as WooCommerceOrder;
             setOrders(prev => {
               const updated = prev.filter(order => order.id !== deletedOrder.id);
-              try {
-                localStorage.setItem('orders_cache', JSON.stringify({
-                  orders: updated,
-                  timestamp: Date.now()
-                }));
-              } catch (e) {}
+              setCachedOrders(updated);
               return updated;
             });
           }
