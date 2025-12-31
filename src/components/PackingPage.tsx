@@ -107,15 +107,17 @@ export const PackingPage = () => {
     }
   };
 
-  // Fast fetch orders function (no loading state for silent updates)
+  // Fast fetch orders function - fetch stage-specific orders to avoid 1000-row limit
   const fetchOrders = async (silent: boolean = false) => {
     if (!silent) setLoading(true);
     try {
-      const orders = await wooCommerceOrderService.fetchOrders();
-      setAllOrders(orders);
+      // Fetch only packing stage orders directly from DB (avoids 1000-row limit)
+      const packingStageOrders = await wooCommerceOrderService.fetchOrdersByStage('packing');
+      setAllOrders(packingStageOrders);
       
-      // Cache using smart cache service (only caches active orders)
-      setCachedOrders(orders);
+      // Cache using smart cache service
+      setCachedOrders(packingStageOrders);
+      console.log(`📦 PackingPage: Loaded ${packingStageOrders.length} packing orders directly from DB`);
     } catch (error) {
       console.error('Error fetching orders:', error);
       if (!silent) {
