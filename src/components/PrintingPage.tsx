@@ -22,33 +22,18 @@ import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { supabase } from '@/integrations/supabase/client';
 import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
 import { syncCoordinator } from '@/services/syncCoordinator';
+import { getCachedOrdersByStage, setCachedOrders } from '@/services/orderCacheService';
 
 // Load cached orders for instant display in Printing page
 const loadCachedOrders = (): { processingOrders: WooCommerceOrder[]; allOrders: WooCommerceOrder[] } => {
-  try {
-    const cached = localStorage.getItem('orders_cache');
-    if (!cached) return { processingOrders: [], allOrders: [] };
-
-    const parsed = JSON.parse(cached);
-    const cacheTime = parsed.timestamp || 0;
-    const now = Date.now();
-
-    // Use cache if less than 5 minutes old
-    if (now - cacheTime < 5 * 60 * 1000 && Array.isArray(parsed.orders)) {
-      const allOrders = parsed.orders as WooCommerceOrder[];
-      const processingOrders = allOrders.filter(order => {
-        const stage = (order as any).stage || order.status || 'processing';
-        return stage === 'processing';
-      });
-
-      console.log(`📦 PrintingPage: Loading ${processingOrders.length} cached processing orders for instant display`);
-      return { processingOrders, allOrders };
-    }
-  } catch (error) {
-    console.error('PrintingPage: Error loading cached orders:', error);
+  const cachedOrders = getCachedOrdersByStage('processing');
+  const allCached = getCachedOrdersByStage(['processing', 'packing', 'packed', 'printed']);
+  
+  if (cachedOrders.length > 0) {
+    console.log(`📦 PrintingPage: Loading ${cachedOrders.length} cached processing orders for instant display`);
   }
-
-  return { processingOrders: [], allOrders: [] };
+  
+  return { processingOrders: cachedOrders, allOrders: allCached };
 };
 
 const initialCached = typeof window !== 'undefined'
@@ -90,15 +75,8 @@ const PrintingPage = () => {
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
 
-      // Cache orders for instant load next time
-      try {
-        localStorage.setItem('orders_cache', JSON.stringify({
-          orders: allOrders,
-          timestamp: Date.now(),
-        }));
-      } catch (e) {
-        console.warn('PrintingPage: Failed to cache orders:', e);
-      }
+      // Cache active orders for instant load next time (uses smart caching)
+      setCachedOrders(allOrders);
       
       // Debug: Log orders with printed_at for today
       const todayStr = new Date().toLocaleDateString('en-CA');
@@ -152,15 +130,8 @@ const PrintingPage = () => {
       const allOrders = await wooCommerceOrderService.fetchOrders();
       setAllOrdersForAnalytics(allOrders);
 
-      // Cache orders for instant load next time
-      try {
-        localStorage.setItem('orders_cache', JSON.stringify({
-          orders: allOrders,
-          timestamp: Date.now(),
-        }));
-      } catch (e) {
-        console.warn('PrintingPage: Failed to cache orders:', e);
-      }
+      // Cache active orders for instant load next time (uses smart caching)
+      setCachedOrders(allOrders);
       
       // Debug: Log orders with printed_at for today
       const todayStr = new Date().toLocaleDateString('en-CA');

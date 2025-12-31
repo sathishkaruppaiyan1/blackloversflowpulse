@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { BulkMovementTrigger } from "./BulkMovementTrigger";
 import { useBypassPackingStage } from "@/hooks/useBypassPackingStage";
 import { syncCoordinator } from "@/services/syncCoordinator";
+import { getCachedOrdersByStage, setCachedOrders } from "@/services/orderCacheService";
 
 interface ScannedProduct {
   id: string;
@@ -23,13 +24,22 @@ interface ScannedProduct {
 }
 
 export const PackingPage = () => {
+  // Load cached packing orders immediately for instant display
+  const loadCachedPackingOrders = (): WooCommerceOrder[] => {
+    const cached = getCachedOrdersByStage(['packing', 'printed']);
+    if (cached.length > 0) {
+      console.log(`📦 PackingPage: Loading ${cached.length} cached packing orders for instant display`);
+    }
+    return cached;
+  };
+
   const [scannedOrderId, setScannedOrderId] = useState("");
   const [currentOrder, setCurrentOrder] = useState<WooCommerceOrder | null>(null);
   const [scannedProducts, setScannedProducts] = useState<ScannedProduct[]>([]);
   const [productSku, setProductSku] = useState("");
   const [productName, setProductName] = useState("");
   const [productQuantity, setProductQuantity] = useState(1);
-  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>(loadCachedPackingOrders());
   const [loading, setLoading] = useState(false);
   const [packingProgress, setPackingProgress] = useState({ packed: 0, total: 0, percentage: 0 });
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -104,15 +114,8 @@ export const PackingPage = () => {
       const orders = await wooCommerceOrderService.fetchOrders();
       setAllOrders(orders);
       
-      // Cache orders
-      try {
-        localStorage.setItem('packing_orders_cache', JSON.stringify({
-          orders: orders,
-          timestamp: Date.now()
-        }));
-      } catch (e) {
-        console.warn('Failed to cache orders:', e);
-      }
+      // Cache using smart cache service (only caches active orders)
+      setCachedOrders(orders);
     } catch (error) {
       console.error('Error fetching orders:', error);
       if (!silent) {

@@ -14,26 +14,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
 import { syncCoordinator } from '@/services/syncCoordinator';
+import { getCachedOrders, setCachedOrders } from '@/services/orderCacheService';
 
 const TrackingPage = () => {
-  // Load cached orders immediately for instant display
+  // Load cached orders immediately for instant display using smart cache
   const loadCachedOrders = (): WooCommerceOrder[] => {
-    try {
-      const cached = localStorage.getItem('tracking_orders_cache');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        // Check if cache is recent (less than 5 minutes old)
-        const cacheTime = parsed.timestamp || 0;
-        const now = Date.now();
-        if (now - cacheTime < 5 * 60 * 1000) {
-          console.log(`📦 Loading ${parsed.orders.length} cached orders for instant display`);
-          return parsed.orders;
-        }
-      }
-    } catch (error) {
-      console.error('Error loading cached orders:', error);
+    const cached = getCachedOrders();
+    if (cached.length > 0) {
+      console.log(`📦 TrackingPage: Loading ${cached.length} cached orders for instant display`);
     }
-    return [];
+    return cached;
   };
 
   const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>(loadCachedOrders());
@@ -119,15 +109,8 @@ const TrackingPage = () => {
       // Update state immediately
       setAllOrders(orders);
       
-      // Cache for next time (instant load on next visit)
-      try {
-        localStorage.setItem('tracking_orders_cache', JSON.stringify({
-          orders: orders,
-          timestamp: Date.now()
-        }));
-      } catch (error) {
-        console.error('Error caching orders:', error);
-      }
+      // Cache using smart cache service (only caches active orders)
+      setCachedOrders(orders);
       
       console.log(`✅ Loaded ${orders.length} orders from database (fast fetch)`);
     } catch (error) {
@@ -152,15 +135,8 @@ const TrackingPage = () => {
       const orders = await wooCommerceOrderService.fetchOrders();
       setAllOrders(orders);
       
-      // Cache orders
-      try {
-        localStorage.setItem('tracking_orders_cache', JSON.stringify({
-          orders: orders,
-          timestamp: Date.now()
-        }));
-      } catch (error) {
-        console.error('Error caching orders:', error);
-      }
+      // Cache using smart cache service (only caches active orders)
+      setCachedOrders(orders);
       
       console.log(`✅ Loaded ${orders.length} orders`);
     } catch (error) {
