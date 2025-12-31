@@ -73,11 +73,16 @@ export const bulkOrderMovementService = {
           const now = new Date().toISOString();
           switch (targetStage) {
             case 'packing':
+              // Moving to packing means printing is done
               updateData.printed_at = now;
               console.log(`📝 Setting printed_at for order ${currentOrder.order_number} to ${now}`);
               break;
             case 'packed':
+              // If going directly to packed (bypass packing), still set printed_at if not already set
+              // This handles the case where orders skip packing stage
+              updateData.printed_at = now;
               updateData.packed_at = now;
+              console.log(`📝 Setting printed_at AND packed_at for order ${currentOrder.order_number} to ${now} (bypass packing)`);
               break;
             case 'shipped':
               updateData.shipped_at = now;
