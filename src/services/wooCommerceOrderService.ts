@@ -543,9 +543,13 @@ export const wooCommerceOrderService = {
       throw new Error('User not authenticated');
     }
     
-    // For shipped stage, also include completed orders
-    let statusConditions = [stage];
-    if (stage === 'shipped') {
+    // Define status conditions based on stage
+    let statusConditions: string[] = [stage];
+    if (stage === 'packing') {
+      // Packing stage includes both 'packing' and 'printed' statuses
+      statusConditions = ['packing', 'printed'];
+    } else if (stage === 'shipped') {
+      // Shipped stage includes shipped, delivered, and completed orders
       statusConditions = ['shipped', 'delivered', 'completed'];
     }
     

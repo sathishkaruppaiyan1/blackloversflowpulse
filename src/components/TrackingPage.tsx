@@ -98,28 +98,28 @@ const TrackingPage = () => {
   );
   
 
-  // Fast function to fetch from database without syncing
+  // Fast function to fetch from database without syncing - stage-specific to avoid 1000-row limit
   const fetchOrdersFromDB = useCallback(async () => {
     if (!user) return;
     
     try {
-      // Fetch all orders (needed for stats and filtering)
-      const orders = await wooCommerceOrderService.fetchOrders();
+      // Fetch only packed orders directly from DB (avoids 1000-row limit)
+      const packedOrders = await wooCommerceOrderService.fetchOrdersByStage('packed');
       
       // Update state immediately
-      setAllOrders(orders);
+      setAllOrders(packedOrders);
       
-      // Cache using smart cache service (only caches active orders)
-      setCachedOrders(orders);
+      // Cache using smart cache service
+      setCachedOrders(packedOrders);
       
-      console.log(`✅ Loaded ${orders.length} orders from database (fast fetch)`);
+      console.log(`📦 TrackingPage: Loaded ${packedOrders.length} packed orders directly from DB`);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error("Failed to fetch orders");
     }
   }, [user]);
 
-  // Full fetch function (with optional sync)
+  // Full fetch function (with optional sync) - stage-specific to avoid 1000-row limit
   const fetchOrders = async (shouldSync: boolean = false) => {
     if (!user) return;
     
@@ -131,14 +131,14 @@ const TrackingPage = () => {
         await wooCommerceOrderService.syncOrdersFromWooCommerce();
         syncCoordinator.markSyncCompleted();
       }
-      // Fetch all orders (needed to get packed orders)
-      const orders = await wooCommerceOrderService.fetchOrders();
-      setAllOrders(orders);
+      // Fetch only packed orders directly from DB (avoids 1000-row limit)
+      const packedOrders = await wooCommerceOrderService.fetchOrdersByStage('packed');
+      setAllOrders(packedOrders);
       
-      // Cache using smart cache service (only caches active orders)
-      setCachedOrders(orders);
+      // Cache using smart cache service
+      setCachedOrders(packedOrders);
       
-      console.log(`✅ Loaded ${orders.length} orders`);
+      console.log(`📦 TrackingPage: Loaded ${packedOrders.length} packed orders`);
     } catch (error) {
       console.error('Error fetching orders:', error);
       if (shouldSync) {
