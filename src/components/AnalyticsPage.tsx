@@ -1,11 +1,11 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, Package, Users, Clock, CheckCircle, BarChart3, PieChart } from "lucide-react";
+import { TrendingUp, Package, Clock, CheckCircle, BarChart3, PieChart, Printer, PackageCheck, Truck } from "lucide-react";
 import { useWooCommerceOrders } from "@/hooks/useWooCommerceOrders";
 import { useCompletedOrders } from "@/hooks/useCompletedOrders";
+import { useDailyOperationsReport } from "@/hooks/useDailyOperationsReport";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, Pie } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, Legend } from "recharts";
 import { useMemo } from "react";
 
 const chartConfig = {
@@ -30,13 +30,31 @@ const chartConfig = {
   completed: {
     label: "Completed",
   },
+  printed: {
+    label: "Printed",
+    color: "hsl(var(--chart-1))",
+  },
+  packedOps: {
+    label: "Packed",
+    color: "hsl(var(--chart-2))",
+  },
+  shippedOps: {
+    label: "Shipped",
+    color: "hsl(var(--chart-3))",
+  },
 };
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+const OPS_COLORS = {
+  printed: '#8b5cf6',
+  packed: '#3b82f6',
+  shipped: '#22c55e'
+};
 
 export const AnalyticsPage = () => {
   const { orders, loading } = useWooCommerceOrders();
   const { completedOrders } = useCompletedOrders();
+  const { dailyStats, summary, loading: opsLoading } = useDailyOperationsReport(7);
 
   const analytics = useMemo(() => {
     const totalOrders = orders.length;
@@ -146,6 +164,83 @@ export const AnalyticsPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Daily Operations Report */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Daily Operations Report (Last 7 Days)
+          </CardTitle>
+          <CardDescription>
+            Track printed, packed, and shipped orders each day
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Today's Summary */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Printer className="w-5 h-5 text-purple-500" />
+                <span className="text-sm text-muted-foreground">Printed Today</span>
+              </div>
+              <div className="text-3xl font-bold text-purple-500">
+                {opsLoading ? "..." : summary.todayPrinted}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Week: {summary.weekPrinted}
+              </div>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <PackageCheck className="w-5 h-5 text-blue-500" />
+                <span className="text-sm text-muted-foreground">Packed Today</span>
+              </div>
+              <div className="text-3xl font-bold text-blue-500">
+                {opsLoading ? "..." : summary.todayPacked}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Week: {summary.weekPacked}
+              </div>
+            </div>
+            <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Truck className="w-5 h-5 text-green-500" />
+                <span className="text-sm text-muted-foreground">Shipped Today</span>
+              </div>
+              <div className="text-3xl font-bold text-green-500">
+                {opsLoading ? "..." : summary.todayShipped}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Week: {summary.weekShipped}
+              </div>
+            </div>
+          </div>
+
+          {/* Daily Operations Chart */}
+          {opsLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50 animate-pulse" />
+              <p>Loading operations data...</p>
+            </div>
+          ) : (
+            <ChartContainer config={chartConfig}>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={dailyStats}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="displayDate" tick={{ fontSize: 12 }} />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="printed" name="Printed" fill={OPS_COLORS.printed} />
+                  <Bar dataKey="packed" name="Packed" fill={OPS_COLORS.packed} />
+                  <Bar dataKey="shipped" name="Shipped" fill={OPS_COLORS.shipped} />
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
