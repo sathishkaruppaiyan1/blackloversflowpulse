@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +12,9 @@ import { PackingPage } from '@/components/PackingPage';
 import TrackingPage from '@/components/TrackingPage';
 import OrdersPage from '@/components/OrdersPage';
 import ShippedPage from '@/components/ShippedPage';
-import { useWooCommerceOrders } from '@/hooks/useWooCommerceOrders';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
+import { useOrderCounts } from '@/hooks/useOrderCounts';
 import { 
   Home, 
   ShoppingCart, 
@@ -34,15 +33,8 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { orders: allOrders } = useWooCommerceOrders();
   const { bypassPackingStage } = useBypassPackingStage();
-
-  // Get order counts for navigation badges
-  const packingOrders = allOrders.filter(order => 
-    order.status === 'packing' || order.status === 'printed'
-  );
-  const trackingOrders = allOrders.filter(order => order.status === 'packed');
-  const shippedOrders = allOrders.filter(order => order.status === 'delivered');
+  const { counts } = useOrderCounts();
 
   // Redirect to auth if not logged in
   useEffect(() => {
@@ -75,9 +67,9 @@ const Index = () => {
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "printing", label: "Printing", icon: Printer },
     // Conditionally include packing stage based on bypass setting
-    ...(bypassPackingStage ? [] : [{ id: "packing", label: "Packing", icon: Package, badge: packingOrders.length }]),
-    { id: "tracking", label: "Tracking", icon: Truck, badge: trackingOrders.length },
-    { id: "shipped", label: "Shipped", icon: CheckCircle, badge: shippedOrders.length },
+    ...(bypassPackingStage ? [] : [{ id: "packing", label: "Packing", icon: Package, badge: counts.packing }]),
+    { id: "tracking", label: "Tracking", icon: Truck, badge: counts.packed },
+    { id: "shipped", label: "Shipped", icon: CheckCircle, badge: counts.shipped },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
   ];
 
