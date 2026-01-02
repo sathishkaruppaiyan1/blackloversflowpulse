@@ -47,6 +47,17 @@ const cleanupOldCaches = (): void => {
 /**
  * Get cached active orders
  */
+const dedupeOrders = (orders: WooCommerceOrder[]): WooCommerceOrder[] => {
+  // Dedupe by DB primary key first; fallback to order_number
+  const map = new Map<string, WooCommerceOrder>();
+  for (const o of orders) {
+    const key = (o as any)?.id || o.order_number;
+    if (!key) continue;
+    if (!map.has(key)) map.set(key, o);
+  }
+  return Array.from(map.values());
+};
+
 export const getCachedOrders = (): WooCommerceOrder[] => {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
@@ -57,10 +68,11 @@ export const getCachedOrders = (): WooCommerceOrder[] => {
 
     // Check if cache is still valid
     if (now - parsed.timestamp < CACHE_MAX_AGE_MS && Array.isArray(parsed.orders)) {
-      console.log(`📦 Cache: Loaded ${parsed.orders.length} active orders from cache`);
-      return parsed.orders;
+      const deduped = dedupeOrders(parsed.orders);
+      console.log(`📦 Cache: Loaded ${deduped.length} active orders from cache`);
+      return deduped;
     }
-    
+
     console.log('📦 Cache: Cache expired, returning empty');
     return [];
   } catch (error) {
@@ -84,33 +96,33 @@ export const getCachedOrdersByStage = (stage: string | string[]): WooCommerceOrd
 export const setCachedOrders = (orders: WooCommerceOrder[]): boolean => {
   // First, cleanup old cache keys that might be using quota
   cleanupOldCaches();
-  
+
   try {
+    // Dedupe first to avoid UI showing the same order twice from cache
+    const uniqueOrders = dedupeOrders(Array.isArray(orders) ? orders : []);
+
     // Filter to only active stages
-    const activeOrders = orders.filter(order => 
-      ACTIVE_STAGES.includes(order.status)
-    );
-    
+    const activeOrders = uniqueOrders.filter(order => ACTIVE_STAGES.includes(order.status));
+
     // Limit the number of cached orders for safety
     const ordersToCache = activeOrders.slice(0, MAX_CACHED_ORDERS);
-    
-    // Create minimal cache payload (exclude heavy fields if needed)
+
     const cachePayload: CachedData = {
       orders: ordersToCache,
       timestamp: Date.now()
     };
-    
+
     const jsonString = JSON.stringify(cachePayload);
-    
+
     // Check approximate size before storing
     const sizeKB = (jsonString.length * 2) / 1024; // UTF-16 characters
     console.log(`📦 Cache: Storing ${ordersToCache.length} active orders (~${sizeKB.toFixed(1)}KB)`);
-    
+
     if (sizeKB > 4000) {
       console.warn('📦 Cache: Payload too large, skipping cache');
       return false;
     }
-    
+
     localStorage.setItem(CACHE_KEY, jsonString);
     console.log(`✅ Cache: Successfully cached ${ordersToCache.length} active orders`);
     return true;
