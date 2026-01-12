@@ -574,12 +574,12 @@ export const wooCommerceOrderService = {
 
   async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
     console.log(`Fetching orders for stage: ${stage}`);
-    
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       throw new Error('User not authenticated');
     }
-    
+
     // Define status conditions based on stage
     let statusConditions: string[] = [stage];
     if (stage === 'packing') {
@@ -589,13 +589,42 @@ export const wooCommerceOrderService = {
       // Shipped stage includes shipped, delivered, and completed orders
       statusConditions = ['shipped', 'delivered', 'completed'];
     }
-    
-    const { data, error } = await supabase
+
+    // IMPORTANT: Guard against "stage regressions" caused by partial updates.
+    // If an order already has later-stage timestamps/tracking, it must not appear in earlier stages
+    // even if its `status` column is stale.
+    let query = supabase
       .from('orders')
       .select('*')
       .eq('user_id', user.id)
-      .in('status', statusConditions)
-      .order('order_number', { ascending: false });
+      .in('status', statusConditions);
+
+    if (stage === 'processing') {
+      // Processing should only show orders that haven't been printed/packed/shipped yet
+      query = query
+        .is('printed_at', null)
+        .is('packed_at', null)
+        .is('shipped_at', null)
+        .is('delivered_at', null);
+    }
+
+    if (stage === 'packing') {
+      // Packing/Printed should not include anything already packed or shipped
+      query = query
+        .is('packed_at', null)
+        .is('shipped_at', null)
+        .is('delivered_at', null);
+    }
+
+    if (stage === 'packed') {
+      // Tracking page pulls "packed". If tracking/shipped_at exists, it belongs to shipped.
+      query = query
+        .is('shipped_at', null)
+        .is('delivered_at', null)
+        .is('tracking_number', null);
+    }
+
+    const { data, error } = await query.order('order_number', { ascending: false });
 
     if (error) {
       console.error(`Error fetching orders for stage ${stage}:`, error);
@@ -603,17 +632,17 @@ export const wooCommerceOrderService = {
     }
 
     console.log(`Fetched ${data?.length || 0} orders for stage ${stage} for user ${user.id}`);
-    
+
     // Transform and sort by order number numerically (descending)
     const orders = (data || []).map(transformDatabaseOrder);
-    
+
     // Sort by order number numerically (descending - highest first)
     orders.sort((a, b) => {
       const numA = parseInt(a.order_number) || 0;
       const numB = parseInt(b.order_number) || 0;
       return numB - numA; // Descending order
     });
-    
+
     return orders;
   },
 
