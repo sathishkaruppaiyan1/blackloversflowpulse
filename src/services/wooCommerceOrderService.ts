@@ -160,34 +160,65 @@ export const wooCommerceOrderService = {
     }
 
     if (data?.orders && data.orders.length > 0) {
-      // First, fetch existing orders to preserve their status if they've moved beyond 'processing'
+      // First, fetch existing orders to preserve their status and tracking info if they've moved beyond 'processing'
       const wooOrderIds = data.orders.map((order: any) => order.id.toString());
       const { data: existingOrders } = await supabase
         .from('orders')
-        .select('woo_order_id, status')
+        .select('woo_order_id, status, tracking_number, carrier, shipped_at, printed_at, packed_at')
         .eq('user_id', user.id)
         .in('woo_order_id', wooOrderIds);
 
-      // Create a map of existing order statuses
-      const existingStatusMap = new Map<string, string>();
+      // Create a map of existing order data (status + tracking info)
+      const existingOrdersMap = new Map<string, {
+        status: string;
+        tracking_number: string | null;
+        carrier: string | null;
+        shipped_at: string | null;
+        printed_at: string | null;
+        packed_at: string | null;
+      }>();
       if (existingOrders) {
         existingOrders.forEach((existingOrder: any) => {
-          existingStatusMap.set(existingOrder.woo_order_id, existingOrder.status);
+          existingOrdersMap.set(existingOrder.woo_order_id, {
+            status: existingOrder.status,
+            tracking_number: existingOrder.tracking_number,
+            carrier: existingOrder.carrier,
+            shipped_at: existingOrder.shipped_at,
+            printed_at: existingOrder.printed_at,
+            packed_at: existingOrder.packed_at
+          });
         });
       }
 
       const ordersToSync = data.orders.map((order: any) => {
         const wooOrderId = order.id.toString();
-        const existingStatus = existingStatusMap.get(wooOrderId);
+        const existingOrderData = existingOrdersMap.get(wooOrderId);
         
-        // Preserve local status if order has moved beyond 'processing'
+        // Preserve local status and tracking info if order has moved beyond 'processing'
         // Only set to 'processing' if it's a new order or still in 'processing' locally
         let orderStatus = 'processing';
-        if (existingStatus) {
-          // If order exists and has been moved beyond 'processing', preserve the local status
-          if (existingStatus !== 'processing') {
-            orderStatus = existingStatus;
-            console.log(`Preserving local status '${existingStatus}' for order ${wooOrderId} (WooCommerce status: ${order.status})`);
+        let preservedTrackingNumber = null;
+        let preservedCarrier = null;
+        let preservedShippedAt = null;
+        let preservedPrintedAt = null;
+        let preservedPackedAt = null;
+
+        if (existingOrderData) {
+          // Preserve tracking info if it exists
+          preservedTrackingNumber = existingOrderData.tracking_number;
+          preservedCarrier = existingOrderData.carrier;
+          preservedShippedAt = existingOrderData.shipped_at;
+          preservedPrintedAt = existingOrderData.printed_at;
+          preservedPackedAt = existingOrderData.packed_at;
+
+          // If order has shipped_at or tracking, it's definitely shipped - preserve that status
+          if (existingOrderData.shipped_at || existingOrderData.tracking_number) {
+            orderStatus = 'shipped';
+            console.log(`Preserving shipped status for order ${wooOrderId} (has tracking/shipped_at)`);
+          } else if (existingOrderData.status !== 'processing') {
+            // If order exists and has been moved beyond 'processing', preserve the local status
+            orderStatus = existingOrderData.status;
+            console.log(`Preserving local status '${existingOrderData.status}' for order ${wooOrderId} (WooCommerce status: ${order.status})`);
           } else {
             // Order is still in 'processing', sync from WooCommerce
             orderStatus = order.status === 'processing' ? 'processing' : order.status;
@@ -373,7 +404,13 @@ export const wooCommerceOrderService = {
           shipping_country: order.shipping?.country || null,
           order_date: order.date_created || order.date_created_gmt,
           payment_method: order.payment_method_title || order.payment_method || null,
-          currency: order.currency || 'INR'
+          currency: order.currency || 'INR',
+          // Preserve tracking data from existing orders
+          tracking_number: preservedTrackingNumber,
+          carrier: preservedCarrier,
+          shipped_at: preservedShippedAt,
+          printed_at: preservedPrintedAt,
+          packed_at: preservedPackedAt
         };
       });
 
