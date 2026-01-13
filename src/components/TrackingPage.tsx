@@ -14,19 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
 import { syncCoordinator } from '@/services/syncCoordinator';
-import { getCachedOrders, setCachedOrders } from '@/services/orderCacheService';
 
 const TrackingPage = () => {
-  // Load cached orders immediately for instant display using smart cache
-  const loadCachedOrders = (): WooCommerceOrder[] => {
-    const cached = getCachedOrders();
-    if (cached.length > 0) {
-      console.log(`📦 TrackingPage: Loading ${cached.length} cached orders for instant display`);
-    }
-    return cached;
-  };
-
-  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>(loadCachedOrders());
+  // NO CACHE - Always start empty and fetch fresh from database to prevent duplicates
+  const [allOrders, setAllOrders] = useState<WooCommerceOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [orderIdInput, setOrderIdInput] = useState('');
   const [trackingNumberInput, setTrackingNumberInput] = useState('');
@@ -106,11 +97,8 @@ const TrackingPage = () => {
       // Fetch only packed orders directly from DB (avoids 1000-row limit)
       const packedOrders = await wooCommerceOrderService.fetchOrdersByStage('packed');
       
-      // Update state immediately
+      // Update state immediately - NO CACHE to prevent duplicates
       setAllOrders(packedOrders);
-      
-      // Cache using smart cache service
-      setCachedOrders(packedOrders);
       
       console.log(`📦 TrackingPage: Loaded ${packedOrders.length} packed orders directly from DB`);
     } catch (error) {
@@ -134,9 +122,6 @@ const TrackingPage = () => {
       // Fetch only packed orders directly from DB (avoids 1000-row limit)
       const packedOrders = await wooCommerceOrderService.fetchOrdersByStage('packed');
       setAllOrders(packedOrders);
-      
-      // Cache using smart cache service
-      setCachedOrders(packedOrders);
       
       console.log(`📦 TrackingPage: Loaded ${packedOrders.length} packed orders`);
     } catch (error) {
