@@ -31,27 +31,40 @@ export const useOrderCounts = () => {
 
     try {
       // Fetch counts for each stage in parallel using count-only queries (no row limit)
+      // IMPORTANT: Use timestamp-based filtering to match actual stage logic and prevent regressions
       const [processingRes, packingRes, packedRes, shippedRes, deliveredRes] = await Promise.all([
+        // Processing: orders that haven't moved to any later stage
         supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('status', 'processing'),
+          .eq('status', 'processing')
+          .is('printed_at', null)
+          .is('packed_at', null)
+          .is('shipped_at', null),
+        // Packing: includes packing and printed, but not packed/shipped
         supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .in('status', ['packing', 'printed']),
+          .in('status', ['packing', 'printed'])
+          .is('packed_at', null)
+          .is('shipped_at', null),
+        // Packed (Tracking): status=packed AND not yet shipped (no shipped_at, no tracking_number)
         supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('status', 'packed'),
+          .eq('status', 'packed')
+          .is('shipped_at', null)
+          .is('tracking_number', null),
+        // Shipped: includes shipped, delivered, completed
         supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('status', 'shipped'),
+          .in('status', ['shipped', 'delivered', 'completed']),
+        // Delivered only
         supabase
           .from('orders')
           .select('*', { count: 'exact', head: true })
