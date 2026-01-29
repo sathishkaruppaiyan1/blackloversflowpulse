@@ -664,9 +664,20 @@ export const wooCommerceOrderService = {
     const previousStage = currentOrder.status;
     const updateData: any = { status: stage };
     
-    // Add timestamp fields based on stage
+    // Add timestamp fields based on stage (or clear when moving back to processing)
     const now = new Date().toISOString();
     switch (stage) {
+      case 'processing':
+        // Moving back to printing: clear all stage timestamps and tracking so order appears in Printing stage.
+        // Without this, orders would have status=processing but printed_at/packed_at set and disappear from both stages.
+        updateData.printed_at = null;
+        updateData.packed_at = null;
+        updateData.shipped_at = null;
+        updateData.delivered_at = null;
+        updateData.tracking_number = null;
+        updateData.carrier = null;
+        console.log(`📝 Clearing stage timestamps for order ${orderId} (moving to printing)`);
+        break;
       case 'packing':
         // Moving to packing means printing is done
         updateData.printed_at = now;

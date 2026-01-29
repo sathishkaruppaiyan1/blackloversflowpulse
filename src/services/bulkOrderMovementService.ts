@@ -68,8 +68,17 @@ export const bulkOrderMovementService = {
         const previousStage = currentOrder.status;
         const updateData: any = { status: targetStage };
         
-        // Add timestamp fields based on stage (unless preserving)
-        if (!preserveTimestamps) {
+        // When moving back to processing (printing), always clear stage timestamps so orders appear in Printing stage.
+        // Without this, orders would have status=processing but printed_at/packed_at set and disappear from both stages.
+        if (targetStage === 'processing') {
+          updateData.printed_at = null;
+          updateData.packed_at = null;
+          updateData.shipped_at = null;
+          updateData.delivered_at = null;
+          updateData.tracking_number = null;
+          updateData.carrier = null;
+          console.log(`📝 Clearing stage timestamps for order ${currentOrder.order_number} (moving to printing)`);
+        } else if (!preserveTimestamps) {
           const now = new Date().toISOString();
           switch (targetStage) {
             case 'packing':
@@ -93,7 +102,7 @@ export const bulkOrderMovementService = {
           }
         }
 
-        // Log what we're updating
+        // Log what we're updating (only for forward moves that set printed_at)
         if (updateData.printed_at) {
           console.log(`🖨️ Updating order ${currentOrder.order_number} with printed_at: ${updateData.printed_at}`);
         }
@@ -139,13 +148,13 @@ export const bulkOrderMovementService = {
           continue;
         }
 
-        // Record stage movement
+        // Record stage movement (use display names in notes so DB shows "Printing" not "processing")
         try {
           await orderStageMovementService.recordStageMovement(
             orderId,
             previousStage,
             targetStage,
-            notes || `Bulk moved from ${previousStage} to ${targetStage}`
+            notes || `Bulk moved from ${bulkOrderMovementService.getStageDisplayName(previousStage)} to ${bulkOrderMovementService.getStageDisplayName(targetStage)}`
           );
         } catch (movementError) {
           console.error('Error recording stage movement:', movementError);
@@ -168,9 +177,10 @@ export const bulkOrderMovementService = {
       errors
     };
 
-    // Show appropriate toast message
+    // Show appropriate toast message (use display name e.g. "Printing" not "processing")
+    const targetStageDisplayName = bulkOrderMovementService.getStageDisplayName(targetStage);
     if (result.success) {
-      toast.success(`Successfully moved ${processedCount} orders to ${targetStage} stage`);
+      toast.success(`Successfully moved ${processedCount} orders to ${targetStageDisplayName} stage`);
     } else if (processedCount > 0) {
       toast.warning(`Moved ${processedCount} orders successfully, ${failedCount} failed`);
     } else {
