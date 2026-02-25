@@ -200,7 +200,7 @@ export const bulkOrderMovementService = {
   },
 
   // Get stage display name
-  getStageDisplayName(stage: OrderStage): string {
+  getStageDisplayName(stage: string): string {
     const stageNames = {
       processing: 'Printing',
       packing: 'Packing',
