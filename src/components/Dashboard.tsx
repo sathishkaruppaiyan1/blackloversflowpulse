@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Package, Truck, CheckCircle, AlertCircle, Clock, TrendingUp, Users, ShoppingBag, Calendar } from "lucide-react";
+import { Package, Truck, CheckCircle, AlertCircle, Clock, TrendingUp, Users, ShoppingBag, Calendar, PauseCircle } from "lucide-react";
 import { useWooCommerceOrders } from "@/hooks/useWooCommerceOrders";
 import { useMemo } from "react";
 
@@ -14,6 +14,7 @@ export const Dashboard = () => {
     const readyToPack = orders.filter(order => order.stage === 'packing').length;
     const inTransit = orders.filter(order => order.stage === 'shipped').length;
     const delivered = orders.filter(order => order.stage === 'delivered').length;
+    const onHold = orders.filter(order => order.stage === 'hold').length;
     
     const totalOrders = orders.length;
     const completedOrders = orders.filter(order => ['delivered', 'completed'].includes(order.stage)).length;
@@ -43,6 +44,7 @@ export const Dashboard = () => {
       readyToPack,
       inTransit,
       delivered,
+      onHold,
       trendPercentage,
       successRate
     };
@@ -88,7 +90,7 @@ export const Dashboard = () => {
   return (
     <div className="space-y-6 p-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -165,6 +167,26 @@ export const Dashboard = () => {
             <div className="mt-4 flex items-center text-xs text-muted-foreground">
               <TrendingUp className="w-4 h-4 mr-1" />
               <span>{stats.successRate}% success rate</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-red-500/10 to-amber-500/5 border-red-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-red-500 font-poppins">
+                  {loading ? "..." : stats.onHold}
+                </div>
+                <div className="text-sm text-muted-foreground font-medium">On Hold</div>
+              </div>
+              <div className="p-3 bg-red-500/10 rounded-full">
+                <PauseCircle className="w-6 h-6 text-red-500" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center text-xs text-muted-foreground">
+              <Clock className="w-4 h-4 mr-1" />
+              <span>Paused orders</span>
             </div>
           </CardContent>
         </Card>

@@ -28,17 +28,6 @@ export const detectCourierFromTracking = async (trackingNumber: string): Promise
 
     const trackingUpper = trackingNumber.toUpperCase().trim();
     const trackingLength = trackingNumber.trim().length;
-    
-    // Manual courier detection rules (highest priority)
-    if (trackingUpper.startsWith('5')) {
-      console.log(`🎯 Manual rule: Tracking ${trackingNumber} starts with "5" → ST COURIER`);
-      return 'ST COURIER';
-    }
-    
-    if (trackingUpper.startsWith('CT')) {
-      console.log(`🎯 Manual rule: Tracking ${trackingNumber} starts with "CT" → INDIAN POST`);
-      return 'INDIAN POST';
-    }
 
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();

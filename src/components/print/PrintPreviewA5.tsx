@@ -155,12 +155,8 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
         <div className="flex justify-between items-start mb-3 gap-4">
           <div className="flex-shrink-0">
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-14 h-14 rounded-full border-2 border-pink-500 flex items-center justify-center bg-white flex-shrink-0">
-                <div className="text-center">
-                  <div className="text-pink-500 font-bold text-sm leading-tight">Perfect</div>
-                  <div className="text-pink-500 text-xs">Collections</div>
-                </div>
-              </div>
+              <div className="text-sm font-bold text-gray-800">{companySettings.company_name || 'Company'}</div>
+              <span className="text-gray-300">|</span>
               <h1 className="text-lg font-bold text-gray-800">Packing slip</h1>
             </div>
           </div>
@@ -186,7 +182,7 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
           <div className="grid grid-cols-3 gap-3 mb-3 text-xs">
             <div>
               <h3 className="font-bold text-gray-800 mb-1.5 text-sm">From</h3>
-              <div className="font-medium text-xs mb-0.5">{companySettings.company_name || 'Perfect Collections'}</div>
+              <div className="font-medium text-xs mb-0.5">{companySettings.company_name || 'Company'}</div>
               {formatAddress(companySettings).map((line, index) => (
                 <div key={index} className="text-xs text-gray-600 mb-0.5 leading-tight">{line}</div>
               ))}

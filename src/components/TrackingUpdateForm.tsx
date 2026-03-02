@@ -16,21 +16,9 @@ interface TrackingUpdateFormProps {
   onTrackingUpdated: (updatedOrder: WooCommerceOrder) => void;
 }
 
-const CARRIERS = [
-  'Franch Express',
-  'Delhivery'
-];
-
-// Helper function to convert display names to carrier codes
+// Convert display name to carrier code (consistent format)
 const getCarrierCode = (displayName: string): string => {
-  switch (displayName) {
-    case 'Franch Express':
-      return 'frenchexpress';
-    case 'Delhivery':
-      return 'delhivery';
-    default:
-      return displayName.toLowerCase().replace(/\s+/g, '');
-  }
+  return displayName.toLowerCase().replace(/\s+/g, '');
 };
 
 const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTrackingUpdated }) => {
@@ -39,7 +27,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
   const [updating, setUpdating] = useState(false);
   const [detectedCourier, setDetectedCourier] = useState<string>('');
   const [availableCouriers, setAvailableCouriers] = useState<any[]>([]);
-  const { sendResellerTrackingNotification, isActive: isInteraktActive } = useInteraktIntegration();
+  const { isActive: isInteraktActive } = useInteraktIntegration();
   const { storeCompletedOrder } = useCompletedOrders();
 
   // Load available couriers on component mount
@@ -146,7 +134,6 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
             carrier: carrierCode,
             orderValue: String(order.total || '0'),
             shippingAddress: order.shipping_address || 'No address provided',
-            resellerName: order.reseller_name,
             customerPhone: customerPhone,
             productName: productName,
             productVariant: productVariant
@@ -166,31 +153,6 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
           });
         }
 
-        // Send to reseller if details are available (background)
-        if (order.reseller_name && order.reseller_number) {
-          console.log(`📱 Sending WhatsApp notification to reseller (background): ${order.reseller_name} at ${order.reseller_number}`);
-          sendResellerTrackingNotification(
-            order.order_number,
-            order.customer_name,
-            trackingNumber.trim(),
-            carrierCode,
-            order.total,
-            order.shipping_address || '',
-            order.reseller_name,
-            order.reseller_number,
-            customerPhone,
-            productName,
-            productVariant
-          ).then((resellerSuccess) => {
-            if (resellerSuccess) {
-              console.log('✅ Reseller tracking notification sent successfully');
-            } else {
-              console.log('❌ Failed to send reseller tracking notification');
-            }
-          }).catch((error) => {
-            console.error('Error sending reseller notification:', error);
-          });
-        }
       }
 
       onTrackingUpdated(updatedOrder);
@@ -236,7 +198,7 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
         </div>
       </CardHeader>
       <CardContent>
-        {/* Order and Reseller Information Section */}
+        {/* Order Information Section */}
         <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
           <h3 className="font-semibold text-gray-800 mb-3">Order Details</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -286,19 +248,11 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
                   <SelectValue placeholder="Select courier service" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableCouriers.length > 0 ? (
-                    availableCouriers.map((courierOption) => (
-                      <SelectItem key={courierOption.id} value={getCarrierCode(courierOption.name)}>
-                        {courierOption.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    // Fallback to static list if no couriers configured
-                    <>
-                      <SelectItem value="frenchexpress">Franch Express</SelectItem>
-                      <SelectItem value="delhivery">Delhivery</SelectItem>
-                    </>
-                  )}
+                  {availableCouriers.map((courierOption) => (
+                    <SelectItem key={courierOption.id} value={getCarrierCode(courierOption.name)}>
+                      {courierOption.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

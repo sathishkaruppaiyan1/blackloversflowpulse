@@ -71,12 +71,8 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
       <div className="flex justify-between items-start mb-8">
         {/* Left: Logo and Title */}
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-full border-4 border-pink-500 flex items-center justify-center bg-white">
-            <div className="text-center">
-              <div className="text-pink-500 font-bold text-lg leading-tight">Perfect</div>
-              <div className="text-pink-500 text-xs">Collections</div>
-            </div>
-          </div>
+          <div className="text-xl font-bold text-gray-800">{companySettings.company_name || 'Company'}</div>
+          <span className="text-gray-300">|</span>
           <h1 className="text-4xl font-bold text-gray-800">Packing slip</h1>
         </div>
 
@@ -110,7 +106,7 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
         <div>
           <h3 className="font-bold text-gray-800 mb-3 text-lg">From</h3>
           <div className="space-y-1 text-gray-700">
-            <div className="font-semibold">{companySettings.company_name || 'Perfect Collections'}</div>
+            <div className="font-semibold">{companySettings.company_name || 'Company'}</div>
             {formatAddress(companySettings).map((line, index) => (
               <div key={index} className="text-sm">{line}</div>
             ))}

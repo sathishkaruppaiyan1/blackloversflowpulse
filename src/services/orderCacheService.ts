@@ -17,7 +17,7 @@ const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_CACHED_ORDERS = 500; // Safety limit
 
 // Active stages that should be cached
-const ACTIVE_STAGES = ['processing', 'packing', 'packed', 'printed'];
+const ACTIVE_STAGES = ['processing', 'packing', 'packed', 'printed', 'hold'];
 
 interface CachedData {
   orders: WooCommerceOrder[];

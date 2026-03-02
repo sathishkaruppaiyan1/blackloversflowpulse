@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import DisplayPackingSlipA4 from './display/DisplayPackingSlipA4';
 import DisplayPackingSlipA5 from './display/DisplayPackingSlipA5';
+import DisplayPackingSlip4x6 from './display/DisplayPackingSlip4x6';
 import PrintPackingSlipA4 from './print/PrintPackingSlipA4';
 import PrintPackingSlipA5 from './print/PrintPackingSlipA5';
+import PrintPackingSlip4x6 from './print/PrintPackingSlip4x6';
 import PrintPreviewA5 from './print/PrintPreviewA5';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +51,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   showPrintButton = true,
   onPrint
 }) => {
-  const [defaultFormat, setDefaultFormat] = useState<'A4' | 'A5'>('A4');
+  const [defaultFormat, setDefaultFormat] = useState<'A4' | 'A5' | 'thermal'>('A4');
   const [companySettings, setCompanySettings] = useState<CompanySettings>({
     company_name: '',
     address_line1: '',
@@ -137,10 +139,10 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
           email: data.email || ''
         });
 
-        if (data.default_label_format && (data.default_label_format === 'A4' || data.default_label_format === 'A5')) {
+        if (data.default_label_format && ['A4', 'A5', 'thermal'].includes(data.default_label_format)) {
           if (data.default_label_format !== defaultFormat) {
             console.log('Format updated:', data.default_label_format);
-            setDefaultFormat(data.default_label_format);
+            setDefaultFormat(data.default_label_format as 'A4' | 'A5' | 'thermal');
           }
         }
       }
@@ -156,11 +158,11 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
       const canvas = document.createElement('canvas');
       JsBarcode(canvas, order.order_number, {
         format: "CODE128",
-        width: format === 'A5' ? 1.2 : 2,
-        height: format === 'A5' ? 35 : 60,
+        width: format === 'thermal' ? 1 : format === 'A5' ? 1.2 : 2,
+        height: format === 'thermal' ? 30 : format === 'A5' ? 35 : 60,
         displayValue: true,
-        fontSize: format === 'A5' ? 20 : 18,
-        margin: format === 'A5' ? 5 : 10,
+        fontSize: format === 'thermal' ? 10 : format === 'A5' ? 20 : 18,
+        margin: format === 'thermal' ? 3 : format === 'A5' ? 5 : 10,
         background: "#ffffff",
         lineColor: "#000000"
       });
@@ -191,7 +193,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
 
     // Dynamically import React DOM to render the print component
     import('react-dom/client').then((ReactDOM) => {
-      const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
+      const PrintComponent = format === 'thermal' ? PrintPackingSlip4x6 : format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
       
       // Create root and render the print component
       const root = ReactDOM.createRoot(tempDiv);
@@ -210,7 +212,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
         const pageStyles = `
           <style>
             @page {
-              ${format === 'A5' ? 'size: A5; margin: 0.3in;' : 'size: A4; margin: 0.75in;'}
+              ${format === 'thermal' ? 'size: 4in 6in; margin: 0.1in;' : format === 'A5' ? 'size: A5; margin: 0.3in;' : 'size: A4; margin: 0.75in;'}
               -webkit-print-color-adjust: exact;
               color-adjust: exact;
             }
@@ -317,7 +319,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
     const pageStyles = `
       <style>
         @page {
-          ${format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
+          ${format === 'thermal' ? 'size: 4in 6in; margin: 0.1in;' : format === 'A5' ? 'size: A5; margin: 0.5in;' : 'size: A4; margin: 0.75in;'}
         }
         body {
           margin: 0;
@@ -360,15 +362,21 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
   return (
     <div className="w-full">
       <div data-packing-slip-id={order.id}>
-        {format === 'A5' ? (
-          <DisplayPackingSlipA5 
-            order={order} 
+        {format === 'thermal' ? (
+          <DisplayPackingSlip4x6
+            order={order}
+            companySettings={companySettings}
+            barcodeDataUrl={barcodeDataUrl}
+          />
+        ) : format === 'A5' ? (
+          <DisplayPackingSlipA5
+            order={order}
             companySettings={companySettings}
             barcodeDataUrl={barcodeDataUrl}
           />
         ) : (
-          <DisplayPackingSlipA4 
-            order={order} 
+          <DisplayPackingSlipA4
+            order={order}
             companySettings={companySettings}
             barcodeDataUrl={barcodeDataUrl}
           />
@@ -393,7 +401,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
               className="bg-navy-600 hover:bg-navy-700 text-white px-8 py-2 rounded-lg font-medium"
               style={{ backgroundColor: '#1e3a8a' }}
             >
-              Print {format} Packing Slip
+              Print {format === 'thermal' ? '4x6' : format} Packing Slip
             </Button>
             <Button
               onClick={() => {
@@ -408,7 +416,7 @@ const PackingSlipTemplate: React.FC<PackingSlipTemplateProps> = ({
             </Button>
           </div>
           <p className="text-xs text-gray-500">
-            Current format: {format} • Updates automatically every 3 seconds
+            Current format: {format === 'thermal' ? '4x6 Thermal' : format} • Updates automatically every 3 seconds
           </p>
         </div>
       )}

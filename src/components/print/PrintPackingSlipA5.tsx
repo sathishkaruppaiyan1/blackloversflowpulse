@@ -177,33 +177,15 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         marginBottom: '12px',
         gap: '16px'
       }}>
-        {/* Left: Logo and Title */}
+        {/* Left: Company Name and Title */}
         <div style={{ flex: '0 0 auto' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
             <div style={{
-              width: '70px',
-              height: '70px',
-              borderRadius: '50%',
-              border: '3px solid #ec4899',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: 'white',
-              flexShrink: 0
-            }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{
-                  color: '#ec4899',
-                  fontWeight: 'bold',
-                  fontSize: '18px',
-                  lineHeight: '1.1'
-                }}>Perfect</div>
-                <div style={{
-                  color: '#ec4899',
-                  fontSize: '12px'
-                }}>Collections</div>
-              </div>
-            </div>
+              fontWeight: 'bold',
+              fontSize: '18px',
+              color: '#1f2937'
+            }}>{companySettings.company_name || 'Company'}</div>
+            <span style={{ color: '#d1d5db' }}>|</span>
             <h1 style={{
               fontSize: '24px',
               fontWeight: 'bold',
@@ -256,7 +238,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           }}>From</h3>
           <div>
             <div style={{ fontWeight: '500', fontSize: '14px', marginBottom: '2px' }}>
-              {companySettings.company_name || 'Perfect Collections'}
+              {companySettings.company_name || 'Company'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
               <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>

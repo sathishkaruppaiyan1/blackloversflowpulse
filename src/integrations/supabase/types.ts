@@ -225,6 +225,8 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           delivered_at: string | null
+          held_at: string | null
+          hold_previous_stage: string | null
           id: string
           items: number
           line_items: Json | null
@@ -261,6 +263,8 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           delivered_at?: string | null
+          held_at?: string | null
+          hold_previous_stage?: string | null
           id?: string
           items?: number
           line_items?: Json | null
@@ -297,6 +301,8 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           delivered_at?: string | null
+          held_at?: string | null
+          hold_previous_stage?: string | null
           id?: string
           items?: number
           line_items?: Json | null

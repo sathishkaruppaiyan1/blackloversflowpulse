@@ -4,7 +4,11 @@
       "Bash(npm run build:*)",
       "Bash(npm install)",
       "Bash(npm run dev:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx:*)",
+      "Bash(node_modules/.bin/tsc:*)"
     ],
     "deny": [],
     "ask": []

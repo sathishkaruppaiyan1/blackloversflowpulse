@@ -190,13 +190,13 @@ const TrackingPage = () => {
     }
   };
 
-  // Enhanced courier detection
+  // Enhanced courier detection — fully dynamic from user's configured couriers
   const detectCourierPartner = async (trackingNumber: string): Promise<string> => {
     const cleanInput = trackingNumber.trim();
-    
+
     try {
       const detectedCourierName = await detectCourierFromTracking(cleanInput);
-      
+
       if (detectedCourierName) {
         console.log(`🎯 Auto-detected courier: ${detectedCourierName} for tracking ${cleanInput}`);
         return detectedCourierName.toLowerCase().replace(/\s+/g, '');
@@ -204,32 +204,19 @@ const TrackingPage = () => {
     } catch (error) {
       console.error('Error detecting courier:', error);
     }
-    
-    // Fallback to legacy detection
-    const firstDigit = cleanInput.charAt(0);
-    if (firstDigit === '4') {
-      return 'frenchexpress';
-    } else if (firstDigit === '2') {
-      return 'delhivery';
-    }
-    
-    return 'unknown';
+
+    return '';
   };
 
-  // Helper function to get courier display name
+  // Helper function to get courier display name — dynamic from user's configured couriers
   const getCourierDisplayName = (carrierCode: string): string => {
+    if (!carrierCode) return 'Unknown';
     const courier = availableCouriers.find(c => c.name.toLowerCase().replace(/\s+/g, '') === carrierCode);
     if (courier) return courier.name;
-    
-    // Fallback to legacy names
-    switch (carrierCode) {
-      case 'frenchexpress':
-        return 'Franch Express';
-      case 'delhivery':
-        return 'Delhivery';
-      default:
-        return 'Unknown';
-    }
+    // If no match by code, try case-insensitive name match
+    const byName = availableCouriers.find(c => c.name.toLowerCase() === carrierCode.toLowerCase());
+    if (byName) return byName.name;
+    return carrierCode;
   };
 
   // Helper function to check if input looks like a tracking number
@@ -497,18 +484,7 @@ const TrackingPage = () => {
 
     // Use selected carrier or detected carrier
     const carrier = selectedCarrier || detectedCarrier || 'unknown';
-    
-    let carrierDisplayName = '';
-    switch (carrier) {
-      case 'frenchexpress':
-        carrierDisplayName = 'Franch Express';
-        break;
-      case 'delhivery':
-        carrierDisplayName = 'Delhivery';
-        break;
-      default:
-        carrierDisplayName = 'Unknown';
-    }
+    const carrierDisplayName = getCourierDisplayName(carrier);
     
     setWhatsappStatus('pending');
     setShopifyStatus('pending');
@@ -540,7 +516,6 @@ const TrackingPage = () => {
         carrier: carrier,
         orderValue: String(currentOrder.total || '0'),
         shippingAddress: currentOrder.shipping_address || 'No address provided',
-        resellerName: currentOrder.reseller_name
       };
 
       // Send WhatsApp notifications asynchronously in the background (fire and forget)
@@ -565,23 +540,6 @@ const TrackingPage = () => {
           });
         }
 
-        // Send to reseller if details are available (background)
-        if (currentOrder.reseller_number && currentOrder.reseller_name) {
-          console.log('📱 Sending tracking update to reseller via Interakt (background)...');
-          interaktService.sendTrackingUpdateToReseller(
-            trackingData,
-            currentOrder.reseller_number,
-            currentOrder.reseller_name
-          ).then((resellerSuccess) => {
-            if (resellerSuccess) {
-              console.log('✅ Tracking notification sent to reseller successfully');
-            } else {
-              console.log('❌ Failed to send tracking notification to reseller');
-            }
-          }).catch((error) => {
-            console.error('Error sending reseller notification:', error);
-          });
-        }
       } else {
         setWhatsappStatus('failed');
         console.log('❌ Interakt not configured or disabled');
@@ -959,6 +917,10 @@ const TrackingPage = () => {
                       if (e.target.value.length > 8) {
                         const carrier = await detectCourierPartner(e.target.value);
                         setDetectedCarrier(carrier);
+                        // Auto-select the detected carrier in dropdown
+                        if (carrier) {
+                          setSelectedCarrier(carrier);
+                        }
                       }
                     }}
                     onKeyPress={(e) => e.key === 'Enter' && handleTrackingNumberScan()}
@@ -988,18 +950,11 @@ const TrackingPage = () => {
                       <SelectValue placeholder={detectedCarrier ? getCourierDisplayName(detectedCarrier) : "Select courier partner"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableCouriers.length > 0 ? (
-                        availableCouriers.map((courier) => (
-                          <SelectItem key={courier.id} value={courier.name.toLowerCase().replace(/\s+/g, '')}>
-                            {courier.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="frenchexpress">Franch Express</SelectItem>
-                          <SelectItem value="delhivery">Delhivery</SelectItem>
-                        </>
-                      )}
+                      {availableCouriers.map((courier) => (
+                        <SelectItem key={courier.id} value={courier.name.toLowerCase().replace(/\s+/g, '')}>
+                          {courier.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   {detectedCarrier && (

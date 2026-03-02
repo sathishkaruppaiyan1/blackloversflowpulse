@@ -99,32 +99,14 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
         alignItems: 'flex-start',
         marginBottom: '32px'
       }}>
-        {/* Left: Logo and Title */}
+        {/* Left: Company Name and Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            border: '4px solid #ec4899',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: 'white',
-            flexShrink: 0
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                color: '#ec4899',
-                fontWeight: 'bold',
-                fontSize: '18px',
-                lineHeight: '1.2'
-              }}>Perfect</div>
-              <div style={{
-                color: '#ec4899',
-                fontSize: '12px'
-              }}>Collections</div>
-            </div>
-          </div>
+            fontWeight: 'bold',
+            fontSize: '22px',
+            color: '#1f2937'
+          }}>{companySettings.company_name || 'Company'}</div>
+          <span style={{ color: '#d1d5db', fontSize: '28px' }}>|</span>
           <h1 style={{
             fontSize: '36px',
             fontWeight: 'bold',
@@ -168,7 +150,7 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
           }}>From</h3>
           <div>
             <div style={{ fontWeight: '600', marginBottom: '4px', fontSize: '14px' }}>
-              {companySettings.company_name || 'Perfect Collections'}
+              {companySettings.company_name || 'Company'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
               <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '2px', lineHeight: '1.4' }}>

@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { orderStageMovementService } from './orderStageMovementService';
 
-export type OrderStage = 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered';
+export type OrderStage = 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'hold';
 
 export interface BulkMoveOptions {
   bypassValidation?: boolean;
@@ -45,7 +45,7 @@ export const bulkOrderMovementService = {
         // Get current order info
         const { data: currentOrder, error: fetchError } = await supabase
           .from('orders')
-          .select('status, user_id, woo_order_id, order_number')
+          .select('status, user_id, woo_order_id, order_number, hold_previous_stage')
           .eq('id', orderId)
           .single();
 
@@ -67,7 +67,20 @@ export const bulkOrderMovementService = {
 
         const previousStage = currentOrder.status;
         const updateData: any = { status: targetStage };
-        
+
+        // Handle hold stage logic
+        if (targetStage === 'hold') {
+          // Save current stage so we can restore it later
+          updateData.hold_previous_stage = previousStage;
+          updateData.held_at = new Date().toISOString();
+          console.log(`⏸️ Putting order ${currentOrder.order_number} on hold (was: ${previousStage})`);
+        } else if (previousStage === 'hold') {
+          // Releasing from hold - clear hold fields
+          updateData.hold_previous_stage = null;
+          updateData.held_at = null;
+          console.log(`▶️ Releasing order ${currentOrder.order_number} from hold to ${targetStage}`);
+        }
+
         // When moving back to processing (printing), always clear stage timestamps so orders appear in Printing stage.
         // Without this, orders would have status=processing but printed_at/packed_at set and disappear from both stages.
         if (targetStage === 'processing') {
@@ -193,32 +206,34 @@ export const bulkOrderMovementService = {
 
   // Get available target stages for a given current stage
   getAvailableStages(currentStage: OrderStage): OrderStage[] {
-    const allStages: OrderStage[] = ['processing', 'packing', 'packed', 'shipped', 'delivered'];
-    
+    const allStages: OrderStage[] = ['processing', 'packing', 'packed', 'shipped', 'delivered', 'hold'];
+
     // For bulk operations, allow movement to any stage except the current one
     return allStages.filter(stage => stage !== currentStage);
   },
 
   // Get stage display name
   getStageDisplayName(stage: string): string {
-    const stageNames = {
+    const stageNames: Record<string, string> = {
       processing: 'Printing',
       packing: 'Packing',
       packed: 'Ready for Tracking',
       shipped: 'Shipped',
-      delivered: 'Delivered'
+      delivered: 'Delivered',
+      hold: 'On Hold'
     };
     return stageNames[stage] || stage;
   },
 
   // Get stage color for UI
   getStageColor(stage: OrderStage): string {
-    const stageColors = {
+    const stageColors: Record<string, string> = {
       processing: 'orange',
       packing: 'blue',
       packed: 'purple',
       shipped: 'green',
-      delivered: 'emerald'
+      delivered: 'emerald',
+      hold: 'red'
     };
     return stageColors[stage] || 'gray';
   }

@@ -12,6 +12,7 @@ import { PackingPage } from '@/components/PackingPage';
 import TrackingPage from '@/components/TrackingPage';
 import OrdersPage from '@/components/OrdersPage';
 import ShippedPage from '@/components/ShippedPage';
+import HoldPage from '@/components/HoldPage';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { useOrderCounts } from '@/hooks/useOrderCounts';
@@ -26,7 +27,8 @@ import {
   LogOut,
   Search,
   User,
-  CheckCircle
+  CheckCircle,
+  PauseCircle
 } from 'lucide-react';
 
 const Index = () => {
@@ -70,6 +72,7 @@ const Index = () => {
     ...(bypassPackingStage ? [] : [{ id: "packing", label: "Packing", icon: Package, badge: counts.packing }]),
     { id: "tracking", label: "Tracking", icon: Truck, badge: counts.packed },
     { id: "shipped", label: "Shipped", icon: CheckCircle, badge: counts.shipped },
+    { id: "hold", label: "Hold", icon: PauseCircle, badge: counts.hold },
     { id: "analytics", label: "Analytics", icon: BarChart3 },
   ];
 
@@ -99,6 +102,8 @@ const Index = () => {
         return <TrackingPage />;
       case "shipped":
         return <ShippedPage />;
+      case "hold":
+        return <HoldPage />;
       case "analytics":
         return <AnalyticsPage />;
       case "settings":

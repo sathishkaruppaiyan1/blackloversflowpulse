@@ -252,7 +252,7 @@ const PrintingPage = () => {
 
       const format = settings?.default_label_format || 'A4';
       const companySettings = settings ? {
-        company_name: settings.company_name || 'Perfect Collections',
+        company_name: settings.company_name || 'Company',
         address_line1: settings.address_line1 || '',
         address_line2: settings.address_line2 || '',
         city: settings.city || '',
@@ -262,7 +262,7 @@ const PrintingPage = () => {
         phone: settings.phone || '',
         email: settings.email || ''
       } : {
-        company_name: 'Perfect Collections',
+        company_name: 'Company',
         address_line1: '',
         address_line2: '',
         city: '',

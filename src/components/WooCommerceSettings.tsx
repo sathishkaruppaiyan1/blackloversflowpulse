@@ -17,9 +17,9 @@ interface WooCommerceSettings {
 
 const WooCommerceSettings = () => {
   const [settings, setSettings] = useState<WooCommerceSettings>({
-    store_url: 'https://perfectcollections.shop/',
-    consumer_key: 'ck_187643b70bb06f371d16c9af4b770bdda4604c64',
-    consumer_secret: 'cs_456200c01da8ffa1e91911d417b7ce6342474d3e'
+    store_url: '',
+    consumer_key: '',
+    consumer_secret: ''
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);

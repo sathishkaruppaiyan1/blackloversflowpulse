@@ -8,6 +8,7 @@ export interface OrderCounts {
   packed: number;
   shipped: number;
   delivered: number;
+  hold: number;
   total: number;
 }
 
@@ -18,6 +19,7 @@ export const useOrderCounts = () => {
     packed: 0,
     shipped: 0,
     delivered: 0,
+    hold: 0,
     total: 0
   });
   const [loading, setLoading] = useState(true);
@@ -25,14 +27,14 @@ export const useOrderCounts = () => {
 
   const fetchCounts = async () => {
     if (!user) {
-      setCounts({ processing: 0, packing: 0, packed: 0, shipped: 0, delivered: 0, total: 0 });
+      setCounts({ processing: 0, packing: 0, packed: 0, shipped: 0, delivered: 0, hold: 0, total: 0 });
       return;
     }
 
     try {
       // Fetch counts for each stage in parallel using count-only queries (no row limit)
       // IMPORTANT: Use timestamp-based filtering to match actual stage logic and prevent regressions
-      const [processingRes, packingRes, packedRes, shippedRes, deliveredRes] = await Promise.all([
+      const [processingRes, packingRes, packedRes, shippedRes, deliveredRes, holdRes] = await Promise.all([
         // Processing: orders that haven't moved to any later stage
         supabase
           .from('orders')
@@ -69,7 +71,13 @@ export const useOrderCounts = () => {
           .from('orders')
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id)
-          .eq('status', 'delivered')
+          .eq('status', 'delivered'),
+        // On Hold
+        supabase
+          .from('orders')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'hold')
       ]);
 
       const newCounts = {
@@ -78,7 +86,8 @@ export const useOrderCounts = () => {
         packed: packedRes.count || 0,
         shipped: shippedRes.count || 0,
         delivered: deliveredRes.count || 0,
-        total: (processingRes.count || 0) + (packingRes.count || 0) + (packedRes.count || 0) + (shippedRes.count || 0) + (deliveredRes.count || 0)
+        hold: holdRes.count || 0,
+        total: (processingRes.count || 0) + (packingRes.count || 0) + (packedRes.count || 0) + (shippedRes.count || 0) + (deliveredRes.count || 0) + (holdRes.count || 0)
       };
 
       console.log('📊 Order counts from DB:', newCounts);

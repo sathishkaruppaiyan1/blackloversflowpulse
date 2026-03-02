@@ -20,7 +20,7 @@ const GeneralSettings = () => {
   const [country, setCountry] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5'>('A4');
+  const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5' | 'thermal'>('A4');
   const [bypassPackingStage, setBypassPackingStage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,7 +53,10 @@ const GeneralSettings = () => {
         setCountry(data.country || '');
         setPhone(data.phone || '');
         setEmail(data.email || '');
-        setDefaultLabelFormat(data.default_label_format === 'A5' ? 'A5' : 'A4');
+        setDefaultLabelFormat(
+          data.default_label_format === 'A5' ? 'A5' :
+          data.default_label_format === 'thermal' ? 'thermal' : 'A4'
+        );
         setBypassPackingStage(data.bypass_packing_stage ?? false);
       }
     } catch (error: any) {
@@ -200,13 +203,14 @@ const GeneralSettings = () => {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="defaultLabelFormat">Default Label Format</Label>
-            <Select value={defaultLabelFormat} onValueChange={(value: 'A4' | 'A5') => setDefaultLabelFormat(value)}>
+            <Select value={defaultLabelFormat} onValueChange={(value: 'A4' | 'A5' | 'thermal') => setDefaultLabelFormat(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="A4">A4 (8.27" × 11.69")</SelectItem>
                 <SelectItem value="A5">A5 (5.83" × 8.27")</SelectItem>
+                <SelectItem value="thermal">4×6 Thermal (4" × 6")</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">

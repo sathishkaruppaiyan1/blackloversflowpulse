@@ -38,7 +38,7 @@ export interface WooCommerceOrder {
   customer_phone?: string;
   total: number;
   status: string;
-  stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed';
+  stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed' | 'hold';
   items: number;
   shipping_address?: string;
   created_at: string;
@@ -46,6 +46,8 @@ export interface WooCommerceOrder {
   packed_at?: string;
   shipped_at?: string;
   delivered_at?: string;
+  held_at?: string;
+  hold_previous_stage?: string;
   tracking_number?: string;
   carrier?: string;
   reseller_name?: string;
@@ -94,7 +96,7 @@ const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
     customer_phone: dbOrder.customer_phone,
     total: parseFloat(dbOrder.total?.toString() || '0'),
     status: dbOrder.status,
-    stage: dbOrder.status as 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed',
+    stage: dbOrder.status as 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed' | 'hold',
     items: dbOrder.items || 0,
     shipping_address: dbOrder.shipping_address,
     created_at: dbOrder.created_at,
@@ -102,6 +104,8 @@ const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
     packed_at: dbOrder.packed_at,
     shipped_at: dbOrder.shipped_at,
     delivered_at: dbOrder.delivered_at,
+    held_at: dbOrder.held_at,
+    hold_previous_stage: dbOrder.hold_previous_stage,
     tracking_number: dbOrder.tracking_number,
     carrier: dbOrder.carrier,
     reseller_name: dbOrder.reseller_name,
@@ -572,7 +576,7 @@ export const wooCommerceOrderService = {
     return orders;
   },
 
-  async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed'): Promise<WooCommerceOrder[]> {
+  async fetchOrdersByStage(stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'completed' | 'hold'): Promise<WooCommerceOrder[]> {
     console.log(`Fetching orders for stage: ${stage}`);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -646,13 +650,13 @@ export const wooCommerceOrderService = {
     return orders;
   },
 
-  async updateOrderStage(orderId: string, stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered'): Promise<WooCommerceOrder> {
+  async updateOrderStage(orderId: string, stage: 'processing' | 'packing' | 'packed' | 'shipped' | 'delivered' | 'hold'): Promise<WooCommerceOrder> {
     console.log(`🔄 Updating order ${orderId} to stage ${stage}`);
-    
+
     // Get current order to know previous stage
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
-      .select('status, user_id, woo_order_id')
+      .select('status, user_id, woo_order_id, hold_previous_stage')
       .eq('id', orderId)
       .single();
 
@@ -664,37 +668,47 @@ export const wooCommerceOrderService = {
     const previousStage = currentOrder.status;
     const updateData: any = { status: stage };
     
-    // Add timestamp fields based on stage (or clear when moving back to processing)
+    // Handle hold stage logic
     const now = new Date().toISOString();
-    switch (stage) {
-      case 'processing':
-        // Moving back to printing: clear all stage timestamps and tracking so order appears in Printing stage.
-        // Without this, orders would have status=processing but printed_at/packed_at set and disappear from both stages.
-        updateData.printed_at = null;
-        updateData.packed_at = null;
-        updateData.shipped_at = null;
-        updateData.delivered_at = null;
-        updateData.tracking_number = null;
-        updateData.carrier = null;
-        console.log(`📝 Clearing stage timestamps for order ${orderId} (moving to printing)`);
-        break;
-      case 'packing':
-        // Moving to packing means printing is done
-        updateData.printed_at = now;
-        console.log(`📝 Setting printed_at for order ${orderId} to ${now}`);
-        break;
-      case 'packed':
-        // If going directly to packed (bypass packing), still set printed_at
-        updateData.printed_at = now;
-        updateData.packed_at = now;
-        console.log(`📝 Setting printed_at AND packed_at for order ${orderId} to ${now} (bypass packing)`);
-        break;
-      case 'shipped':
-        updateData.shipped_at = now;
-        break;
-      case 'delivered':
-        updateData.delivered_at = now;
-        break;
+    if (stage === 'hold') {
+      updateData.hold_previous_stage = previousStage;
+      updateData.held_at = now;
+      console.log(`⏸️ Putting order ${orderId} on hold (was: ${previousStage})`);
+    } else {
+      // If releasing from hold, clear hold fields
+      if (previousStage === 'hold') {
+        updateData.hold_previous_stage = null;
+        updateData.held_at = null;
+        console.log(`▶️ Releasing order ${orderId} from hold to ${stage}`);
+      }
+
+      // Add timestamp fields based on stage (or clear when moving back to processing)
+      switch (stage) {
+        case 'processing':
+          updateData.printed_at = null;
+          updateData.packed_at = null;
+          updateData.shipped_at = null;
+          updateData.delivered_at = null;
+          updateData.tracking_number = null;
+          updateData.carrier = null;
+          console.log(`📝 Clearing stage timestamps for order ${orderId} (moving to printing)`);
+          break;
+        case 'packing':
+          updateData.printed_at = now;
+          console.log(`📝 Setting printed_at for order ${orderId} to ${now}`);
+          break;
+        case 'packed':
+          updateData.printed_at = now;
+          updateData.packed_at = now;
+          console.log(`📝 Setting printed_at AND packed_at for order ${orderId} to ${now} (bypass packing)`);
+          break;
+        case 'shipped':
+          updateData.shipped_at = now;
+          break;
+        case 'delivered':
+          updateData.delivered_at = now;
+          break;
+      }
     }
 
     // Log what we're updating
