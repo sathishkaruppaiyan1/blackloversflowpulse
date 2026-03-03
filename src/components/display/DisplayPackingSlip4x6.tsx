@@ -161,8 +161,20 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
               }
               const variationStr = variations.length > 0 ? ` - ${variations.join(' / ')}` : '';
               return (
-                <div key={index} className="mb-0.5">
-                  - {item.name}{variationStr} (Qty: {item.quantity || 1})
+                <div key={index} className="mb-1 inline-flex items-center gap-1 w-full">
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt={item.name || 'Product'}
+                      className="w-6 h-6 rounded-sm object-cover border border-gray-200 flex-shrink-0"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded-sm bg-gray-200 flex-shrink-0" />
+                  )}
+                  <span>{item.name}{variationStr} (Qty: {item.quantity || 1})</span>
                 </div>
               );
             })

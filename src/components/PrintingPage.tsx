@@ -981,7 +981,19 @@ const PrintingPage = () => {
                       onCheckedChange={(checked) => handleOrderSelect(order.id, Boolean(checked))}
                       className="mt-1"
                     />
-                    
+
+                    {/* First product image */}
+                    {order.line_items?.[0]?.image ? (
+                      <img
+                        src={order.line_items[0].image}
+                        alt="Product"
+                        className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex-shrink-0" />
+                    )}
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-8">
                         {/* Order Number and Customer */}

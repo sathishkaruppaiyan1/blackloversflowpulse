@@ -20,6 +20,7 @@ export interface WooCommerceOrderItem {
   material?: string;
   weight?: string;
   dimensions?: string;
+  image?: string;
   packed?: boolean;
   meta_data?: Array<{
     id: number;
@@ -243,6 +244,7 @@ export const wooCommerceOrderService = {
             price: parseFloat(item.price || '0'),
             total: parseFloat(item.total || '0'),
             sku: item.sku || null,
+            image: item.image?.src || null,
             meta_data: item.meta_data || [],
             packed: false
           };

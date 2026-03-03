@@ -163,7 +163,19 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
                 <tr key={index} className="border-b border-gray-200">
                   <td className="py-4 px-2 text-gray-700">{index + 1}</td>
                   <td className="py-4 px-2">
-                    <div className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center">
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name || 'Product'}
+                        className="w-12 h-12 rounded border object-cover"
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          el.style.display = 'none';
+                          el.nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-12 h-12 bg-gray-200 rounded border flex items-center justify-center ${item.image ? 'hidden' : ''}`}>
                       <div className="w-8 h-8 bg-gray-300 rounded"></div>
                     </div>
                   </td>

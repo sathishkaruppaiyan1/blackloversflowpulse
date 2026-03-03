@@ -63,13 +63,27 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
     <div className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
       <div className="p-4">
         <div className="grid grid-cols-12 gap-4 items-start">
-          {/* Checkbox + Order Number + Customer */}
-          <div className="col-span-2 flex items-start gap-3">
+          {/* Checkbox + Image + Order Number + Customer */}
+          <div className="col-span-2 flex items-start gap-2">
             <Checkbox
               checked={isSelected}
               onCheckedChange={onSelect}
               className="mt-1"
             />
+            {(() => {
+              const firstImage = order.line_items?.[0]?.image;
+              console.log(`🖼️ PrintingCard #${order.order_number} firstImage:`, firstImage, typeof firstImage, 'line_items[0]:', JSON.stringify(order.line_items?.[0]));
+              return firstImage ? (
+                <img
+                  src={firstImage}
+                  alt="Product"
+                  className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex-shrink-0" />
+              );
+            })()}
             <div className="min-w-0 flex-1">
               <div className="font-semibold text-gray-900 text-sm">#{order.order_number}</div>
               <div className="text-xs text-gray-600 truncate">{order.customer_name}</div>

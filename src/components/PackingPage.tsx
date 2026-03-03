@@ -21,6 +21,7 @@ interface ScannedProduct {
   quantity: number;
   scanned: boolean;
   packed: boolean;
+  image?: string;
 }
 
 export const PackingPage = () => {
@@ -160,7 +161,8 @@ export const PackingPage = () => {
         name: item.name,
         quantity: item.quantity,
         scanned: false,
-        packed: item.packed || false
+        packed: item.packed || false,
+        image: item.image || undefined
       })) || [];
 
       setScannedProducts(products);
@@ -401,10 +403,13 @@ export const PackingPage = () => {
     setScannedOrderId("");
     
     const products: ScannedProduct[] = order.line_items?.map(item => ({
+      id: item.id?.toString() || '',
       sku: item.sku || `PROD-${item.product_id}`,
       name: item.name,
       quantity: item.quantity,
-      scanned: false
+      scanned: false,
+      packed: item.packed || false,
+      image: item.image || undefined
     })) || [];
 
     setScannedProducts(products);
@@ -704,24 +709,36 @@ export const PackingPage = () => {
                           product.scanned ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
                         }`}
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            {product.packed ? (
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                            ) : product.scanned ? (
-                              <Clock className="w-4 h-4 text-blue-600" />
-                            ) : (
-                              <Box className="w-4 h-4 text-gray-400" />
-                            )}
-                            <span className={`font-medium ${
-                              product.packed ? 'text-green-800' : 
-                              product.scanned ? 'text-blue-800' : 'text-gray-700'
-                            }`}>
-                              {product.name}
-                            </span>
+                        <div className="flex items-center gap-3 flex-1">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {product.packed ? (
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              ) : product.scanned ? (
+                                <Clock className="w-4 h-4 text-blue-600" />
+                              ) : (
+                                <Box className="w-4 h-4 text-gray-400" />
+                              )}
+                              <span className={`font-medium ${
+                                product.packed ? 'text-green-800' :
+                                product.scanned ? 'text-blue-800' : 'text-gray-700'
+                              }`}>
+                                {product.name}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
+                            <p className="text-xs text-muted-foreground">Qty: {product.quantity}</p>
                           </div>
-                          <p className="text-sm text-muted-foreground">SKU: {product.sku}</p>
-                          <p className="text-xs text-muted-foreground">Qty: {product.quantity}</p>
                         </div>
                         <div className="flex gap-2">
                           <Badge variant={
@@ -824,6 +841,16 @@ export const PackingPage = () => {
                       checked={selectedOrderIds.has(order.id)}
                       onCheckedChange={(checked) => handleOrderSelect(order.id, checked as boolean)}
                     />
+                    {order.line_items?.[0]?.image ? (
+                      <img
+                        src={order.line_items[0].image}
+                        alt="Product"
+                        className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex-shrink-0" />
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
                         <div>

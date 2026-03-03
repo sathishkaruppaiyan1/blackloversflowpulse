@@ -257,13 +257,30 @@ const PrintPackingSlipA4: React.FC<PrintPackingSlipA4Props> = ({
                 <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '16px 8px', color: '#374151' }}>{index + 1}</td>
                   <td style={{ padding: '16px 8px' }}>
-                    <div style={{
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name || 'Product'}
+                        style={{
+                          width: '48px',
+                          height: '48px',
+                          objectFit: 'cover',
+                          borderRadius: '4px',
+                          border: '1px solid #e5e7eb'
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          ((e.target as HTMLImageElement).parentElement!.querySelector('.placeholder') as HTMLElement)!.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    <div className="placeholder" style={{
                       width: '48px',
                       height: '48px',
                       backgroundColor: '#f3f4f6',
                       borderRadius: '4px',
                       border: '1px solid #e5e7eb',
-                      display: 'flex',
+                      display: item.image ? 'none' : 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>

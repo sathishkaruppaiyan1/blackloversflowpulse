@@ -33,6 +33,163 @@ interface WooCommerceOrder {
   }>;
 }
 
+// Fetch product/variation images for line items that are missing images
+async function enrichLineItemsWithImages(
+  orders: any[],
+  cleanStoreUrl: string,
+  authString: string
+): Promise<void> {
+  // Collect unique product_id/variation_id pairs that need images
+  const productIds = new Set<number>();
+  const variationMap = new Map<number, Set<number>>(); // product_id -> Set<variation_id>
+
+  for (const order of orders) {
+    if (!order.line_items) continue;
+    for (const item of order.line_items) {
+      // Always collect - we'll fetch the best image available
+      if (item.variation_id && item.variation_id > 0) {
+        if (!variationMap.has(item.product_id)) {
+          variationMap.set(item.product_id, new Set());
+        }
+        variationMap.get(item.product_id)!.add(item.variation_id);
+      } else {
+        productIds.add(item.product_id);
+      }
+    }
+  }
+
+  // Also add parent products for variations (we need them as fallback)
+  for (const productId of variationMap.keys()) {
+    productIds.add(productId);
+  }
+
+  if (productIds.size === 0 && variationMap.size === 0) return;
+
+  console.log(`🖼️ Fetching images for ${productIds.size} products and ${variationMap.size} products with variations...`);
+
+  // Build image map: "productId" or "productId-variationId" -> image URL
+  const imageMap = new Map<string, string>();
+
+  // Batch fetch products (up to 100 per request)
+  const productIdArray = Array.from(productIds);
+  for (let i = 0; i < productIdArray.length; i += 100) {
+    const batch = productIdArray.slice(i, i + 100);
+    const includeParam = batch.join(',');
+    try {
+      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/products?include=${includeParam}&per_page=100`;
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'OrderSync/1.0',
+        },
+      });
+
+      if (response.ok) {
+        const products = await response.json();
+        for (const product of products) {
+          if (product.images && product.images.length > 0) {
+            imageMap.set(`${product.id}`, product.images[0].src);
+          }
+        }
+        console.log(`✅ Fetched images for ${products.length} products`);
+      } else {
+        console.log(`⚠️ Failed to fetch product images: ${response.status}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ Error fetching product images:`, err);
+    }
+  }
+
+  // Fetch variation images for each product that has variations
+  for (const [productId, variationIds] of variationMap.entries()) {
+    try {
+      // Fetch all variations for this product (batch)
+      const variationIdArray = Array.from(variationIds);
+      const includeParam = variationIdArray.join(',');
+      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/products/${productId}/variations?include=${includeParam}&per_page=100`;
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${authString}`,
+          'Content-Type': 'application/json',
+          'User-Agent': 'OrderSync/1.0',
+        },
+      });
+
+      if (response.ok) {
+        const variations = await response.json();
+        for (const variation of variations) {
+          // Primary: variation's own featured image
+          if (variation.image && variation.image.src) {
+            imageMap.set(`${productId}-${variation.id}`, variation.image.src);
+          }
+          // Fallback: check WPC Additional Variation Images meta for extra images
+          if (!imageMap.has(`${productId}-${variation.id}`) && variation.meta_data) {
+            const wpcMeta = variation.meta_data.find(
+              (m: any) => m.key === '_wc_additional_variation_images'
+            );
+            if (wpcMeta && wpcMeta.value) {
+              // Value is comma-separated image IDs - we'll resolve the first one
+              const imageIds = wpcMeta.value.split(',').map((id: string) => id.trim()).filter(Boolean);
+              if (imageIds.length > 0) {
+                // Fetch the first image from WordPress media API
+                try {
+                  const mediaUrl = `${cleanStoreUrl}/wp-json/wp/v2/media/${imageIds[0]}`;
+                  const mediaResponse = await fetch(mediaUrl, {
+                    method: 'GET',
+                    headers: {
+                      'Authorization': `Basic ${authString}`,
+                      'Content-Type': 'application/json',
+                      'User-Agent': 'OrderSync/1.0',
+                    },
+                  });
+                  if (mediaResponse.ok) {
+                    const media = await mediaResponse.json();
+                    if (media.source_url) {
+                      imageMap.set(`${productId}-${variation.id}`, media.source_url);
+                    }
+                  }
+                } catch (mediaErr) {
+                  console.log(`⚠️ Error fetching WPC media for variation ${variation.id}:`, mediaErr);
+                }
+              }
+            }
+          }
+        }
+        console.log(`✅ Fetched images for ${variations.length} variations of product ${productId}`);
+      } else {
+        console.log(`⚠️ Failed to fetch variations for product ${productId}: ${response.status}`);
+      }
+    } catch (err) {
+      console.log(`⚠️ Error fetching variations for product ${productId}:`, err);
+    }
+  }
+
+  console.log(`🖼️ Total images resolved: ${imageMap.size}`);
+
+  // Enrich line items with resolved images
+  for (const order of orders) {
+    if (!order.line_items) continue;
+    for (const item of order.line_items) {
+      // Try variation-specific image first, then product image, then existing image
+      const variationKey = `${item.product_id}-${item.variation_id}`;
+      const productKey = `${item.product_id}`;
+
+      if (item.variation_id && item.variation_id > 0 && imageMap.has(variationKey)) {
+        item.image = { id: '', src: imageMap.get(variationKey) };
+      } else if (imageMap.has(productKey)) {
+        // Only override if no image exists or image.src is empty
+        if (!item.image || !item.image.src) {
+          item.image = { id: '', src: imageMap.get(productKey) };
+        }
+      }
+      // If line_item already has a valid image.src from the order API, keep it
+    }
+  }
+}
+
 serve(async (req) => {
   console.log('🚀 WooCommerce fetch function called');
   console.log('Request method:', req.method);
@@ -73,12 +230,13 @@ serve(async (req) => {
       cleanStoreUrl = 'https://' + cleanStoreUrl;
     }
 
+    const authString = btoa(`${consumer_key}:${consumer_secret}`);
+
     // Handle single order request
     if (order_id) {
       const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders/${order_id}`;
       console.log('🔗 Final API URL:', apiUrl);
 
-      const authString = btoa(`${consumer_key}:${consumer_secret}`);
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -110,7 +268,6 @@ serve(async (req) => {
     }
 
     // Fetch orders with pagination (defaults to processing, analytics can pass other statuses)
-    const authString = btoa(`${consumer_key}:${consumer_secret}`);
     const allOrders: any[] = [];
     let page = 1;
     const perPage = 100; // WooCommerce max per page
@@ -190,6 +347,14 @@ serve(async (req) => {
       }
 
       page++;
+    }
+
+    // Enrich line items with product/variation images
+    // This handles WPC Additional Variation Images plugin and standard WooCommerce images
+    try {
+      await enrichLineItemsWithImages(allOrders, cleanStoreUrl, authString);
+    } catch (enrichError) {
+      console.error('⚠️ Error enriching line items with images (continuing without):', enrichError);
     }
 
     console.log(`✅ Successfully fetched ${allOrders.length} total ${orderStatus} orders`);

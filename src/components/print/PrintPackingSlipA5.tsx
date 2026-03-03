@@ -354,6 +354,13 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 textAlign: 'left',
                 padding: '4px 2px',
                 fontWeight: 'bold',
+                color: '#1f2937',
+                width: '40px'
+              }}>Image</th>
+              <th style={{
+                textAlign: 'left',
+                padding: '4px 2px',
+                fontWeight: 'bold',
                 color: '#1f2937'
               }}>Product</th>
               <th style={{
@@ -378,6 +385,33 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                 <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '4px 2px', color: '#374151' }}>{index + 1}</td>
                   <td style={{ padding: '4px 2px' }}>
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name || 'Product'}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          objectFit: 'cover',
+                          borderRadius: '3px',
+                          border: '1px solid #e5e7eb'
+                        }}
+                        onError={(e) => {
+                          const el = e.target as HTMLImageElement;
+                          el.style.display = 'none';
+                          (el.nextElementSibling as HTMLElement)!.style.display = 'block';
+                        }}
+                      />
+                    ) : null}
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      backgroundColor: '#e5e7eb',
+                      borderRadius: '3px',
+                      display: item.image ? 'none' : 'block'
+                    }} />
+                  </td>
+                  <td style={{ padding: '4px 2px' }}>
                     <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
                       ₹{(item.total || item.price || 0).toFixed(2)}
                     </div>
@@ -396,6 +430,14 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             ) : (
               <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                 <td style={{ padding: '4px 2px', color: '#374151' }}>1</td>
+                <td style={{ padding: '4px 2px' }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '3px'
+                  }} />
+                </td>
                 <td style={{ padding: '4px 2px' }}>
                   <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                     4434 - Anarkali Kurtis - XL - 42

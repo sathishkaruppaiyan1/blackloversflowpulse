@@ -189,8 +189,33 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
                 }
                 const variationStr = variations.length > 0 ? ` - ${variations.join(' / ')}` : '';
                 return (
-                  <div key={index} style={{ marginBottom: '2px' }}>
-                    - {item.name}{variationStr} (Qty: {item.quantity || 1})
+                  <div key={index} style={{ marginBottom: '3px', display: 'inline-flex', alignItems: 'center', gap: '4px', width: '100%' }}>
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name || 'Product'}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          objectFit: 'cover',
+                          borderRadius: '2px',
+                          border: '1px solid #e5e7eb',
+                          flexShrink: 0
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: '24px',
+                        height: '24px',
+                        backgroundColor: '#e5e7eb',
+                        borderRadius: '2px',
+                        flexShrink: 0
+                      }} />
+                    )}
+                    <span>{item.name}{variationStr} (Qty: {item.quantity || 1})</span>
                   </div>
                 );
               })
