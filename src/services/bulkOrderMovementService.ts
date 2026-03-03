@@ -45,7 +45,7 @@ export const bulkOrderMovementService = {
         // Get current order info
         const { data: currentOrder, error: fetchError } = await supabase
           .from('orders')
-          .select('status, user_id, woo_order_id, order_number, hold_previous_stage')
+          .select('*')
           .eq('id', orderId)
           .single();
 

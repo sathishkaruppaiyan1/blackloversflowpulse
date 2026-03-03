@@ -48,15 +48,15 @@ serve(async (req) => {
     console.log('📥 Reading request body...');
     const requestBody = await req.json();
     console.log('Request body received:', JSON.stringify(requestBody, null, 2));
-    
+
     const { store_url, consumer_key, consumer_secret, order_id } = requestBody;
 
     if (!store_url || !consumer_key || !consumer_secret) {
       console.error('❌ Missing required parameters');
       return new Response(
         JSON.stringify({ error: 'Missing store_url, consumer_key, or consumer_secret' }),
-        { 
-          status: 400, 
+        {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -67,17 +67,17 @@ serve(async (req) => {
 
     // Clean up store URL and construct proper WooCommerce API endpoint
     let cleanStoreUrl = store_url.trim().replace(/\/$/, '');
-    
+
     // Ensure we have the proper protocol
     if (!cleanStoreUrl.startsWith('http://') && !cleanStoreUrl.startsWith('https://')) {
       cleanStoreUrl = 'https://' + cleanStoreUrl;
     }
-    
+
     // Handle single order request
     if (order_id) {
       const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders/${order_id}`;
       console.log('🔗 Final API URL:', apiUrl);
-      
+
       const authString = btoa(`${consumer_key}:${consumer_secret}`);
       const response = await fetch(apiUrl, {
         method: 'GET',
@@ -92,8 +92,8 @@ serve(async (req) => {
         const errorText = await response.text();
         return new Response(
           JSON.stringify({ error: `WooCommerce API error: ${response.status}` }),
-          { 
-            status: response.status, 
+          {
+            status: response.status,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
@@ -102,25 +102,26 @@ serve(async (req) => {
       const responseData = await response.json();
       return new Response(
         JSON.stringify({ order: responseData }),
-        { 
+        {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
 
-    // Fetch all processing orders with pagination
+    // Fetch orders with pagination (defaults to processing, analytics can pass other statuses)
     const authString = btoa(`${consumer_key}:${consumer_secret}`);
     const allOrders: any[] = [];
     let page = 1;
     const perPage = 100; // WooCommerce max per page
-    
-    console.log('📤 Fetching all processing orders with pagination...');
-    
+    const orderStatus = requestBody.status || 'processing';
+
+    console.log(`📤 Fetching all ${orderStatus} orders with pagination...`);
+
     while (true) {
-      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&status=processing&order=desc&orderby=date`;
+      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/orders?per_page=${perPage}&page=${page}&status=${orderStatus}&order=desc&orderby=date`;
       console.log(`📄 Fetching page ${page}...`);
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -136,9 +137,9 @@ serve(async (req) => {
         const errorText = await response.text();
         console.error('❌ WooCommerce API error:', response.status, response.statusText);
         console.error('❌ Error details:', errorText);
-        
+
         let errorMessage = `WooCommerce API error: ${response.status} ${response.statusText}`;
-        
+
         if (response.status === 404) {
           errorMessage = 'WooCommerce API endpoint not found. Please check if WooCommerce is installed and REST API is enabled.';
         } else if (response.status === 401) {
@@ -146,15 +147,15 @@ serve(async (req) => {
         } else if (response.status === 403) {
           errorMessage = 'Access forbidden. Please check your API permissions.';
         }
-        
+
         // If we got some orders before error, return them
         if (allOrders.length > 0) {
           console.log(`⚠️ Error on page ${page}, but returning ${allOrders.length} orders fetched so far`);
           break;
         }
-        
+
         return new Response(
-          JSON.stringify({ 
+          JSON.stringify({
             error: errorMessage,
             details: errorText,
             status_code: response.status,
@@ -165,38 +166,38 @@ serve(async (req) => {
               'Try accessing the API URL directly in your browser'
             ]
           }),
-          { 
-            status: response.status, 
+          {
+            status: response.status,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           }
         );
       }
 
       const pageOrders = await response.json();
-      
+
       if (!Array.isArray(pageOrders) || pageOrders.length === 0) {
         console.log(`✅ No more orders on page ${page}, total fetched: ${allOrders.length}`);
         break;
       }
-      
+
       allOrders.push(...pageOrders);
       console.log(`✅ Fetched ${pageOrders.length} orders from page ${page}, total so far: ${allOrders.length}`);
-      
+
       // If we got fewer than perPage orders, we've reached the last page
       if (pageOrders.length < perPage) {
         console.log(`✅ Reached last page, total orders fetched: ${allOrders.length}`);
         break;
       }
-      
+
       page++;
     }
 
-    console.log(`✅ Successfully fetched ${allOrders.length} total processing orders`);
+    console.log(`✅ Successfully fetched ${allOrders.length} total ${orderStatus} orders`);
     console.log('Response data sample:', JSON.stringify(allOrders[0] || {}).substring(0, 200) + '...');
 
     return new Response(
       JSON.stringify({ orders: allOrders }),
-      { 
+      {
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
@@ -206,7 +207,7 @@ serve(async (req) => {
     console.error('💥 Unexpected error in fetch-woocommerce-orders function:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : String(error));
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Internal server error',
         details: error instanceof Error ? error.message : String(error),
         suggestions: [
@@ -215,8 +216,8 @@ serve(async (req) => {
           'Ensure WooCommerce REST API is properly configured'
         ]
       }),
-      { 
-        status: 500, 
+      {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );

@@ -69,6 +69,12 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
 
   const handleFilterChange = (key: keyof FilterOptions, value: any) => {
     const newFilters = { ...filters, [key]: value };
+    // When product changes, reset dependent filters (color, size, variation)
+    if (key === 'product') {
+      newFilters.color = 'any';
+      newFilters.size = 'any';
+      newFilters.variation = 'any';
+    }
     setFilters(newFilters);
     onFiltersChange(newFilters);
   };
@@ -106,6 +112,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
   };
 
   // Extract unique filter options from orders data
+  // Colors, sizes, and variations are scoped to the selected product
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
@@ -114,14 +121,34 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     const sizeMap = new Map<string, number>();
     const variationMap = new Map<string, number>();
 
+    const selectedProduct = filters.product;
+    const filterType = filters.filterType || 'contains';
+
+    // Helper to check if an item matches the selected product filter
+    const itemMatchesProduct = (item: any): boolean => {
+      if (selectedProduct === 'any') return true;
+      if (!item.name) return false;
+      const itemName = item.name.toLowerCase();
+      const filter = selectedProduct.toLowerCase();
+      switch (filterType) {
+        case 'equals': return itemName === filter;
+        case 'starts': return itemName.startsWith(filter);
+        case 'contains':
+        default: return itemName.includes(filter);
+      }
+    };
+
     orders.forEach(order => {
       if (order.line_items && Array.isArray(order.line_items)) {
         order.line_items.forEach((item: any) => {
-          // Extract product names
+          // Always extract all product names (not filtered by selection)
           if (item.name) {
             const product = item.name.toLowerCase();
             productMap.set(product, (productMap.get(product) || 0) + 1);
           }
+
+          // Only extract colors/sizes/variations from items matching selected product
+          if (!itemMatchesProduct(item)) return;
 
           // Extract colors
           if (item.color) {
@@ -163,23 +190,25 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     // Convert maps to sorted arrays
     const products: FilterOption[] = [{ value: 'any', label: 'Any Product', count: orders.length }]
       .concat(Array.from(productMap.entries())
-        .map(([value, count]) => ({ 
-          value, 
-          label: value.charAt(0).toUpperCase() + value.slice(1), 
-          count 
+        .map(([value, count]) => ({
+          value,
+          label: value.charAt(0).toUpperCase() + value.slice(1),
+          count
         }))
         .sort((a, b) => b.count - a.count));
 
-    const colors: FilterOption[] = [{ value: 'any', label: 'Any Color', count: orders.length }]
+    const matchingItemCount = selectedProduct === 'any' ? orders.length : colorMap.size > 0 || sizeMap.size > 0 ? undefined : 0;
+
+    const colors: FilterOption[] = [{ value: 'any', label: 'Any Color' }]
       .concat(Array.from(colorMap.entries())
-        .map(([value, count]) => ({ 
-          value, 
-          label: value.charAt(0).toUpperCase() + value.slice(1), 
-          count 
+        .map(([value, count]) => ({
+          value,
+          label: value.charAt(0).toUpperCase() + value.slice(1),
+          count
         }))
-        .sort((a, b) => b.count - a.count));
+        .sort((a, b) => (b.count || 0) - (a.count || 0)));
 
-    const sizes: FilterOption[] = [{ value: 'any', label: 'Any Size', count: orders.length }]
+    const sizes: FilterOption[] = [{ value: 'any', label: 'Any Size' }]
       .concat(Array.from(sizeMap.entries())
         .map(([value, count]) => ({ value, label: value, count }))
         .sort((a, b) => {
@@ -192,14 +221,14 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
           return a.value.localeCompare(b.value);
         }));
 
-    const variations: FilterOption[] = [{ value: 'any', label: 'Any Variation', count: orders.length }]
+    const variations: FilterOption[] = [{ value: 'any', label: 'Any Variation' }]
       .concat(Array.from(variationMap.entries())
-        .map(([value, count]) => ({ 
-          value, 
-          label: value.charAt(0).toUpperCase() + value.slice(1), 
-          count 
+        .map(([value, count]) => ({
+          value,
+          label: value.charAt(0).toUpperCase() + value.slice(1),
+          count
         }))
-        .sort((a, b) => b.count - a.count));
+        .sort((a, b) => (b.count || 0) - (a.count || 0)));
 
     setFilterOptions({
       products,
@@ -207,7 +236,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
       sizes,
       variations
     });
-  }, [orders]);
+  }, [orders, filters.product, filters.filterType]);
 
   return (
     <Card className="mb-6">

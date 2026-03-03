@@ -168,7 +168,7 @@ export const wooCommerceOrderService = {
       const wooOrderIds = data.orders.map((order: any) => order.id.toString());
       const { data: existingOrders } = await supabase
         .from('orders')
-        .select('woo_order_id, status, tracking_number, carrier, shipped_at, printed_at, packed_at')
+        .select('*')
         .eq('user_id', user.id)
         .in('woo_order_id', wooOrderIds);
 
@@ -656,7 +656,7 @@ export const wooCommerceOrderService = {
     // Get current order to know previous stage
     const { data: currentOrder, error: fetchError } = await supabase
       .from('orders')
-      .select('status, user_id, woo_order_id, hold_previous_stage')
+      .select('*')
       .eq('id', orderId)
       .single();
 

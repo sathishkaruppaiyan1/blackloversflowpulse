@@ -181,10 +181,134 @@ function buildTimeSeries(orders: WooCommerceOrder[], start: Date, end: Date, get
   });
 }
 
+// Transform raw WooCommerce API order into WooCommerceOrder shape for analytics
+function normalizeWooCommerceApiOrder(order: any): WooCommerceOrder {
+  const lineItems = order.line_items?.map((item: any) => {
+    const meta: any = {
+      id: item.id,
+      product_id: item.product_id,
+      variation_id: item.variation_id || null,
+      name: item.name,
+      quantity: item.quantity,
+      price: parseFloat(item.price || '0'),
+      total: parseFloat(item.total || '0'),
+      sku: item.sku || null,
+      meta_data: item.meta_data || [],
+    };
+    if (item.meta_data && Array.isArray(item.meta_data)) {
+      item.meta_data.forEach((metaItem: any) => {
+        const key = metaItem.key.toLowerCase();
+        const value = metaItem.value;
+        if (key.includes('color') || key.includes('colour')) meta.color = value;
+        else if (key.includes('size')) meta.size = value;
+        else if (key.includes('brand')) meta.brand = value;
+        else if (key.includes('material')) meta.material = value;
+        else if (key.includes('weight')) meta.weight = value;
+      });
+    }
+    return meta;
+  }) || [];
+
+  const firstName = (order.billing?.first_name || '').trim();
+  const lastName = (order.billing?.last_name || '').trim();
+  const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown Customer';
+
+  return {
+    id: order.id?.toString() || '',
+    order_number: order.number || order.id?.toString() || '',
+    customer_name: fullName,
+    customer_email: order.billing?.email || '',
+    customer_phone: order.billing?.phone || null,
+    total: parseFloat(order.total || '0'),
+    status: order.status || 'processing',
+    stage: order.status as any,
+    items: order.line_items?.length || 0,
+    shipping_address: [
+      order.shipping?.address_1,
+      order.shipping?.city,
+      order.shipping?.state,
+      order.shipping?.postcode,
+      order.shipping?.country
+    ].filter(Boolean).join(', ') || '',
+    created_at: order.date_created || order.date_created_gmt || '',
+    order_date: order.date_created || order.date_created_gmt || '',
+    line_items: lineItems,
+  };
+}
+
 export const useAnalyticsData = (params: DateFilterParams) => {
   const { orders: activeOrders, loading: activeLoading } = useWooCommerceOrders();
   const { completedOrders, loading: completedLoading } = useCompletedOrders();
   const { user } = useAuth();
+
+  // Fetch ALL WooCommerce orders (processing + on-hold + completed) directly for analytics
+  const [wooAnalyticsOrders, setWooAnalyticsOrders] = useState<WooCommerceOrder[]>([]);
+  const [wooAnalyticsLoading, setWooAnalyticsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    const fetchWooOrdersForAnalytics = async () => {
+      setWooAnalyticsLoading(true);
+      try {
+        // Get WooCommerce settings
+        const { data: settings } = await supabase
+          .from('woocommerce_settings')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!settings) {
+          console.log('📊 Analytics: No WooCommerce settings found, using local orders only');
+          setWooAnalyticsLoading(false);
+          return;
+        }
+
+        // Fetch processing, on-hold, and completed orders by calling
+        // the existing edge function once per status (avoids CORS/deployment issues)
+        const statusesToFetch = ['processing', 'on-hold', 'completed'];
+        const allWooOrders: any[] = [];
+
+        for (const status of statusesToFetch) {
+          console.log(`📊 Analytics: Fetching "${status}" orders...`);
+          const { data, error } = await supabase.functions.invoke('fetch-woocommerce-orders', {
+            body: {
+              store_url: settings.store_url,
+              consumer_key: settings.consumer_key,
+              consumer_secret: settings.consumer_secret,
+              status // pass single status
+            }
+          });
+
+          if (error || data?.error) {
+            console.error(`📊 Analytics: Error fetching "${status}" orders:`, error || data?.error);
+            continue; // skip this status, try next
+          }
+
+          if (data?.orders?.length) {
+            console.log(`📊 Analytics: Got ${data.orders.length} "${status}" orders`);
+            allWooOrders.push(...data.orders);
+          } else {
+            console.log(`📊 Analytics: No "${status}" orders found`);
+          }
+        }
+
+        if (!cancelled && allWooOrders.length > 0) {
+          const normalized = allWooOrders.map(normalizeWooCommerceApiOrder);
+          console.log(`📊 Analytics: Total ${normalized.length} orders from WooCommerce`);
+          setWooAnalyticsOrders(normalized);
+        }
+      } catch (err) {
+        console.error('📊 Analytics: Failed to fetch WooCommerce orders:', err);
+      } finally {
+        if (!cancelled) setWooAnalyticsLoading(false);
+      }
+    };
+
+    fetchWooOrdersForAnalytics();
+    return () => { cancelled = true; };
+  }, [user]);
 
   // Fetch product-to-category mapping from Supabase products table
   const [productCategoryMap, setProductCategoryMap] = useState<Map<string, string>>(new Map());
@@ -206,13 +330,23 @@ export const useAnalyticsData = (params: DateFilterParams) => {
     fetchProducts();
   }, [user]);
 
-  const loading = activeLoading || completedLoading;
+  const loading = activeLoading || completedLoading || wooAnalyticsLoading;
 
-  // Merge and deduplicate orders
+  // Merge and deduplicate orders from all sources:
+  // 1. WooCommerce API orders (processing + on-hold + completed) for analytics
+  // 2. Local DB active orders (processing, packing, packed, shipped, etc.)
+  // 3. Completed orders archive
   const allOrders = useMemo(() => {
+    console.log(`📊 Analytics merge: wooAnalytics=${wooAnalyticsOrders.length}, active=${activeOrders.length}, completed=${completedOrders.length}`);
+
     const orderMap = new Map<string, WooCommerceOrder>();
 
-    // Add active orders first
+    // Add WooCommerce analytics orders first (broadest source)
+    for (const order of wooAnalyticsOrders) {
+      orderMap.set(order.order_number, order);
+    }
+
+    // Active local orders override WooCommerce data (they have local stage info)
     for (const order of activeOrders) {
       orderMap.set(order.order_number, order);
     }
@@ -225,8 +359,9 @@ export const useAnalyticsData = (params: DateFilterParams) => {
       }
     }
 
+    console.log(`📊 Analytics merge: Final deduplicated count = ${orderMap.size}`);
     return Array.from(orderMap.values());
-  }, [activeOrders, completedOrders]);
+  }, [activeOrders, completedOrders, wooAnalyticsOrders]);
 
   // Filter by date range
   const filteredOrders = useMemo(() => {

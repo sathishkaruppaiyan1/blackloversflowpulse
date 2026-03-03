@@ -190,14 +190,16 @@ const PrintingPage = () => {
     try {
       const targetStage = bypassPackingStage ? 'packed' : 'packing';
       await wooCommerceOrderService.updateOrderStage(orderId, targetStage);
-      await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
-      const stageMessage = bypassPackingStage 
-        ? 'Order moved to tracking stage' 
-        : 'Order moved to packing stage';
-      toast.success(stageMessage);
+      // updateOrderStage already shows success toast
     } catch (error: any) {
       console.error('Error moving order:', error);
       toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
+    }
+    // Refresh order list separately - don't let refresh failure show as stage move failure
+    try {
+      await fetchProcessingOrdersFromDB();
+    } catch (error) {
+      console.error('Error refreshing orders:', error);
     }
   };
 
@@ -277,7 +279,8 @@ const PrintingPage = () => {
       const { createRoot } = await import('react-dom/client');
       const PrintPackingSlipA4 = (await import('./print/PrintPackingSlipA4')).default;
       const PrintPackingSlipA5 = (await import('./print/PrintPackingSlipA5')).default;
-      const PrintComponent = format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
+      const PrintPackingSlip4x6 = (await import('./print/PrintPackingSlip4x6')).default;
+      const PrintComponent = format === 'thermal' ? PrintPackingSlip4x6 : format === 'A5' ? PrintPackingSlipA5 : PrintPackingSlipA4;
 
       // Import JsBarcode for barcode generation
       const JsBarcode = (await import('jsbarcode')).default;
@@ -288,11 +291,11 @@ const PrintingPage = () => {
           const canvas = document.createElement('canvas');
           JsBarcode(canvas, order.order_number, {
             format: "CODE128",
-            width: format === 'A5' ? 1.2 : 2,
-            height: format === 'A5' ? 35 : 60,
+            width: format === 'thermal' ? 1 : format === 'A5' ? 1.2 : 2,
+            height: format === 'thermal' ? 30 : format === 'A5' ? 35 : 60,
             displayValue: true,
-            fontSize: format === 'A5' ? 20 : 18,
-            margin: format === 'A5' ? 5 : 10,
+            fontSize: format === 'thermal' ? 10 : format === 'A5' ? 20 : 18,
+            margin: format === 'thermal' ? 3 : format === 'A5' ? 5 : 10,
             background: "#ffffff",
             lineColor: "#000000"
           });
@@ -321,8 +324,8 @@ const PrintingPage = () => {
             pageBreakBefore: index > 0 ? 'always' : 'auto', // Force new page for each order except first
             pageBreakAfter: index < ordersWithBarcodes.length - 1 ? 'always' : 'auto', // Also add after for safety
             pageBreakInside: 'auto', // Allow content to span multiple pages if needed
-            minHeight: format === 'A5' ? '8.27in' : '11in', // Minimum height for proper page sizing
-            width: format === 'A5' ? '5.83in' : '8.27in',
+            minHeight: format === 'thermal' ? '6in' : format === 'A5' ? '8.27in' : '11in', // Minimum height for proper page sizing
+            width: format === 'thermal' ? '4in' : format === 'A5' ? '5.83in' : '8.27in',
             margin: '0 auto',
             display: 'block',
             position: 'relative'
@@ -342,8 +345,8 @@ const PrintingPage = () => {
         const printedContent = printContainer.innerHTML;
 
         // Set up print window with styles - ensure one order per page
-        const pageSize = format === 'A5' ? 'A5' : 'A4';
-        const pageMargin = format === 'A5' ? '0.3in' : '0.75in';
+        const pageSize = format === 'thermal' ? '4in 6in' : format === 'A5' ? 'A5' : 'A4';
+        const pageMargin = format === 'thermal' ? '0.1in' : format === 'A5' ? '0.3in' : '0.75in';
         
         printWindow.document.write(`
           <!DOCTYPE html>
@@ -374,8 +377,8 @@ const PrintingPage = () => {
                   page-break-before: always !important;
                   page-break-after: always !important;
                   page-break-inside: auto !important;
-                  width: ${format === 'A5' ? '5.83in' : '8.27in'};
-                  min-height: ${format === 'A5' ? '8.27in' : '11in'};
+                  width: ${format === 'thermal' ? '4in' : format === 'A5' ? '5.83in' : '8.27in'};
+                  min-height: ${format === 'thermal' ? '6in' : format === 'A5' ? '8.27in' : '11in'};
                   margin: 0 auto;
                   display: block;
                   position: relative;
@@ -386,10 +389,10 @@ const PrintingPage = () => {
                 .packing-slip-page:last-child {
                   page-break-after: auto !important;
                 }
-                /* Override A5 component fixed height to allow multi-page content */
+                /* Override component fixed height to allow multi-page content */
                 .packing-slip-page > div {
                   height: auto !important;
-                  min-height: ${format === 'A5' ? '8.27in' : '11in'} !important;
+                  min-height: ${format === 'thermal' ? '6in' : format === 'A5' ? '8.27in' : '11in'} !important;
                   max-height: none !important;
                   overflow: visible !important;
                   page-break-inside: auto !important;
@@ -1055,14 +1058,16 @@ const PrintingPage = () => {
                             try {
                               const targetStage = bypassPackingStage ? 'packed' : 'packing';
                               await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
-                              await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
-                              const stageMessage = bypassPackingStage 
-                                ? `Order ${order.order_number} moved to tracking stage` 
-                                : `Order ${order.order_number} moved to packing stage`;
-                              toast.success(stageMessage);
+                              // updateOrderStage already shows success toast
                             } catch (error: any) {
                               console.error('Error moving order:', error);
                               toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
+                            }
+                            // Refresh order list separately - don't let refresh failure show as stage move failure
+                            try {
+                              await fetchProcessingOrdersFromDB();
+                            } catch (error) {
+                              console.error('Error refreshing orders:', error);
                             }
                           }}
                         />
