@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 interface Order {
   id: string;
@@ -6,6 +7,8 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
   billing_postcode?: string;
@@ -78,7 +81,7 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
   };
 
   const cell = {
-    border: '1.5px solid #1f2937',
+    border: '1.5px solid #000',
     padding: '8px 10px',
   } as React.CSSProperties;
 
@@ -96,9 +99,9 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
       boxSizing: 'border-box',
       pageBreakAfter: 'always'
     }}>
-      <div style={{ border: '2px solid #1f2937' }}>
+      <div style={{ border: '2px solid #000' }}>
         {/* Barcode Section */}
-        <div style={{ ...cell, textAlign: 'center', borderBottom: '1.5px solid #1f2937' }}>
+        <div style={{ ...cell, textAlign: 'center', borderBottom: '1.5px solid #000' }}>
           {barcodeDataUrl && (
             <div style={{ marginBottom: '4px' }}>
               <img
@@ -114,13 +117,13 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
         </div>
 
         {/* TO Section */}
-        <div style={{ ...cell, borderBottom: '1.5px solid #1f2937' }}>
+        <div style={{ ...cell, borderBottom: '1.5px solid #000' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <div style={{
               width: '14px',
               height: '14px',
               borderRadius: '50%',
-              backgroundColor: '#ef4444',
+              backgroundColor: '#000',
               flexShrink: 0
             }} />
             <span style={{ fontWeight: 'bold', fontSize: '12px' }}>TO:</span>
@@ -140,13 +143,19 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
             {order.customer_phone && (
               <div style={{ fontSize: '11px', marginTop: '2px' }}>Ph: {order.customer_phone}</div>
             )}
+            {order.alternate_phone && (
+              <div style={{ fontSize: '11px', marginTop: '2px' }}>Alt Ph: {order.alternate_phone}</div>
+            )}
+            {order.whatsapp_number && (
+              <div style={{ fontSize: '11px', marginTop: '2px' }}>WhatsApp: {order.whatsapp_number}</div>
+            )}
           </div>
         </div>
 
         {/* FROM + COURIER DETAILS - Side by side */}
-        <div style={{ display: 'flex', borderBottom: '1.5px solid #1f2937' }}>
+        <div style={{ display: 'flex', borderBottom: '1.5px solid #000' }}>
           {/* FROM */}
-          <div style={{ ...cell, flex: 1, borderRight: '1.5px solid #1f2937' }}>
+          <div style={{ ...cell, flex: 1, borderRight: '1.5px solid #000' }}>
             <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '4px' }}>FROM:</div>
             <div style={{ fontSize: '11px' }}>
               <div style={{ fontWeight: 'bold' }}>{companySettings.company_name || 'Company'}</div>
@@ -169,12 +178,13 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
         </div>
 
         {/* PRODUCTS Section */}
-        <div style={{ ...cell, borderBottom: '1.5px solid #1f2937' }}>
+        <div style={{ ...cell, borderBottom: '1.5px solid #000' }}>
           <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: '6px' }}>PRODUCTS:</div>
           <div style={{ fontSize: '11px' }}>
             {order.line_items && order.line_items.length > 0 ? (
-              order.line_items.map((item: any, index: number) => {
-                const variations = [];
+            order.line_items.map((item: any, index: number) => {
+              const itemImage = resolveLineItemImage(item);
+              const variations = [];
                 if (item.color) variations.push(item.color);
                 if (item.size) variations.push(item.size);
                 if (item.meta_data && Array.isArray(item.meta_data)) {
@@ -190,16 +200,16 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
                 const variationStr = variations.length > 0 ? ` - ${variations.join(' / ')}` : '';
                 return (
                   <div key={index} style={{ marginBottom: '3px', display: 'inline-flex', alignItems: 'center', gap: '4px', width: '100%' }}>
-                    {item.image ? (
+                    {itemImage ? (
                       <img
-                        src={item.image}
+                        src={itemImage}
                         alt={item.name || 'Product'}
                         style={{
                           width: '24px',
                           height: '24px',
                           objectFit: 'cover',
                           borderRadius: '2px',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid #000',
                           flexShrink: 0
                         }}
                         onError={(e) => {
@@ -210,7 +220,7 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
                       <div style={{
                         width: '24px',
                         height: '24px',
-                        backgroundColor: '#e5e7eb',
+                        backgroundColor: '#fff',
                         borderRadius: '2px',
                         flexShrink: 0
                       }} />
@@ -231,7 +241,7 @@ const PrintPackingSlip4x6: React.FC<PrintPackingSlip4x6Props> = ({
           textAlign: 'center',
           fontWeight: 'bold',
           fontSize: '11px',
-          color: '#dc2626'
+          color: '#000'
         }}>
           PARCEL OPENING VIDEO is MUST For raising complaints
         </div>

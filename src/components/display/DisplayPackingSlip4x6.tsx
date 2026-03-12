@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 interface Order {
   id: string;
@@ -6,6 +7,8 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
   billing_postcode?: string;
@@ -96,7 +99,7 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
       {/* TO Section */}
       <div className="p-3 border-b-2 border-gray-800">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-3.5 h-3.5 rounded-full bg-red-500 flex-shrink-0" />
+          <div className="w-3.5 h-3.5 rounded-full bg-black flex-shrink-0" />
           <span className="font-bold text-xs">TO:</span>
         </div>
         <div>
@@ -111,6 +114,12 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
           ))}
           {order.customer_phone && (
             <div className="text-[11px] mt-0.5">Ph: {order.customer_phone}</div>
+          )}
+          {order.alternate_phone && (
+            <div className="text-[11px] mt-0.5">Alt Ph: {order.alternate_phone}</div>
+          )}
+          {order.whatsapp_number && (
+            <div className="text-[11px] mt-0.5">WhatsApp: {order.whatsapp_number}</div>
           )}
         </div>
       </div>
@@ -146,6 +155,7 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
         <div className="text-[11px]">
           {order.line_items && order.line_items.length > 0 ? (
             order.line_items.map((item: any, index: number) => {
+              const itemImage = resolveLineItemImage(item);
               const variations: string[] = [];
               if (item.color) variations.push(item.color);
               if (item.size) variations.push(item.size);
@@ -162,17 +172,17 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
               const variationStr = variations.length > 0 ? ` - ${variations.join(' / ')}` : '';
               return (
                 <div key={index} className="mb-1 inline-flex items-center gap-1 w-full">
-                  {item.image ? (
+                  {itemImage ? (
                     <img
-                      src={item.image}
+                      src={itemImage}
                       alt={item.name || 'Product'}
-                      className="w-6 h-6 rounded-sm object-cover border border-gray-200 flex-shrink-0"
+                      className="w-6 h-6 rounded-sm object-cover border border-black flex-shrink-0"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
                     />
                   ) : (
-                    <div className="w-6 h-6 rounded-sm bg-gray-200 flex-shrink-0" />
+                    <div className="w-6 h-6 rounded-sm bg-white border border-black flex-shrink-0" />
                   )}
                   <span>{item.name}{variationStr} (Qty: {item.quantity || 1})</span>
                 </div>
@@ -185,7 +195,7 @@ const DisplayPackingSlip4x6: React.FC<DisplayPackingSlip4x6Props> = ({
       </div>
 
       {/* Footer */}
-      <div className="p-3 text-center font-bold text-[11px] text-red-600">
+      <div className="p-3 text-center font-bold text-[11px] text-black">
         PARCEL OPENING VIDEO is MUST For raising complaints
       </div>
     </div>

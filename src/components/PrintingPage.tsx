@@ -23,6 +23,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
 import { syncCoordinator } from '@/services/syncCoordinator';
 import { getCachedOrdersByStage, setCachedOrders } from '@/services/orderCacheService';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 // Load cached orders for instant display in Printing page
 const loadCachedOrders = (): { processingOrders: WooCommerceOrder[]; allOrders: WooCommerceOrder[] } => {
@@ -971,7 +972,10 @@ const PrintingPage = () => {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {paginatedOrders.map((order) => (
+            {paginatedOrders.map((order) => {
+              const firstOrderedImage = resolveLineItemImage(order.line_items?.[0]);
+
+              return (
               <div key={order.id} className="p-4 hover:bg-gray-50">
                 <div className="flex items-start justify-between">
                   {/* Left side - Checkbox and Order Info */}
@@ -983,9 +987,9 @@ const PrintingPage = () => {
                     />
 
                     {/* First product image */}
-                    {order.line_items?.[0]?.image ? (
+                    {firstOrderedImage ? (
                       <img
-                        src={order.line_items[0].image}
+                        src={firstOrderedImage}
                         alt="Product"
                         className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -1043,6 +1047,16 @@ const PrintingPage = () => {
                               📞 {order.customer_phone}
                             </div>
                           )}
+                          {order.alternate_phone && (
+                            <div className="text-sm text-gray-500 mt-1">
+                              📞 Alt: {order.alternate_phone}
+                            </div>
+                          )}
+                          {order.whatsapp_number && (
+                            <div className="text-sm text-green-600 mt-1">
+                              💬 WA: {order.whatsapp_number}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1088,7 +1102,7 @@ const PrintingPage = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

@@ -8,6 +8,8 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
   billing_postcode?: string;
@@ -139,7 +141,7 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
     return (
       <div 
         key={pageIndex}
-        className="relative bg-white border-2 border-dashed border-primary/30 rounded-lg p-4 shadow-lg"
+        className="relative bg-white border-2 border-dashed border-black rounded-lg p-4 shadow-lg"
         style={{
           width: '420px',
           minHeight: '594px',
@@ -155,24 +157,24 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
         <div className="flex justify-between items-start mb-3 gap-4">
           <div className="flex-shrink-0">
             <div className="flex items-center gap-2 mb-2">
-              <div className="text-sm font-bold text-gray-800">{companySettings.company_name || 'Company'}</div>
-              <span className="text-gray-300">|</span>
-              <h1 className="text-lg font-bold text-gray-800">Packing slip</h1>
+              <div className="text-sm font-bold text-black">{companySettings.company_name || 'Company'}</div>
+              <span className="text-black">|</span>
+              <h1 className="text-lg font-bold text-black">Packing slip</h1>
             </div>
           </div>
           
           <div className="text-xs text-left flex-shrink-0">
             <div className="mb-0.5">
-              <span className="font-bold text-gray-800">Order No.: </span>
-              <span className="text-gray-600">{order.order_number || order.id || 'N/A'}</span>
+              <span className="font-bold text-black">Order No.: </span>
+              <span className="text-black">{order.order_number || order.id || 'N/A'}</span>
             </div>
             <div className="mb-0.5">
-              <span className="font-bold text-gray-800">Date: </span>
-              <span className="text-gray-600">{formatDate(order.order_date)}</span>
+              <span className="font-bold text-black">Date: </span>
+              <span className="text-black">{formatDate(order.order_date)}</span>
             </div>
             <div>
-              <span className="font-bold text-gray-800">Method: </span>
-              <span className="text-gray-600">{order.shipping_method || 'Standard Shipping'}</span>
+              <span className="font-bold text-black">Method: </span>
+              <span className="text-black">{order.shipping_method || 'Standard Shipping'}</span>
             </div>
           </div>
         </div>
@@ -181,18 +183,18 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
         {pageIndex === 0 && (
           <div className="grid grid-cols-3 gap-3 mb-3 text-xs">
             <div>
-              <h3 className="font-bold text-gray-800 mb-1.5 text-sm">From</h3>
+              <h3 className="font-bold text-black mb-1.5 text-sm">From</h3>
               <div className="font-medium text-xs mb-0.5">{companySettings.company_name || 'Company'}</div>
               {formatAddress(companySettings).map((line, index) => (
-                <div key={index} className="text-xs text-gray-600 mb-0.5 leading-tight">{line}</div>
+                <div key={index} className="text-xs text-black mb-0.5 leading-tight">{line}</div>
               ))}
               {companySettings.phone && (
-                <div className="text-xs text-gray-600">+91 {companySettings.phone}</div>
+                <div className="text-xs text-black">+91 {companySettings.phone}</div>
               )}
             </div>
 
             <div>
-              <h3 className="font-bold text-gray-800 mb-1.5 text-sm">Bill to</h3>
+              <h3 className="font-bold text-black mb-1.5 text-sm">Bill to</h3>
               <div className="font-medium text-xs mb-0.5">{order.customer_name}</div>
               {formatBillingAddress(
                 order.billing_address || order.shipping_address,
@@ -200,15 +202,21 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
                 order.billing_city || order.shipping_city,
                 order.billing_state || order.shipping_state
               ).map((line, index) => (
-                <div key={index} className="text-xs text-gray-600 mb-0.5 leading-tight">{line}</div>
+                <div key={index} className="text-xs text-black mb-0.5 leading-tight">{line}</div>
               ))}
               {order.customer_phone && (
-                <div className="text-xs text-blue-600 font-semibold">Phone: {order.customer_phone}</div>
+                <div className="text-xs text-black font-semibold">Phone: {order.customer_phone}</div>
+              )}
+              {order.alternate_phone && (
+                <div className="text-xs text-black">Alt Phone: {order.alternate_phone}</div>
+              )}
+              {order.whatsapp_number && (
+                <div className="text-xs text-black font-semibold">WhatsApp: {order.whatsapp_number}</div>
               )}
             </div>
 
             <div>
-              <h3 className="font-bold text-gray-800 mb-1.5 text-sm">Ship to</h3>
+              <h3 className="font-bold text-black mb-1.5 text-sm">Ship to</h3>
               <div className="font-medium text-xs mb-0.5">{order.customer_name}</div>
               {formatShippingAddress(
                 order.shipping_address,
@@ -216,7 +224,7 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
                 order.shipping_city,
                 order.shipping_state
               ).map((line, index) => (
-                <div key={index} className="text-xs text-gray-600 mb-0.5 leading-tight">{line}</div>
+                <div key={index} className="text-xs text-black mb-0.5 leading-tight">{line}</div>
               ))}
             </div>
           </div>
@@ -232,40 +240,40 @@ const PrintPreviewA5: React.FC<PrintPreviewA5Props> = ({
         <div className="mb-3">
           <table className="w-full border-collapse text-xs">
             <thead>
-              <tr className="border-b-2 border-gray-300">
-                <th className="text-left py-1 px-0.5 font-bold text-gray-800 w-8">S.No</th>
-                <th className="text-left py-1 px-0.5 font-bold text-gray-800">Product</th>
-                <th className="text-center py-1 px-0.5 font-bold text-gray-800 w-16">Quantity</th>
-                <th className="text-right py-1 px-0.5 font-bold text-gray-800 w-20">Total weight</th>
+              <tr className="border-b-2 border-black">
+                <th className="text-left py-1 px-0.5 font-bold text-black w-8">S.No</th>
+                <th className="text-left py-1 px-0.5 font-bold text-black">Product</th>
+                <th className="text-center py-1 px-0.5 font-bold text-black w-16">Quantity</th>
+                <th className="text-right py-1 px-0.5 font-bold text-black w-20">Total weight</th>
               </tr>
             </thead>
             <tbody>
               {items.length > 0 ? (
                 items.map((item: any, index: number) => (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="py-1 px-0.5 text-gray-600">{startItemNumber + index}</td>
+                  <tr key={index} className="border-b border-black">
+                    <td className="py-1 px-0.5 text-black">{startItemNumber + index}</td>
                     <td className="py-1 px-0.5">
-                      <div className="font-bold text-gray-800 text-[10px] leading-tight mb-0.5">
+                      <div className="font-bold text-black text-[10px] leading-tight mb-0.5">
                         ₹{(item.total || item.price || 0).toFixed(2)}
                       </div>
-                      <div className="font-bold text-gray-800 text-xs leading-tight">
+                      <div className="font-bold text-black text-xs leading-tight">
                         {item.name || 'Product'}
                       </div>
                     </td>
-                    <td className="py-1 px-0.5 text-center text-gray-600">{item.quantity || 1}</td>
-                    <td className="py-1 px-0.5 text-right text-gray-600">
+                    <td className="py-1 px-0.5 text-center text-black">{item.quantity || 1}</td>
+                    <td className="py-1 px-0.5 text-right text-black">
                       {((parseFloat(item.weight || '0.5') * (item.quantity || 1))).toFixed(1)} kg
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr className="border-b border-gray-200">
-                  <td className="py-1 px-0.5 text-gray-600">1</td>
+                <tr className="border-b border-black">
+                  <td className="py-1 px-0.5 text-black">1</td>
                   <td className="py-1 px-0.5">
-                    <div className="font-medium text-gray-800 text-xs leading-tight">Sample Product</div>
+                    <div className="font-medium text-black text-xs leading-tight">Sample Product</div>
                   </td>
-                  <td className="py-1 px-0.5 text-center text-gray-600">1</td>
-                  <td className="py-1 px-0.5 text-right text-gray-600">0.5 kg</td>
+                  <td className="py-1 px-0.5 text-center text-black">1</td>
+                  <td className="py-1 px-0.5 text-right text-black">0.5 kg</td>
                 </tr>
               )}
             </tbody>

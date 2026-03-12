@@ -90,22 +90,23 @@ class InteraktService {
     const countryCode = formattedPhone.length >= 2 ? formattedPhone.substring(0, 2) : '91';
     const phoneNum = formattedPhone.length >= 2 ? formattedPhone.substring(2) : formattedPhone;
     
-    // Create template message using order_tracking_information template
-    // Template: Hello {{4}}! Order ID: {{1}}, Tracking ID: {{2}}, COURIER: {{3}}
-    // Interakt bodyValues mapping: [0]={{1}}, [1]={{2}}, [2]={{3}}, [3]={{4}}
-    // Correct order: [Order ID, Tracking ID, Courier Name, Customer Name]
+    // Create template message using order_shipped_template
+    // Template: Dear {{1}} This is Black Lovers...
+    // Variables: {{1}}=Name, {{2}}=Courier, {{3}}=Order ID, {{4}}=Tracking, {{5}}=Courier, {{6}}=Link
     const templateMessage: InteraktTemplateMessage = {
       countryCode: `+${countryCode}`,
       phoneNumber: phoneNum,
       type: "Template",
       template: {
-        name: "order_tracking_information",
+        name: "order_shipped_template",
         languageCode: "en",
         bodyValues: [
-          trackingData.orderNumber || 'N/A', // {{1}} - Order ID
-          trackingData.trackingNumber || 'N/A', // {{2}} - Tracking ID
-          courierDisplayName || 'UNKNOWN', // {{3}} - Courier Name
-          trackingData.customerName || 'Customer' // {{4}} - Customer Name
+          trackingData.customerName || 'Customer', // {{1}} - Customer Name
+          courierDisplayName || 'Courier',       // {{2}} - Courier Name
+          trackingData.orderNumber || 'N/A',     // {{3}} - Order ID
+          trackingData.trackingNumber || 'N/A',   // {{4}} - Tracking Number
+          courierDisplayName || 'Courier',       // {{5}} - Courier Name (again)
+          trackingLink                           // {{6}} - Tracking Link
         ]
       }
     };

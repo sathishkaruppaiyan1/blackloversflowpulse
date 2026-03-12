@@ -18,8 +18,16 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
+  billing_postcode?: string;
+  shipping_postcode?: string;
+  shipping_city?: string;
+  shipping_state?: string;
+  billing_city?: string;
+  billing_state?: string;
   total: number;
   items: number;
   line_items?: any[];

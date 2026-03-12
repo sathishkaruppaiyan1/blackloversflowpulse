@@ -223,8 +223,8 @@ const TrackingPage = () => {
   const looksLikeTrackingNumber = (input: string) => {
     const cleanInput = input.trim();
     
-    // Reject if it's too short (likely an order number)
-    if (cleanInput.length < 8) {
+    // Reject if it's too short (not even a minimum code)
+    if (cleanInput.length < 3) {
       return false;
     }
     
@@ -250,7 +250,7 @@ const TrackingPage = () => {
       /^\d{1,8}$/.test(cleanInput) ||         // Short numeric IDs (1-8 digits)
       cleanInput.includes('ORDER') ||         // Contains ORDER keyword
       cleanInput.includes('ORD') ||           // Contains ORD keyword
-      cleanInput.length <= 8                  // Very short inputs (8 or less chars) are likely order IDs
+      cleanInput.length < 3                   // Only very short inputs are likely order IDs by length alone
     );
   };
 
@@ -402,15 +402,7 @@ const TrackingPage = () => {
     
     const cleanInput = orderIdInput.trim();
     
-    // Check if input looks like a tracking number instead of order ID
-    if (looksLikeTrackingNumber(cleanInput)) {
-      playErrorSound();
-      toast.error("This looks like a tracking number, not an order ID. Please scan the order barcode first.");
-      setOrderIdInput('');
-      return;
-    }
-
-    // Find order by order number or ID
+    // Find order by order number or ID FIRST - if found, it's definitely an order
     const order = trackingOrders.find(o => 
       o.order_number === cleanInput || 
       o.id === cleanInput ||
@@ -425,14 +417,21 @@ const TrackingPage = () => {
       setWhatsappStatus(null);
       setShopifyStatus(null);
       toast.success(`Order ${order.order_number} loaded successfully`);
-      console.log('Order found:', order.order_number);
-      console.log('Customer phone:', order.customer_phone);
-    } else {
-      playErrorSound();
-      toast.error("Order not found in tracking queue");
-      setCurrentOrder(null);
-      setIsOrderLocked(false);
+      return;
     }
+
+    // ONLY if order is not found, apply tracking number heuristic
+    if (looksLikeTrackingNumber(cleanInput)) {
+      playErrorSound();
+      toast.error("This looks like a tracking number, not an order ID. Please scan the order barcode first.");
+      setOrderIdInput('');
+      return;
+    }
+
+    playErrorSound();
+    toast.error("Order not found in tracking queue");
+    setCurrentOrder(null);
+    setIsOrderLocked(false);
   };
 
   const handleTrackingNumberScan = async () => {
@@ -440,8 +439,11 @@ const TrackingPage = () => {
     
     const trackingNumber = trackingNumberInput.trim();
     
-    // VALIDATION 1: Check if input looks like an order ID instead of tracking number
-    if (looksLikeOrderId(trackingNumber)) {
+    // Check for Courier Partner FIRST - if it matches a pattern, it's a valid tracking number
+    const detected = await detectCourierPartner(trackingNumber);
+    
+    // If NOT detected by pattern, apply order ID heuristic
+    if (!detected && looksLikeOrderId(trackingNumber)) {
       playErrorSound();
       toast.error("This looks like an order ID, not a tracking number. Please scan the tracking barcode.");
       setTrackingNumberInput('');
@@ -914,7 +916,7 @@ const TrackingPage = () => {
                     value={trackingNumberInput}
                     onChange={async (e) => {
                       setTrackingNumberInput(e.target.value);
-                      if (e.target.value.length > 8) {
+                      if (e.target.value.length > 3) {
                         const carrier = await detectCourierPartner(e.target.value);
                         setDetectedCarrier(carrier);
                         // Auto-select the detected carrier in dropdown

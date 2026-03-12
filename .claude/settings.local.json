@@ -8,7 +8,18 @@
       "Bash(grep:*)",
       "Bash(npx tsc:*)",
       "Bash(npx:*)",
-      "Bash(node_modules/.bin/tsc:*)"
+      "Bash(node_modules/.bin/tsc:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout:*)",
+      "WebFetch(domain:woocommerce.github.io)",
+      "Bash(npm --prefix \"C:\\\\Users\\\\sathi\\\\blackloversflowpulse\" run dev)",
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Bash(python:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(ping:*)",
+      "Bash(npm --prefix \"C:/Users/sathi/blackloversflowpulse\" run dev)"
     ],
     "deny": [],
     "ask": []

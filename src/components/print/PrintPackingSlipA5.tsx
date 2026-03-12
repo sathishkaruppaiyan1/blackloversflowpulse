@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 interface Order {
   id: string;
@@ -7,6 +8,8 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
   billing_postcode?: string;
@@ -183,13 +186,13 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
             <div style={{
               fontWeight: 'bold',
               fontSize: '18px',
-              color: '#1f2937'
+              color: '#000'
             }}>{companySettings.company_name || 'Company'}</div>
-            <span style={{ color: '#d1d5db' }}>|</span>
+            <span style={{ color: '#000' }}>|</span>
             <h1 style={{
               fontSize: '24px',
               fontWeight: 'bold',
-              color: '#1f2937',
+              color: '#000',
               margin: '0'
             }}>Packing slip</h1>
           </div>
@@ -205,16 +208,16 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           paddingLeft: '8px'
         }}>
           <div style={{ marginBottom: '2px' }}>
-            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Order No.: </span>
-            <span style={{ color: '#374151' }}>{order.order_number || order.id || 'N/A'}</span>
+            <span style={{ fontWeight: 'bold', color: '#000' }}>Order No.: </span>
+            <span style={{ color: '#000' }}>{order.order_number || order.id || 'N/A'}</span>
           </div>
           <div style={{ marginBottom: '2px' }}>
-            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Date: </span>
-            <span style={{ color: '#374151' }}>{formatDate(order.order_date)}</span>
+            <span style={{ fontWeight: 'bold', color: '#000' }}>Date: </span>
+            <span style={{ color: '#000' }}>{formatDate(order.order_date)}</span>
           </div>
           <div>
-            <span style={{ fontWeight: 'bold', color: '#1f2937' }}>Method: </span>
-            <span style={{ color: '#374151' }}>{order.shipping_method || 'Standard Shipping'}</span>
+            <span style={{ fontWeight: 'bold', color: '#000' }}>Method: </span>
+            <span style={{ color: '#000' }}>{order.shipping_method || 'Standard Shipping'}</span>
           </div>
         </div>
       </div>
@@ -231,7 +234,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
-            color: '#1f2937',
+            color: '#000',
             marginBottom: '8px',
             fontSize: '16px',
             margin: '0 0 8px 0'
@@ -241,12 +244,12 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               {companySettings.company_name || 'Company'}
             </div>
             {formatAddress(companySettings).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#000', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
             {companySettings.phone && (
-              <div style={{ fontSize: '14px', color: '#374151', marginBottom: '1px' }}>
+              <div style={{ fontSize: '14px', color: '#000', marginBottom: '1px' }}>
                 +91 {companySettings.phone}
               </div>
             )}
@@ -257,7 +260,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
-            color: '#1f2937',
+            color: '#000',
             marginBottom: '8px',
             fontSize: '16px',
             margin: '0 0 8px 0'
@@ -280,18 +283,28 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               order.billing_city || order.shipping_city,
               order.billing_state || order.shipping_state
             ).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#000', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
             {order.customer_email && (
-              <div style={{ fontSize: '14px', color: '#374151', marginBottom: '1px' }}>
+              <div style={{ fontSize: '14px', color: '#000', marginBottom: '1px' }}>
                 Email: {order.customer_email}
               </div>
             )}
             {order.customer_phone && (
-              <div style={{ fontSize: '14px', color: '#2563eb', marginBottom: '1px', fontWeight: '600' }}>
+              <div style={{ fontSize: '14px', color: '#000', marginBottom: '1px', fontWeight: '600' }}>
                 Phone: {order.customer_phone}
+              </div>
+            )}
+            {order.alternate_phone && (
+              <div style={{ fontSize: '14px', color: '#000', marginBottom: '1px' }}>
+                Alt Phone: {order.alternate_phone}
+              </div>
+            )}
+            {order.whatsapp_number && (
+              <div style={{ fontSize: '14px', color: '#000', marginBottom: '1px', fontWeight: '600' }}>
+                WhatsApp: {order.whatsapp_number}
               </div>
             )}
           </div>
@@ -301,7 +314,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
         <div style={{ minWidth: 0, overflow: 'visible' }}>
           <h3 style={{
             fontWeight: 'bold',
-            color: '#1f2937',
+            color: '#000',
             marginBottom: '8px',
             fontSize: '16px',
             margin: '0 0 8px 0'
@@ -324,7 +337,7 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
               order.shipping_city,
               order.shipping_state
             ).map((line, index) => (
-              <div key={index} style={{ fontSize: '14px', color: '#374151', marginBottom: '1px', lineHeight: '1.4' }}>
+              <div key={index} style={{ fontSize: '14px', color: '#000', marginBottom: '1px', lineHeight: '1.4' }}>
                 {line}
               </div>
             ))}
@@ -342,59 +355,61 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
           pageBreakInside: 'avoid'
         }}>
           <thead>
-            <tr style={{ borderBottom: '2px solid #d1d5db' }}>
+            <tr style={{ borderBottom: '2px solid #000' }}>
               <th style={{
                 textAlign: 'left',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937',
+                color: '#000',
                 width: '32px'
               }}>S.No</th>
               <th style={{
                 textAlign: 'left',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937',
+                color: '#000',
                 width: '40px'
               }}>Image</th>
               <th style={{
                 textAlign: 'left',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937'
+                color: '#000'
               }}>Product</th>
               <th style={{
                 textAlign: 'center',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937',
+                color: '#000',
                 width: '64px'
               }}>Quantity</th>
               <th style={{
                 textAlign: 'right',
                 padding: '4px 2px',
                 fontWeight: 'bold',
-                color: '#1f2937',
+                color: '#000',
                 width: '80px'
               }}>Total weight</th>
             </tr>
           </thead>
           <tbody>
             {order.line_items && order.line_items.length > 0 ? (
-              order.line_items.map((item: any, index: number) => (
-                <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '4px 2px', color: '#374151' }}>{index + 1}</td>
+              order.line_items.map((item: any, index: number) => {
+                const itemImage = resolveLineItemImage(item);
+                return (
+                <tr key={index} style={{ borderBottom: '1px solid #000' }}>
+                  <td style={{ padding: '4px 2px', color: '#000' }}>{index + 1}</td>
                   <td style={{ padding: '4px 2px' }}>
-                    {item.image ? (
+                    {itemImage ? (
                       <img
-                        src={item.image}
+                        src={itemImage}
                         alt={item.name || 'Product'}
                         style={{
                           width: '32px',
                           height: '32px',
                           objectFit: 'cover',
                           borderRadius: '3px',
-                          border: '1px solid #e5e7eb'
+                          border: '1px solid #000'
                         }}
                         onError={(e) => {
                           const el = e.target as HTMLImageElement;
@@ -406,45 +421,45 @@ const PrintPackingSlipA5: React.FC<PrintPackingSlipA5Props> = ({
                     <div style={{
                       width: '32px',
                       height: '32px',
-                      backgroundColor: '#e5e7eb',
+                      backgroundColor: '#fff',
                       borderRadius: '3px',
-                      display: item.image ? 'none' : 'block'
+                      display: itemImage ? 'none' : 'block'
                     }} />
                   </td>
                   <td style={{ padding: '4px 2px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '11px', lineHeight: '1.2', marginBottom: '1px' }}>
                       ₹{(item.total || item.price || 0).toFixed(2)}
                     </div>
-                    <div style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#000', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                       {item.name || '4434 - Anarkali Kurtis - XL - 42'}
                     </div>
                   </td>
-                  <td style={{ padding: '4px 2px', textAlign: 'center', color: '#374151' }}>
+                  <td style={{ padding: '4px 2px', textAlign: 'center', color: '#000' }}>
                     {item.quantity || 1}
                   </td>
-                  <td style={{ padding: '4px 2px', textAlign: 'right', color: '#374151' }}>
+                  <td style={{ padding: '4px 2px', textAlign: 'right', color: '#000' }}>
                     {((parseFloat(item.weight || '0.5') * (item.quantity || 1))).toFixed(1)} kg
                   </td>
                 </tr>
-              ))
+              )})
             ) : (
-              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <td style={{ padding: '4px 2px', color: '#374151' }}>1</td>
+              <tr style={{ borderBottom: '1px solid #000' }}>
+                <td style={{ padding: '4px 2px', color: '#000' }}>1</td>
                 <td style={{ padding: '4px 2px' }}>
                   <div style={{
                     width: '32px',
                     height: '32px',
-                    backgroundColor: '#e5e7eb',
+                    backgroundColor: '#fff',
                     borderRadius: '3px'
                   }} />
                 </td>
                 <td style={{ padding: '4px 2px' }}>
-                  <div style={{ fontWeight: '500', color: '#1f2937', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
+                  <div style={{ fontWeight: '500', color: '#000', fontSize: '14px', lineHeight: '1.2', marginBottom: '1px' }}>
                     4434 - Anarkali Kurtis - XL - 42
                   </div>
                 </td>
-                <td style={{ padding: '4px 2px', textAlign: 'center', color: '#374151' }}>1</td>
-                <td style={{ padding: '4px 2px', textAlign: 'right', color: '#374151' }}>0.5 kg</td>
+                <td style={{ padding: '4px 2px', textAlign: 'center', color: '#000' }}>1</td>
+                <td style={{ padding: '4px 2px', textAlign: 'right', color: '#000' }}>0.5 kg</td>
               </tr>
             )}
           </tbody>

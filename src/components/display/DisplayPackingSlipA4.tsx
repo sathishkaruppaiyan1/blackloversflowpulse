@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 interface Order {
   id: string;
@@ -6,6 +7,8 @@ interface Order {
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   shipping_address?: string;
   billing_address?: string;
   total: number;
@@ -71,24 +74,24 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
       <div className="flex justify-between items-start mb-8">
         {/* Left: Logo and Title */}
         <div className="flex items-center gap-4">
-          <div className="text-xl font-bold text-gray-800">{companySettings.company_name || 'Company'}</div>
-          <span className="text-gray-300">|</span>
-          <h1 className="text-4xl font-bold text-gray-800">Packing slip</h1>
+          <div className="text-xl font-bold text-black">{companySettings.company_name || 'Company'}</div>
+          <span className="text-black">|</span>
+          <h1 className="text-4xl font-bold text-black">Packing slip</h1>
         </div>
 
         {/* Right: Order Information */}
         <div className="text-right">
           <div className="mb-2">
             <span className="font-bold text-gray-800">Order No.: </span>
-            <span className="text-gray-700">{order.order_number}</span>
+            <span className="text-black">{order.order_number}</span>
           </div>
           <div className="mb-2">
             <span className="font-bold text-gray-800">Order Date: </span>
-            <span className="text-gray-700">{formatDate(order.order_date)}</span>
+            <span className="text-black">{formatDate(order.order_date)}</span>
           </div>
           <div>
             <span className="font-bold text-gray-800">Shipping Method: </span>
-            <span className="text-gray-700">{order.shipping_method || 'Shipping Cost'}</span>
+            <span className="text-black">{order.shipping_method || 'Shipping Cost'}</span>
           </div>
         </div>
       </div>
@@ -104,8 +107,8 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
       <div className="grid grid-cols-3 gap-8 mb-8">
         {/* From Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-3 text-lg">From</h3>
-          <div className="space-y-1 text-gray-700">
+          <h3 className="font-bold text-black mb-3 text-lg">From</h3>
+          <div className="space-y-1 text-black">
             <div className="font-semibold">{companySettings.company_name || 'Company'}</div>
             {formatAddress(companySettings).map((line, index) => (
               <div key={index} className="text-sm">{line}</div>
@@ -118,8 +121,8 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
 
         {/* Bill To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-3 text-lg">Bill to</h3>
-          <div className="space-y-1 text-gray-700">
+          <h3 className="font-bold text-black mb-3 text-lg">Bill to</h3>
+          <div className="space-y-1 text-black">
             <div className="font-semibold">{order.customer_name}</div>
             {formatBillingAddress(order.billing_address || order.shipping_address).map((line, index) => (
               <div key={index} className="text-sm">{line}</div>
@@ -128,15 +131,21 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
               <div className="text-sm">Email: {order.customer_email}</div>
             )}
             {order.customer_phone && (
-              <div className="text-sm text-blue-600 font-semibold">Phone: {order.customer_phone}</div>
+              <div className="text-sm text-black font-semibold">Phone: {order.customer_phone}</div>
+            )}
+            {order.alternate_phone && (
+              <div className="text-sm text-black">Alt Phone: {order.alternate_phone}</div>
+            )}
+            {order.whatsapp_number && (
+              <div className="text-sm text-black font-semibold">WhatsApp: {order.whatsapp_number}</div>
             )}
           </div>
         </div>
 
         {/* Ship To Address */}
         <div>
-          <h3 className="font-bold text-gray-800 mb-3 text-lg">Ship to</h3>
-          <div className="space-y-1 text-gray-700">
+          <h3 className="font-bold text-black mb-3 text-lg">Ship to</h3>
+          <div className="space-y-1 text-black">
             <div className="font-semibold">{order.customer_name}</div>
             {formatShippingAddress(order.shipping_address).map((line, index) => (
               <div key={index} className="text-sm">{line}</div>
@@ -149,25 +158,27 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
       <div className="mb-8">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b-2 border-gray-300">
-              <th className="text-left py-3 px-2 font-bold text-gray-800 w-16">S.No</th>
-              <th className="text-left py-3 px-2 font-bold text-gray-800 w-20">Image</th>
-              <th className="text-left py-3 px-2 font-bold text-gray-800">Product</th>
-              <th className="text-center py-3 px-2 font-bold text-gray-800 w-20">Quantity</th>
-              <th className="text-right py-3 px-2 font-bold text-gray-800 w-32">Total weight</th>
+            <tr className="border-b-2 border-black">
+              <th className="text-left py-3 px-2 font-bold text-black w-16">S.No</th>
+              <th className="text-left py-3 px-2 font-bold text-black w-20">Image</th>
+              <th className="text-left py-3 px-2 font-bold text-black">Product</th>
+              <th className="text-center py-3 px-2 font-bold text-black w-20">Quantity</th>
+              <th className="text-right py-3 px-2 font-bold text-black w-32">Total weight</th>
             </tr>
           </thead>
           <tbody>
             {order.line_items && order.line_items.length > 0 ? (
-              order.line_items.map((item: any, index: number) => (
-                <tr key={index} className="border-b border-gray-200">
-                  <td className="py-4 px-2 text-gray-700">{index + 1}</td>
+              order.line_items.map((item: any, index: number) => {
+                const itemImage = resolveLineItemImage(item);
+                return (
+                <tr key={index} className="border-b border-black">
+                  <td className="py-4 px-2 text-black">{index + 1}</td>
                   <td className="py-4 px-2">
-                    {item.image ? (
+                    {itemImage ? (
                       <img
-                        src={item.image}
+                        src={itemImage}
                         alt={item.name || 'Product'}
-                        className="w-12 h-12 rounded border object-cover"
+                        className="w-12 h-12 rounded border-black border object-cover"
                         onError={(e) => {
                           const el = e.target as HTMLImageElement;
                           el.style.display = 'none';
@@ -175,36 +186,36 @@ const DisplayPackingSlipA4: React.FC<DisplayPackingSlipA4Props> = ({
                         }}
                       />
                     ) : null}
-                    <div className={`w-12 h-12 bg-gray-200 rounded border flex items-center justify-center ${item.image ? 'hidden' : ''}`}>
-                      <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                    <div className={`w-12 h-12 bg-white rounded border border-black flex items-center justify-center ${itemImage ? 'hidden' : ''}`}>
+                      <div className="w-8 h-8 bg-black rounded"></div>
                     </div>
                   </td>
                   <td className="py-4 px-2">
-                    <div className="font-medium text-gray-800">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="font-medium text-black">{item.name || '4434 - Anarkali Kurtis - XL - 42'}</div>
+                    <div className="text-sm text-black mt-1">
                       {item.variation ? `Measurements: ${item.variation}` : 'Measurements: XL - 42'}
                     </div>
                   </td>
-                  <td className="py-4 px-2 text-center text-gray-700">{item.quantity || 1}</td>
-                  <td className="py-4 px-2 text-right text-gray-700">
+                  <td className="py-4 px-2 text-center text-black">{item.quantity || 1}</td>
+                  <td className="py-4 px-2 text-right text-black">
                     {((parseFloat(item.weight || '0.5') * (item.quantity || 1))).toFixed(1)} kg
                   </td>
                 </tr>
-              ))
+              )})
             ) : (
-              <tr className="border-b border-gray-200">
-                <td className="py-4 px-2 text-gray-700">1</td>
+              <tr className="border-b border-black">
+                <td className="py-4 px-2 text-black">1</td>
                 <td className="py-4 px-2">
-                  <div className="w-12 h-12 bg-gray-200 rounded border flex items-center justify-center">
-                    <div className="w-8 h-8 bg-gray-300 rounded"></div>
+                  <div className="w-12 h-12 bg-white rounded border border-black flex items-center justify-center">
+                    <div className="w-8 h-8 bg-black rounded"></div>
                   </div>
                 </td>
                 <td className="py-4 px-2">
-                  <div className="font-medium text-gray-800">4434 - Anarkali Kurtis - XL - 42</div>
-                  <div className="text-sm text-gray-600 mt-1">Measurements: XL - 42</div>
+                  <div className="font-medium text-black">4434 - Anarkali Kurtis - XL - 42</div>
+                  <div className="text-sm text-black mt-1">Measurements: XL - 42</div>
                 </td>
-                <td className="py-4 px-2 text-center text-gray-700">1</td>
-                <td className="py-4 px-2 text-right text-gray-700">0.5 kg</td>
+                <td className="py-4 px-2 text-center text-black">1</td>
+                <td className="py-4 px-2 text-right text-black">0.5 kg</td>
               </tr>
             )}
           </tbody>

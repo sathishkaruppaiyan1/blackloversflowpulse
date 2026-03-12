@@ -21,6 +21,8 @@ export interface WooCommerceOrderItem {
   weight?: string;
   dimensions?: string;
   image?: string;
+  variation_image?: string;
+  product_image?: string;
   packed?: boolean;
   meta_data?: Array<{
     id: number;
@@ -53,6 +55,8 @@ export interface WooCommerceOrder {
   carrier?: string;
   reseller_name?: string;
   reseller_number?: string;
+  alternate_phone?: string;
+  whatsapp_number?: string;
   product_name?: string;
   product_variation?: string;
   line_items?: WooCommerceOrderItem[];
@@ -111,6 +115,8 @@ const transformDatabaseOrder = (dbOrder: any): WooCommerceOrder => {
     carrier: dbOrder.carrier,
     reseller_name: dbOrder.reseller_name,
     reseller_number: dbOrder.reseller_number,
+    alternate_phone: dbOrder.alternate_phone,
+    whatsapp_number: dbOrder.whatsapp_number,
     product_name: productName,
     product_variation: productVariation,
     line_items: Array.isArray(dbOrder.line_items) ? (dbOrder.line_items as unknown as WooCommerceOrderItem[]) : [],
@@ -234,7 +240,21 @@ export const wooCommerceOrderService = {
         }
 
         // Extract product meta data from line_items
+        const getImageSrc = (value: any): string | null => {
+          if (!value) return null;
+          if (typeof value === 'string') return value.trim() || null;
+          if (typeof value === 'object') {
+            const src = value.src || value.url || value.source_url;
+            return typeof src === 'string' && src.trim() ? src.trim() : null;
+          }
+          return null;
+        };
+
         const productMeta = order.line_items?.map((item: any) => {
+          const itemImage = getImageSrc(item.image);
+          const variationImage = getImageSrc(item.variation_image);
+          const productImage = getImageSrc(item.product_image);
+
           const meta: any = {
             id: item.id,
             product_id: item.product_id,
@@ -244,7 +264,9 @@ export const wooCommerceOrderService = {
             price: parseFloat(item.price || '0'),
             total: parseFloat(item.total || '0'),
             sku: item.sku || null,
-            image: item.image?.src || null,
+            image: itemImage || variationImage || productImage,
+            variation_image: variationImage,
+            product_image: productImage,
             meta_data: item.meta_data || [],
             packed: false
           };
@@ -277,18 +299,34 @@ export const wooCommerceOrderService = {
         // Extract reseller information
         let resellerName = null;
         let resellerNumber = null;
+        let alternatePhone = null;
+        let whatsappNumber = null;
 
         if (order.meta_data && Array.isArray(order.meta_data)) {
-          const resellerNameMeta = order.meta_data.find((meta: any) => 
+          const resellerNameMeta = order.meta_data.find((meta: any) =>
             meta.key === 'billing_resllername'
           );
-          
-          const resellerNumberMeta = order.meta_data.find((meta: any) => 
+
+          const resellerNumberMeta = order.meta_data.find((meta: any) =>
             meta.key === 'billing_resellernumber'
+          );
+
+          const alternatePhoneMeta = order.meta_data.find((meta: any) =>
+            meta.key === 'alternate_phone' ||
+            meta.key === '_alternate_phone' ||
+            meta.key.toLowerCase() === 'alternate_phone'
+          );
+
+          const whatsappNumberMeta = order.meta_data.find((meta: any) =>
+            meta.key === 'whatsapp_number' ||
+            meta.key === '_whatsapp_number' ||
+            meta.key.toLowerCase() === 'whatsapp_number'
           );
 
           resellerName = resellerNameMeta?.value || null;
           resellerNumber = resellerNumberMeta?.value || null;
+          alternatePhone = alternatePhoneMeta?.value || null;
+          whatsappNumber = whatsappNumberMeta?.value || null;
         }
 
         // Format addresses with complete details
@@ -393,12 +431,14 @@ export const wooCommerceOrderService = {
           customer_email: order.billing?.email || 'No email provided',
           customer_phone: order.billing?.phone || null,
           total: parseFloat(order.total || '0'),
-          status: orderStatus, // Use preserved or synced status
+          status: orderStatus,
           items: order.line_items?.length || 0,
           shipping_address: finalShippingAddress,
           line_items: productMeta,
           reseller_name: resellerName,
           reseller_number: resellerNumber,
+          alternate_phone: alternatePhone,
+          whatsapp_number: whatsappNumber,
           billing_address: billingAddress,
           billing_city: order.billing?.city || null,
           billing_state: order.billing?.state || null,
@@ -411,7 +451,6 @@ export const wooCommerceOrderService = {
           order_date: order.date_created || order.date_created_gmt,
           payment_method: order.payment_method_title || order.payment_method || null,
           currency: order.currency || 'INR',
-          // Preserve tracking data from existing orders
           tracking_number: preservedTrackingNumber,
           carrier: preservedCarrier,
           shipped_at: preservedShippedAt,
@@ -420,12 +459,12 @@ export const wooCommerceOrderService = {
         };
       });
 
-      // Upsert orders to database
+      // Upsert all orders including alternate_phone and whatsapp_number
       const { error: insertError } = await supabase
         .from('orders')
-        .upsert(ordersToSync, { 
+        .upsert(ordersToSync, {
           onConflict: 'user_id,woo_order_id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
 
       if (insertError) {

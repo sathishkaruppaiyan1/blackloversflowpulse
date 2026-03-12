@@ -237,6 +237,8 @@ export type Database = {
           printed_at: string | null
           reseller_name: string | null
           reseller_number: string | null
+          alternate_phone: string | null
+          whatsapp_number: string | null
           shipped_at: string | null
           shipping_address: string | null
           shipping_city: string | null
@@ -275,6 +277,8 @@ export type Database = {
           printed_at?: string | null
           reseller_name?: string | null
           reseller_number?: string | null
+          alternate_phone?: string | null
+          whatsapp_number?: string | null
           shipped_at?: string | null
           shipping_address?: string | null
           shipping_city?: string | null
@@ -313,6 +317,8 @@ export type Database = {
           printed_at?: string | null
           reseller_name?: string | null
           reseller_number?: string | null
+          alternate_phone?: string | null
+          whatsapp_number?: string | null
           shipped_at?: string | null
           shipping_address?: string | null
           shipping_city?: string | null

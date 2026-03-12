@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
+import { Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign, MessageCircle } from 'lucide-react';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
 import PackingSlipTemplate from './PackingSlipTemplate';
 
@@ -145,6 +145,18 @@ const PrintingOrderCard: React.FC<PrintingOrderCardProps> = ({
                 <div className="flex items-center gap-1">
                   <Phone className="h-3 w-3 text-blue-500" />
                   <span className="text-blue-600 font-medium">{order.customer_phone}</span>
+                </div>
+              )}
+              {order.alternate_phone && (
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3 text-gray-500" />
+                  <span className="text-gray-600">{order.alternate_phone}</span>
+                </div>
+              )}
+              {order.whatsapp_number && (
+                <div className="flex items-center gap-1">
+                  <MessageCircle className="h-3 w-3 text-green-500" />
+                  <span className="text-green-600 font-medium">{order.whatsapp_number}</span>
                 </div>
               )}
               {order.customer_email && (

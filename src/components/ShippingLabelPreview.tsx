@@ -132,7 +132,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
   // Thermal printer label (4x6 inch)
   if (labelFormat === 'thermal') {
     return (
-      <div className="w-full max-w-md mx-auto p-4 bg-white border border-gray-300 print:border-none" style={{ width: '4in', minHeight: '6in' }}>
+      <div className="w-full max-w-md mx-auto p-4 bg-white border border-black print:border-none" style={{ width: '4in', minHeight: '6in' }}>
         {/* Header with Barcode */}
         <div className="text-center mb-4">
           <h1 className="text-lg font-bold mb-2">SHIPPING LABEL</h1>
@@ -158,7 +158,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
         </div>
 
         {/* TO Address - Prominent */}
-        <div className="mb-3 p-2 border border-gray-400">
+        <div className="mb-3 p-2 border border-black">
           <div className="text-sm font-semibold mb-1">SHIP TO:</div>
           <div className="text-sm">
             <div className="font-semibold">{order.customer_name}</div>
@@ -188,7 +188,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
         </div>
 
         {/* Footer */}
-        <div className="text-center text-xs text-gray-600 mt-4">
+        <div className="text-center text-xs text-black mt-4">
           Handle with care
         </div>
       </div>
@@ -198,9 +198,9 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
   // A5 Format
   if (labelFormat === 'A5') {
     return (
-      <div className="w-full max-w-2xl mx-auto p-4 bg-white border border-gray-300 print:border-none" style={{ width: '5.8in', minHeight: '8.3in' }}>
+      <div className="w-full max-w-2xl mx-auto p-4 bg-white border border-black print:border-none" style={{ width: '5.8in', minHeight: '8.3in' }}>
         {/* Header */}
-        <div className="text-center mb-4 pb-3 border-b border-gray-200">
+        <div className="text-center mb-4 pb-3 border-b border-black">
           <h1 className="text-xl font-bold">SHIPPING LABEL</h1>
           {barcodeDataUrl && (
             <div className="flex justify-center my-3">
@@ -215,12 +215,12 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
           {/* FROM Address */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
                 <MapPin className="w-3 h-3 text-white" />
               </div>
               <h2 className="font-semibold">FROM</h2>
             </div>
-            <div className="bg-gray-50 p-3 rounded border text-sm">
+            <div className="bg-white p-3 rounded border border-black text-sm">
               <div className="font-semibold mb-1">{companySettings.company_name || 'Your Company'}</div>
               <div className="whitespace-pre-line text-xs">{formatAddress(companySettings) || 'Please configure company address in settings'}</div>
               {companySettings.phone && <div className="text-xs mt-1">Phone: {companySettings.phone}</div>}
@@ -230,12 +230,12 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
           {/* TO Address */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+              <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
                 <User className="w-3 h-3 text-white" />
               </div>
               <h2 className="font-semibold">TO</h2>
             </div>
-            <div className="bg-gray-50 p-3 rounded border">
+            <div className="bg-white p-3 rounded border border-black">
               <div className="font-semibold mb-1">{order.customer_name}</div>
               <div className="text-sm whitespace-pre-line mb-1">{formatShippingAddress(order.shipping_address)}</div>
               {order.customer_phone && <div className="text-xs">Phone: {order.customer_phone}</div>}
@@ -249,7 +249,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
             <Package className="w-4 h-4" />
             PRODUCTS
           </h3>
-          <div className="bg-gray-50 p-3 rounded border">
+          <div className="bg-white p-3 rounded border border-black">
             <div className="text-sm">
               <div className="flex justify-between font-medium">
                 <span>Items: {order.items}</span>
@@ -264,7 +264,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
                     </div>
                   ))}
                   {order.line_items.length > 3 && (
-                    <div className="text-xs text-gray-600">... and {order.line_items.length - 3} more items</div>
+                    <div className="text-xs text-black">... and {order.line_items.length - 3} more items</div>
                   )}
                 </div>
               )}
@@ -274,9 +274,9 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
 
         {/* Tracking Information */}
         {(order.tracking_number || order.carrier) && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-            <h3 className="font-semibold text-blue-800 mb-1 text-sm">Tracking</h3>
-            <div className="text-xs text-blue-700">
+          <div className="mb-4 p-3 bg-white border border-black rounded">
+            <h3 className="font-semibold text-black mb-1 text-sm">Tracking</h3>
+            <div className="text-xs text-black">
               {order.carrier && <div>Carrier: {order.carrier}</div>}
               {order.tracking_number && <div>Tracking: {order.tracking_number}</div>}
             </div>
@@ -284,7 +284,7 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
         )}
 
         {/* Footer */}
-        <div className="text-center text-xs text-gray-500 pt-3 border-t">
+        <div className="text-center text-xs text-black pt-3 border-t border-black">
           Thank you for your business! Handle with care.
         </div>
       </div>
@@ -293,16 +293,16 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
 
   // A4 Format (Default/Original)
   return (
-    <div className="w-full max-w-4xl mx-auto p-6 bg-white border-2 border-gray-300 print:border-none print:shadow-none">
+    <div className="w-full max-w-4xl mx-auto p-6 bg-white border-2 border-black print:border-none print:shadow-none">
       {/* Header */}
-      <div className="text-center mb-6 pb-4 border-b-2 border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800">SHIPPING LABEL</h1>
+      <div className="text-center mb-6 pb-4 border-b-2 border-black">
+        <h1 className="text-2xl font-bold text-black">SHIPPING LABEL</h1>
         {barcodeDataUrl && (
           <div className="flex justify-center my-4">
             <img src={barcodeDataUrl} alt={`Barcode for ${order.order_number}`} className="max-w-full" />
           </div>
         )}
-        <p className="text-sm text-gray-600 mt-1">Order #{order.order_number}</p>
+        <p className="text-sm text-black mt-1">Order #{order.order_number}</p>
         <div className="mt-2">
           <Badge className="text-xs px-3 py-1">
             Status: {order.status}
@@ -315,26 +315,26 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
         {/* FROM Address */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
               <MapPin className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800">FROM</h2>
+            <h2 className="text-lg font-semibold text-black">FROM</h2>
           </div>
           
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <div className="font-semibold text-gray-800 mb-2">
+          <div className="bg-white p-4 rounded-lg border border-black">
+            <div className="font-semibold text-black mb-2">
               {companySettings.company_name || 'Your Company'}
             </div>
-            <div className="text-sm text-gray-600 whitespace-pre-line">
+            <div className="text-sm text-black whitespace-pre-line">
               {formatAddress(companySettings) || 'Please configure company address in settings'}
             </div>
             {companySettings.phone && (
-              <div className="text-sm text-gray-600 mt-2">
+              <div className="text-sm text-black mt-2">
                 Phone: {companySettings.phone}
               </div>
             )}
             {companySettings.email && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-black">
                 Email: {companySettings.email}
               </div>
             )}
@@ -344,26 +344,26 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
         {/* TO Address */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-white" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800">TO</h2>
+            <h2 className="text-lg font-semibold text-black">TO</h2>
           </div>
           
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <div className="font-semibold text-gray-800 mb-2">
+          <div className="bg-white p-4 rounded-lg border border-black">
+            <div className="font-semibold text-black mb-2">
               {order.customer_name}
             </div>
-            <div className="text-sm text-gray-600 whitespace-pre-line mb-2">
+            <div className="text-sm text-black whitespace-pre-line mb-2">
               {formatShippingAddress(order.shipping_address)}
             </div>
             {order.customer_phone && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-black">
                 <span className="font-medium">Phone:</span> {order.customer_phone}
               </div>
             )}
             {order.customer_email && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-black">
                 <span className="font-medium">Email:</span> {order.customer_email}
               </div>
             )}
@@ -374,48 +374,48 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
       {/* Product Details */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
+          <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
             <Package className="w-4 h-4 text-white" />
           </div>
-          <h2 className="text-lg font-semibold text-gray-800">PRODUCT DETAILS</h2>
+          <h2 className="text-lg font-semibold text-black">PRODUCT DETAILS</h2>
         </div>
         
-        <div className="bg-gray-50 p-4 rounded-lg border overflow-x-auto">
+        <div className="bg-white p-4 rounded-lg border border-black overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-2 font-medium text-gray-700">Product Name</th>
-                <th className="text-left py-2 font-medium text-gray-700">SKU</th>
-                <th className="text-left py-2 font-medium text-gray-700">Variation</th>
-                <th className="text-left py-2 font-medium text-gray-700">Qty</th>
-                <th className="text-right py-2 font-medium text-gray-700">Price (₹)</th>
-                <th className="text-right py-2 font-medium text-gray-700">Total (₹)</th>
+                <th className="text-left py-2 font-medium text-black">Product Name</th>
+                <th className="text-left py-2 font-medium text-black">SKU</th>
+                <th className="text-left py-2 font-medium text-black">Variation</th>
+                <th className="text-left py-2 font-medium text-black">Qty</th>
+                <th className="text-right py-2 font-medium text-black">Price (₹)</th>
+                <th className="text-right py-2 font-medium text-black">Total (₹)</th>
               </tr>
             </thead>
             <tbody>
               {order.line_items && order.line_items.length > 0 ? (
                 order.line_items.map((item: any, index: number) => (
-                  <tr key={index} className="border-b border-gray-100">
-                    <td className="py-2 text-gray-600">{item.name || 'N/A'}</td>
-                    <td className="py-2 text-gray-600">{item.sku || 'N/A'}</td>
-                    <td className="py-2 text-gray-600">{item.variation || 'N/A'}</td>
-                    <td className="py-2 text-gray-600">{item.quantity || 1}</td>
-                    <td className="py-2 text-gray-600 text-right">₹{((item.price || 0)).toFixed(2)}</td>
-                    <td className="py-2 text-gray-600 text-right">₹{((item.total || 0)).toFixed(2)}</td>
+                  <tr key={index} className="border-b border-black">
+                    <td className="py-2 text-black">{item.name || 'N/A'}</td>
+                    <td className="py-2 text-black">{item.sku || 'N/A'}</td>
+                    <td className="py-2 text-black">{item.variation || 'N/A'}</td>
+                    <td className="py-2 text-black">{item.quantity || 1}</td>
+                    <td className="py-2 text-black text-right">₹{((item.price || 0)).toFixed(2)}</td>
+                    <td className="py-2 text-black text-right">₹{((item.total || 0)).toFixed(2)}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-600">
+                  <td colSpan={6} className="py-4 text-center text-black">
                     {order.items} item(s) - Total: ₹{order.total.toFixed(2)}
                   </td>
                 </tr>
               )}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-300 font-semibold">
-                <td colSpan={5} className="py-2 text-right text-gray-800">Grand Total:</td>
-                <td className="py-2 text-right text-gray-800">₹{order.total.toFixed(2)}</td>
+              <tr className="border-t-2 border-black font-semibold">
+                <td colSpan={5} className="py-2 text-right text-black">Grand Total:</td>
+                <td className="py-2 text-right text-black">₹{order.total.toFixed(2)}</td>
               </tr>
             </tfoot>
           </table>
@@ -424,9 +424,9 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
 
       {/* Tracking Information */}
       {(order.tracking_number || order.carrier) && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-semibold text-blue-800 mb-2">Tracking Information</h3>
-          <div className="space-y-1 text-sm text-blue-700">
+        <div className="mb-6 p-4 bg-white border border-black rounded-lg">
+          <h3 className="font-semibold text-black mb-2">Tracking Information</h3>
+          <div className="space-y-1 text-sm text-black">
             {order.carrier && (
               <div>
                 <span className="font-medium">Carrier:</span> {order.carrier}
@@ -442,8 +442,8 @@ const ShippingLabelPreview: React.FC<ShippingLabelPreviewProps> = ({ order, form
       )}
 
       {/* Footer */}
-      <div className="text-center pt-4 border-t-2 border-gray-200">
-        <p className="text-xs text-gray-500">
+      <div className="text-center pt-4 border-t-2 border-black">
+        <p className="text-xs text-black">
           Thank you for your business! Handle with care.
         </p>
       </div>

@@ -33,159 +33,145 @@ interface WooCommerceOrder {
   }>;
 }
 
-// Fetch product/variation images for line items that are missing images
+// Fetch variation images for all order line items
+// Strategy: fetch all variations per product, build color→image map, match by ordered color
 async function enrichLineItemsWithImages(
   orders: any[],
   cleanStoreUrl: string,
   authString: string
 ): Promise<void> {
-  // Collect unique product_id/variation_id pairs that need images
+  const authHeaders = {
+    'Authorization': `Basic ${authString}`,
+    'Content-Type': 'application/json',
+    'User-Agent': 'OrderSync/1.0',
+  };
+
+  // Collect unique product_ids from all order line items
   const productIds = new Set<number>();
-  const variationMap = new Map<number, Set<number>>(); // product_id -> Set<variation_id>
-
   for (const order of orders) {
     if (!order.line_items) continue;
     for (const item of order.line_items) {
-      // Always collect - we'll fetch the best image available
-      if (item.variation_id && item.variation_id > 0) {
-        if (!variationMap.has(item.product_id)) {
-          variationMap.set(item.product_id, new Set());
-        }
-        variationMap.get(item.product_id)!.add(item.variation_id);
-      } else {
-        productIds.add(item.product_id);
-      }
+      if (item.product_id) productIds.add(item.product_id);
     }
   }
 
-  // Also add parent products for variations (we need them as fallback)
-  for (const productId of variationMap.keys()) {
-    productIds.add(productId);
-  }
+  if (productIds.size === 0) return;
+  console.log(`🖼️ Fetching variation images for ${productIds.size} unique products...`);
 
-  if (productIds.size === 0 && variationMap.size === 0) return;
+  // For each product: fetch all its variations and build two maps:
+  // 1. productMainImageMap: productId -> main product image URL (fallback)
+  // 2. colorImageMap: productId -> { "teal": "url", "wine": "url", ... }
+  const productMainImageMap = new Map<number, string>();
+  const colorImageMap = new Map<number, Record<string, string>>();
 
-  console.log(`🖼️ Fetching images for ${productIds.size} products and ${variationMap.size} products with variations...`);
+  // Helper: extract color value from a variation's attributes
+  const getColorFromAttributes = (attributes: any[]): string => {
+    if (!Array.isArray(attributes)) return '';
+    const colorAttr = attributes.find((a: any) =>
+      String(a.name || a.slug || '').toLowerCase().includes('color') ||
+      String(a.name || a.slug || '').toLowerCase().includes('colour')
+    );
+    return colorAttr?.option ? String(colorAttr.option).toLowerCase().trim() : '';
+  };
 
-  // Build image map: "productId" or "productId-variationId" -> image URL
-  const imageMap = new Map<string, string>();
+  // Helper: extract color from order line item meta_data
+  const getItemColor = (item: any): string => {
+    if (item.color && String(item.color).trim()) return String(item.color).toLowerCase().trim();
+    if (!Array.isArray(item.meta_data)) return '';
+    for (const meta of item.meta_data) {
+      const key = String(meta?.key || meta?.display_key || '').toLowerCase();
+      if (key.includes('color') || key.includes('colour')) {
+        const val = String(meta?.value || meta?.display_value || '').trim();
+        if (val) return val.toLowerCase();
+      }
+    }
+    return '';
+  };
 
-  // Batch fetch products (up to 100 per request)
-  const productIdArray = Array.from(productIds);
-  for (let i = 0; i < productIdArray.length; i += 100) {
-    const batch = productIdArray.slice(i, i + 100);
-    const includeParam = batch.join(',');
+  // Fetch all products (main image) and all their variations in parallel
+  await Promise.all(Array.from(productIds).map(async (productId) => {
     try {
-      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/products?include=${includeParam}&per_page=100`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'OrderSync/1.0',
-        },
-      });
+      // Fetch product main image
+      const productRes = await fetch(
+        `${cleanStoreUrl}/wp-json/wc/v3/products/${productId}?_fields=id,images`,
+        { headers: authHeaders }
+      );
+      if (productRes.ok) {
+        const product = await productRes.json();
+        const mainImage = product?.images?.[0]?.src;
+        if (mainImage) productMainImageMap.set(productId, mainImage);
+      }
 
-      if (response.ok) {
-        const products = await response.json();
-        for (const product of products) {
-          if (product.images && product.images.length > 0) {
-            imageMap.set(`${product.id}`, product.images[0].src);
-          }
+      // Fetch ALL variations for this product
+      const variationsRes = await fetch(
+        `${cleanStoreUrl}/wp-json/wc/v3/products/${productId}/variations?per_page=100&_fields=id,attributes,image`,
+        { headers: authHeaders }
+      );
+      if (!variationsRes.ok) return;
+
+      const variations = await variationsRes.json();
+      if (!Array.isArray(variations) || variations.length === 0) return;
+
+      const colorMap: Record<string, string> = {};
+      for (const variation of variations) {
+        const color = getColorFromAttributes(variation.attributes);
+        const imgSrc = variation?.image?.src;
+        const imgId = variation?.image?.id;
+
+        // Only use image if it has a real id (id > 0 means a real assigned image, not placeholder)
+        if (color && imgSrc && imgId && Number(imgId) > 0) {
+          colorMap[color] = imgSrc;
         }
-        console.log(`✅ Fetched images for ${products.length} products`);
-      } else {
-        console.log(`⚠️ Failed to fetch product images: ${response.status}`);
+      }
+
+      if (Object.keys(colorMap).length > 0) {
+        colorImageMap.set(productId, colorMap);
+        console.log(`✅ Product ${productId}: found variation images for colors: ${Object.keys(colorMap).join(', ')}`);
       }
     } catch (err) {
-      console.log(`⚠️ Error fetching product images:`, err);
+      console.log(`⚠️ Error fetching product/variations for ${productId}:`, err);
     }
-  }
+  }));
 
-  // Fetch variation images for each product that has variations
-  for (const [productId, variationIds] of variationMap.entries()) {
-    try {
-      // Fetch all variations for this product (batch)
-      const variationIdArray = Array.from(variationIds);
-      const includeParam = variationIdArray.join(',');
-      const apiUrl = `${cleanStoreUrl}/wp-json/wc/v3/products/${productId}/variations?include=${includeParam}&per_page=100`;
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Basic ${authString}`,
-          'Content-Type': 'application/json',
-          'User-Agent': 'OrderSync/1.0',
-        },
-      });
+  console.log(`📦 Color image maps built for ${colorImageMap.size} products`);
 
-      if (response.ok) {
-        const variations = await response.json();
-        for (const variation of variations) {
-          // Primary: variation's own featured image
-          if (variation.image && variation.image.src) {
-            imageMap.set(`${productId}-${variation.id}`, variation.image.src);
-          }
-          // Fallback: check WPC Additional Variation Images meta for extra images
-          if (!imageMap.has(`${productId}-${variation.id}`) && variation.meta_data) {
-            const wpcMeta = variation.meta_data.find(
-              (m: any) => m.key === '_wc_additional_variation_images'
-            );
-            if (wpcMeta && wpcMeta.value) {
-              // Value is comma-separated image IDs - we'll resolve the first one
-              const imageIds = wpcMeta.value.split(',').map((id: string) => id.trim()).filter(Boolean);
-              if (imageIds.length > 0) {
-                // Fetch the first image from WordPress media API
-                try {
-                  const mediaUrl = `${cleanStoreUrl}/wp-json/wp/v2/media/${imageIds[0]}`;
-                  const mediaResponse = await fetch(mediaUrl, {
-                    method: 'GET',
-                    headers: {
-                      'Authorization': `Basic ${authString}`,
-                      'Content-Type': 'application/json',
-                      'User-Agent': 'OrderSync/1.0',
-                    },
-                  });
-                  if (mediaResponse.ok) {
-                    const media = await mediaResponse.json();
-                    if (media.source_url) {
-                      imageMap.set(`${productId}-${variation.id}`, media.source_url);
-                    }
-                  }
-                } catch (mediaErr) {
-                  console.log(`⚠️ Error fetching WPC media for variation ${variation.id}:`, mediaErr);
-                }
-              }
-            }
-          }
-        }
-        console.log(`✅ Fetched images for ${variations.length} variations of product ${productId}`);
-      } else {
-        console.log(`⚠️ Failed to fetch variations for product ${productId}: ${response.status}`);
-      }
-    } catch (err) {
-      console.log(`⚠️ Error fetching variations for product ${productId}:`, err);
-    }
-  }
-
-  console.log(`🖼️ Total images resolved: ${imageMap.size}`);
-
-  // Enrich line items with resolved images
+  // Enrich each order line item with the correct variation image
   for (const order of orders) {
     if (!order.line_items) continue;
     for (const item of order.line_items) {
-      // Try variation-specific image first, then product image, then existing image
-      const variationKey = `${item.product_id}-${item.variation_id}`;
-      const productKey = `${item.product_id}`;
+      const productId = item.product_id;
+      const colorMap = colorImageMap.get(productId) || {};
+      const mainImage = productMainImageMap.get(productId) || item.image?.src || null;
+      const orderedColor = getItemColor(item);
 
-      if (item.variation_id && item.variation_id > 0 && imageMap.has(variationKey)) {
-        item.image = { id: '', src: imageMap.get(variationKey) };
-      } else if (imageMap.has(productKey)) {
-        // Only override if no image exists or image.src is empty
-        if (!item.image || !item.image.src) {
-          item.image = { id: '', src: imageMap.get(productKey) };
+      let variationImage: string | null = null;
+
+      if (orderedColor && Object.keys(colorMap).length > 0) {
+        // Exact match first
+        variationImage = colorMap[orderedColor] || null;
+
+        // Fuzzy match if no exact match
+        if (!variationImage) {
+          const entry = Object.entries(colorMap).find(
+            ([k]) => k.includes(orderedColor) || orderedColor.includes(k)
+          );
+          if (entry) variationImage = entry[1];
         }
       }
-      // If line_item already has a valid image.src from the order API, keep it
+
+      if (variationImage) {
+        console.log(`🎨 Order ${order.number} item "${item.name}" color "${orderedColor}" → ${variationImage}`);
+      }
+
+      // Set variation_image (color-specific) and product_image (main fallback)
+      item.variation_image = variationImage || null;
+      item.product_image = mainImage || null;
+
+      // item.image = variation image if found, otherwise keep original
+      const resolvedImage = variationImage || item.image?.src || mainImage;
+      if (resolvedImage) {
+        item.image = { id: '', src: resolvedImage };
+      }
     }
   }
 }
@@ -388,3 +374,6 @@ serve(async (req) => {
     );
   }
 });
+
+
+
