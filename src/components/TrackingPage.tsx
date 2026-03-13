@@ -484,8 +484,8 @@ const TrackingPage = () => {
       return;
     }
 
-    // Use selected carrier or detected carrier
-    const carrier = selectedCarrier || detectedCarrier || 'unknown';
+    // Use the local 'detected' variable if state isn't updated yet (Fixes race condition)
+    const carrier = selectedCarrier || detected || detectedCarrier || 'unknown';
     const carrierDisplayName = getCourierDisplayName(carrier);
     
     setWhatsappStatus('pending');
@@ -915,13 +915,16 @@ const TrackingPage = () => {
                     placeholder="Scan tracking number barcode (not order ID)"
                     value={trackingNumberInput}
                     onChange={async (e) => {
-                      setTrackingNumberInput(e.target.value);
-                      if (e.target.value.length > 3) {
-                        const carrier = await detectCourierPartner(e.target.value);
-                        setDetectedCarrier(carrier);
-                        // Auto-select the detected carrier in dropdown
+                      const newValue = e.target.value;
+                      setTrackingNumberInput(newValue);
+                      if (newValue.length > 3) {
+                        const carrier = await detectCourierPartner(newValue);
                         if (carrier) {
-                          setSelectedCarrier(carrier);
+                          setDetectedCarrier(carrier);
+                          // ONLY auto-select if no manual selection exists or if it was previously auto-detected
+                          if (!selectedCarrier || selectedCarrier === detectedCarrier) {
+                            setSelectedCarrier(carrier);
+                          }
                         }
                       }
                     }}

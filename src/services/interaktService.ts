@@ -81,8 +81,9 @@ class InteraktService {
       return false;
     }
 
-    const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
-    const courierDisplayName = await this.getCourierDisplayName(trackingData.carrier);
+    const courierData = await this.getCourierData(trackingData.carrier);
+    const courierDisplayName = courierData?.name || trackingData.carrier.toUpperCase();
+    const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier, courierData?.trackingUrl);
     
     // Format phone number to extract country code and phone number
     const formattedPhone = this.formatPhoneNumber(phoneNumber);
@@ -131,8 +132,9 @@ class InteraktService {
       return false;
     }
 
-    const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier);
-    const courierDisplayName = await this.getCourierDisplayName(trackingData.carrier);
+    const courierData = await this.getCourierData(trackingData.carrier);
+    const courierDisplayName = courierData?.name || trackingData.carrier.toUpperCase();
+    const trackingLink = this.generateTrackingLink(trackingData.trackingNumber, trackingData.carrier, courierData?.trackingUrl);
     
     // Format phone number for reseller
     const formattedResellerPhone = this.formatPhoneNumber(resellerPhone);
@@ -172,9 +174,9 @@ class InteraktService {
     }
   }
 
-  private async getCourierDisplayName(carrier: string): Promise<string> {
-    if (!carrier || carrier.trim() === '') {
-      return 'UNKNOWN';
+  private async getCourierData(carrier: string): Promise<{ name: string; trackingUrl: string | null } | null> {
+    if (!carrier || carrier.trim() === '' || carrier.toLowerCase() === 'unknown') {
+      return null;
     }
 
     try {
@@ -182,43 +184,35 @@ class InteraktService {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         console.error('User not authenticated for courier lookup');
-        return carrier.toUpperCase();
+        return null;
       }
 
-      // Try to find courier in database by name (case-insensitive)
+      // Fetch all active couriers to perform robust matching
       const { data: couriers, error } = await supabase
         .from('couriers')
-        .select('name')
+        .select('name, tracking_url')
         .eq('user_id', user.id)
-        .eq('is_active', true)
-        .ilike('name', `%${carrier}%`);
+        .eq('is_active', true);
 
       if (!error && couriers && couriers.length > 0) {
-        return couriers[0].name.toUpperCase();
+        const normalizedInput = carrier.toLowerCase().replace(/\s+/g, '');
+        
+        // 1. Try exact normalized match
+        const exactMatch = couriers.find(c => c.name.toLowerCase().replace(/\s+/g, '') === normalizedInput);
+        if (exactMatch) return { name: exactMatch.name.toUpperCase(), trackingUrl: exactMatch.tracking_url };
+        
+        // 2. Try normalized partial match
+        const partialMatch = couriers.find(c => 
+          c.name.toLowerCase().replace(/\s+/g, '').includes(normalizedInput) ||
+          normalizedInput.includes(c.name.toLowerCase().replace(/\s+/g, ''))
+        );
+        if (partialMatch) return { name: partialMatch.name.toUpperCase(), trackingUrl: partialMatch.tracking_url };
       }
 
-      // Fallback: Map common courier codes to display names
-      const lowerCarrier = carrier.toLowerCase().trim();
-      switch (lowerCarrier) {
-        case 'frenchexpress':
-        case 'franch express':
-          return 'FRANCH EXPRESS';
-        
-        case 'delhivery':
-          return 'DELHIVERY';
-        
-        case 'stcourier':
-        case 'st courier':
-          return 'ST COURIER';
-        
-        default:
-          // Return the original carrier name in uppercase if not recognized
-          return carrier.toUpperCase();
-      }
+      return null;
     } catch (error) {
-      console.error('Error fetching courier name:', error);
-      // Fallback to uppercase carrier code
-      return carrier.toUpperCase();
+      console.error('Error fetching courier data:', error);
+      return null;
     }
   }
 
@@ -245,17 +239,38 @@ class InteraktService {
     return `91${cleaned}`;
   }
 
-  private generateTrackingLink(trackingNumber: string, carrier: string): string {
-    const lowerCarrier = carrier.toLowerCase();
+  private generateTrackingLink(trackingNumber: string, carrier: string, customUrl: string | null = null): string {
+    // 1. If we have a custom URL from the database, use it
+    if (customUrl && customUrl.trim() !== '') {
+      // Replace placeholders if any (common patterns: {{tracking}}, {{tracking_number}}, [TRACKING])
+      let url = customUrl.trim();
+      if (url.includes('{{tracking_number}}')) {
+        url = url.replace('{{tracking_number}}', trackingNumber);
+      } else if (url.includes('{{tracking}}')) {
+        url = url.replace('{{tracking}}', trackingNumber);
+      } else if (url.includes('[TRACKING]')) {
+        url = url.replace('[TRACKING]', trackingNumber);
+      } else if (!url.includes(trackingNumber)) {
+        // If no placeholder but tracking number not in URL, append it if URL ends with = or /
+        if (url.endsWith('=') || url.endsWith('/')) {
+          url += trackingNumber;
+        }
+      }
+      return url;
+    }
+
+    // 2. Fallback to hardcoded patterns
+    const lowerCarrier = carrier.toLowerCase().replace(/\s+/g, '');
     
-    // Generate tracking links based on courier
     switch (lowerCarrier) {
       case 'frenchexpress':
-      case 'franch express':
         return `https://franchexpress.com/courier-tracking/?awb=${trackingNumber}`;
       
       case 'delhivery':
         return `https://www.delhivery.com/track-v2/package/${trackingNumber}`;
+      
+      case 'stcourier':
+        return `https://stcourier.com/track/shipment-tracking?tracking_number=${trackingNumber}`;
       
       default:
         // Generic tracking link for unknown couriers

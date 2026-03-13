@@ -18,6 +18,7 @@ import { exportOrdersToCSV } from '@/utils/csvExport';
 import { format } from 'date-fns';
 import { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { getCouriers } from '@/services/courierDetectionService';
 
 // Extended type for shipped orders with source information
 interface ShippedOrderWithSource extends WooCommerceOrder {
@@ -37,6 +38,7 @@ const ShippedPage = () => {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
   const [sendingMessage, setSendingMessage] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [availableCouriers, setAvailableCouriers] = useState<any[]>([]);
   const { user } = useAuth();
 
   // Get all shipped orders - combine active and completed orders without removing any
@@ -217,6 +219,19 @@ const ShippedPage = () => {
     }
   }, [dateRange]);
 
+  // Load available couriers
+  useEffect(() => {
+    const loadCouriers = async () => {
+      try {
+        const couriers = await getCouriers();
+        setAvailableCouriers(couriers);
+      } catch (error) {
+        console.error('Error loading couriers:', error);
+      }
+    };
+    loadCouriers();
+  }, []);
+
   // Filter orders based on search term and date range
   useEffect(() => {
     let filtered = [...shippedOrders];
@@ -257,14 +272,22 @@ const ShippedPage = () => {
   }, [searchTerm, dateRange, shippedOrders]);
 
   const getCarrierDisplayName = (carrier?: string) => {
-    if (!carrier) return 'Unknown';
-    switch (carrier.toLowerCase()) {
+    if (!carrier || carrier.toLowerCase() === 'unknown') return 'Unknown';
+    
+    // Check for common carrier codes and return proper display names
+    const lowerCarrier = carrier.toLowerCase().replace(/\s+/g, '');
+    switch (lowerCarrier) {
       case 'frenchexpress':
         return 'Franch Express';
       case 'delhivery':
         return 'Delhivery';
+      case 'stcourier':
+        return 'ST Courier';
       default:
-        return carrier;
+        // Capitalize words for better display if not a known code
+        return carrier.split(' ')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+          .join(' ');
     }
   };
 
@@ -282,12 +305,37 @@ const ShippedPage = () => {
   const generateTrackingLink = (trackingNumber?: string, carrier?: string) => {
     if (!trackingNumber || !carrier) return '#';
     
-    const lowerCarrier = carrier.toLowerCase();
-    switch (lowerCarrier) {
+    // 1. Try to find courier in database to get custom tracking URL
+    const normalizedCarrier = carrier.toLowerCase().replace(/\s+/g, '');
+    const dbCourier = availableCouriers.find(c => 
+      c.name.toLowerCase().replace(/\s+/g, '') === normalizedCarrier ||
+      c.name.toLowerCase() === carrier.toLowerCase()
+    );
+
+    if (dbCourier?.tracking_url) {
+      let url = dbCourier.tracking_url.trim();
+      if (url.includes('{{tracking_number}}')) {
+        return url.replace('{{tracking_number}}', trackingNumber);
+      } else if (url.includes('{{tracking}}')) {
+        return url.replace('{{tracking}}', trackingNumber);
+      } else if (url.includes('[TRACKING]')) {
+        return url.replace('[TRACKING]', trackingNumber);
+      } else if (!url.includes(trackingNumber)) {
+        if (url.endsWith('=') || url.endsWith('/')) {
+          return url + trackingNumber;
+        }
+      }
+      return url;
+    }
+
+    // 2. Fallback to hardcoded patterns
+    switch (normalizedCarrier) {
       case 'frenchexpress':
         return `https://franchexpress.com/courier-tracking/?awb=${trackingNumber}`;
       case 'delhivery':
         return `https://www.delhivery.com/track-v2/package/${trackingNumber}`;
+      case 'stcourier':
+        return `https://stcourier.com/track/shipment-tracking?tracking_number=${trackingNumber}`;
       default:
         return `https://www.google.com/search?q=${encodeURIComponent(carrier + ' ' + trackingNumber + ' tracking')}`;
     }

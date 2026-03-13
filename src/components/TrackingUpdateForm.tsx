@@ -51,9 +51,11 @@ const TrackingUpdateForm: React.FC<TrackingUpdateFormProps> = ({ order, onTracki
           const detected = await detectCourierFromTracking(trackingNumber.trim());
           if (detected) {
             setDetectedCourier(detected);
-            // Auto-select the detected carrier
-            const carrierCode = getCarrierCode(detected);
-            setCarrier(carrierCode);
+            // Auto-select the detected carrier ONLY if no carrier is selected yet
+            if (!carrier) {
+              const carrierCode = getCarrierCode(detected);
+              setCarrier(carrierCode);
+            }
           }
         } catch (error) {
           console.error('Error detecting courier:', error);
