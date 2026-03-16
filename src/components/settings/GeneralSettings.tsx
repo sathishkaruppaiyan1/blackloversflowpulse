@@ -20,7 +20,7 @@ const GeneralSettings = () => {
   const [country, setCountry] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5' | 'thermal'>('A4');
+  const [defaultLabelFormat, setDefaultLabelFormat] = useState<'A4' | 'A5' | 'thermal'>('thermal');
   const [bypassPackingStage, setBypassPackingStage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -54,8 +54,8 @@ const GeneralSettings = () => {
         setPhone(data.phone || '');
         setEmail(data.email || '');
         setDefaultLabelFormat(
-          data.default_label_format === 'A5' ? 'A5' :
-          data.default_label_format === 'thermal' ? 'thermal' : 'A4'
+          data.default_label_format === 'A4' ? 'A4' :
+          data.default_label_format === 'A5' ? 'A5' : 'thermal'
         );
         setBypassPackingStage(data.bypass_packing_stage ?? false);
       }

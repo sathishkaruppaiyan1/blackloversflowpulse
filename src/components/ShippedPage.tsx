@@ -441,7 +441,7 @@ const ShippedPage = () => {
         orderValue: String(order.total || '0'),
         shippingAddress: order.shipping_address || 'No address provided',
         resellerName: order.reseller_name,
-        customerPhone: order.customer_phone || undefined,
+        customerPhone: order.whatsapp_number || undefined,
         productName: productName,
         productVariant: productVariant
       };

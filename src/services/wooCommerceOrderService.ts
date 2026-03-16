@@ -171,73 +171,40 @@ export const wooCommerceOrderService = {
     }
 
     if (data?.orders && data.orders.length > 0) {
-      // First, fetch existing orders to preserve their status and tracking info if they've moved beyond 'processing'
+      // Fetch existing orders to know which ones have already moved past 'processing'.
+      // CRITICAL: if this query fails, abort the sync entirely — never risk overwriting
+      // packing/packed/shipped/hold orders with stale 'processing' data.
       const wooOrderIds = data.orders.map((order: any) => order.id.toString());
-      const { data: existingOrders } = await supabase
+      const { data: existingOrders, error: existingOrdersError } = await supabase
         .from('orders')
-        .select('*')
+        .select('woo_order_id, status')
         .eq('user_id', user.id)
         .in('woo_order_id', wooOrderIds);
 
-      // Create a map of existing order data (status + tracking info)
-      const existingOrdersMap = new Map<string, {
-        status: string;
-        tracking_number: string | null;
-        carrier: string | null;
-        shipped_at: string | null;
-        printed_at: string | null;
-        packed_at: string | null;
-      }>();
-      if (existingOrders) {
-        existingOrders.forEach((existingOrder: any) => {
-          existingOrdersMap.set(existingOrder.woo_order_id, {
-            status: existingOrder.status,
-            tracking_number: existingOrder.tracking_number,
-            carrier: existingOrder.carrier,
-            shipped_at: existingOrder.shipped_at,
-            printed_at: existingOrder.printed_at,
-            packed_at: existingOrder.packed_at
-          });
-        });
+      if (existingOrdersError) {
+        console.error('Failed to fetch existing order statuses, aborting sync to prevent data loss:', existingOrdersError);
+        throw new Error('Could not verify existing order statuses. Sync aborted to protect your data.');
       }
+
+      // Build a set of woo_order_ids that are past 'processing' — these must never be overwritten
+      const lockedOrderIds = new Set<string>();
+      (existingOrders || []).forEach((existingOrder: any) => {
+        if (existingOrder.status !== 'processing') {
+          lockedOrderIds.add(existingOrder.woo_order_id);
+        }
+      });
 
       const ordersToSync = data.orders.map((order: any) => {
         const wooOrderId = order.id.toString();
-        const existingOrderData = existingOrdersMap.get(wooOrderId);
-        
-        // Preserve local status and tracking info if order has moved beyond 'processing'
-        // Only set to 'processing' if it's a new order or still in 'processing' locally
-        let orderStatus = 'processing';
-        let preservedTrackingNumber = null;
-        let preservedCarrier = null;
-        let preservedShippedAt = null;
-        let preservedPrintedAt = null;
-        let preservedPackedAt = null;
 
-        if (existingOrderData) {
-          // Preserve tracking info if it exists
-          preservedTrackingNumber = existingOrderData.tracking_number;
-          preservedCarrier = existingOrderData.carrier;
-          preservedShippedAt = existingOrderData.shipped_at;
-          preservedPrintedAt = existingOrderData.printed_at;
-          preservedPackedAt = existingOrderData.packed_at;
-
-          // If order has shipped_at or tracking, it's definitely shipped - preserve that status
-          if (existingOrderData.shipped_at || existingOrderData.tracking_number) {
-            orderStatus = 'shipped';
-            console.log(`Preserving shipped status for order ${wooOrderId} (has tracking/shipped_at)`);
-          } else if (existingOrderData.status !== 'processing') {
-            // If order exists and has been moved beyond 'processing', preserve the local status
-            orderStatus = existingOrderData.status;
-            console.log(`Preserving local status '${existingOrderData.status}' for order ${wooOrderId} (WooCommerce status: ${order.status})`);
-          } else {
-            // Order is still in 'processing', sync from WooCommerce
-            orderStatus = order.status === 'processing' ? 'processing' : order.status;
-          }
-        } else {
-          // New order, set status from WooCommerce
-          orderStatus = order.status === 'processing' ? 'processing' : order.status;
+        // SAFETY: skip any order that has moved past 'processing' in the app.
+        // This prevents sync from ever resetting packing/packed/shipped/hold orders.
+        if (lockedOrderIds.has(wooOrderId)) {
+          return null;
         }
+
+        // For new orders or orders still in processing, upsert normally
+        const orderStatus = 'processing';
 
         // Extract product meta data from line_items
         const getImageSrc = (value: any): string | null => {
@@ -451,35 +418,37 @@ export const wooCommerceOrderService = {
           order_date: order.date_created || order.date_created_gmt,
           payment_method: order.payment_method_title || order.payment_method || null,
           currency: order.currency || 'INR',
-          tracking_number: preservedTrackingNumber,
-          carrier: preservedCarrier,
-          shipped_at: preservedShippedAt,
-          printed_at: preservedPrintedAt,
-          packed_at: preservedPackedAt
         };
       });
 
-      // Upsert all orders including alternate_phone and whatsapp_number
-      const { error: insertError } = await supabase
-        .from('orders')
-        .upsert(ordersToSync, {
-          onConflict: 'user_id,woo_order_id',
-          ignoreDuplicates: false
-        });
+      // Filter out skipped orders (already past processing stage)
+      const ordersToUpsert = ordersToSync.filter((o: any) => o !== null);
 
-      if (insertError) {
-        console.error('Error syncing orders to database:', insertError);
-        throw insertError;
+      if (ordersToUpsert.length === 0) {
+        console.log('✅ No new or processing orders to sync');
+      } else {
+        const { error: insertError } = await supabase
+          .from('orders')
+          .upsert(ordersToUpsert, {
+            onConflict: 'user_id,woo_order_id',
+            ignoreDuplicates: false
+          });
+
+        if (insertError) {
+          console.error('Error syncing orders to database:', insertError);
+          throw insertError;
+        }
       }
 
-      console.log(`✅ Successfully synced ${ordersToSync.length} orders from WooCommerce`);
+      const skippedCount = ordersToSync.length - ordersToUpsert.length;
+      console.log(`✅ Synced ${ordersToUpsert.length} orders (skipped ${skippedCount} already in progress)`);
       
       // Now check existing orders in Supabase that are "processing" and verify their WooCommerce status
       // This ensures that if an order's status changed in WooCommerce, it's updated in Supabase
       await this.syncExistingProcessingOrders(settings, user.id);
       
-      toast.success(`Synced ${ordersToSync.length} orders from WooCommerce`);
-      return ordersToSync.map((o: any) => o.woo_order_id as string);
+      toast.success(`Synced ${ordersToUpsert.length} new orders from WooCommerce`);
+      return ordersToUpsert.map((o: any) => o.woo_order_id as string);
     }
 
     // Even if no new processing orders, still check existing ones
@@ -707,8 +676,18 @@ export const wooCommerceOrderService = {
     }
 
     const previousStage = currentOrder.status;
+
+    // SAFETY GUARD: never allow a shipped/delivered order to go backwards.
+    // If it has shipped_at or tracking_number set, it is permanently locked to shipped+.
+    const isLockedShipped = currentOrder.shipped_at || currentOrder.tracking_number;
+    const isRegression = ['processing', 'packing', 'packed'].includes(stage);
+    if (isLockedShipped && isRegression) {
+      console.warn(`⛔ Blocked regression: order ${orderId} is shipped (has tracking/shipped_at) — cannot move to '${stage}'`);
+      throw new Error(`Order #${currentOrder.order_number} is already shipped and cannot be moved back to ${stage}.`);
+    }
+
     const updateData: any = { status: stage };
-    
+
     // Handle hold stage logic
     const now = new Date().toISOString();
     if (stage === 'hold') {

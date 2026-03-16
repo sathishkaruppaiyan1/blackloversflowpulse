@@ -522,12 +522,13 @@ const TrackingPage = () => {
 
       // Send WhatsApp notifications asynchronously in the background (fire and forget)
       if (interaktService.isActive()) {
-        // Send to customer automatically (always send if phone available)
-        if (currentOrder.customer_phone) {
+        // Send ONLY to whatsapp_number — dedicated WhatsApp field from WooCommerce
+        const whatsappPhone = currentOrder.whatsapp_number;
+        if (whatsappPhone) {
           console.log('📱 Sending tracking update to customer via Interakt (background)...');
           interaktService.sendTrackingUpdateToCustomer(
             trackingData,
-            currentOrder.customer_phone
+            whatsappPhone
           ).then((customerSuccess) => {
             if (customerSuccess) {
               console.log('✅ Tracking notification sent to customer successfully');
@@ -996,15 +997,18 @@ const TrackingPage = () => {
                 <div>
                   <p className="font-medium">{currentOrder.customer_name}</p>
                   <p className="text-sm text-gray-600">{currentOrder.customer_email}</p>
-                  {currentOrder.customer_phone ? (
+                  {currentOrder.customer_phone && (
+                    <p className="text-sm text-gray-600 mt-1">📞 {currentOrder.customer_phone}</p>
+                  )}
+                  {currentOrder.whatsapp_number ? (
                     <div className="flex items-center space-x-2 mt-1">
                       <MessageCircle className="h-4 w-4 text-green-600" />
-                      <p className="text-sm text-green-600 font-medium">WhatsApp: {currentOrder.customer_phone}</p>
+                      <p className="text-sm text-green-600 font-medium">WhatsApp: {currentOrder.whatsapp_number}</p>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2 mt-1">
                       <XCircle className="h-4 w-4 text-red-600" />
-                      <p className="text-sm text-red-600 font-medium">No phone number - WhatsApp unavailable</p>
+                      <p className="text-sm text-red-600 font-medium">No WhatsApp number - notification not sent</p>
                     </div>
                   )}
               </div>
