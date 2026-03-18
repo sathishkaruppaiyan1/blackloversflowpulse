@@ -75,6 +75,13 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
       newFilters.size = 'any';
       newFilters.variation = 'any';
     }
+    if (key === 'color') {
+      newFilters.size = 'any';
+      newFilters.variation = 'any';
+    }
+    if (key === 'size') {
+      newFilters.variation = 'any';
+    }
     setFilters(newFilters);
     onFiltersChange(newFilters);
   };
@@ -111,8 +118,9 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     onFiltersChange(filters);
   };
 
-  // Extract unique filter options from orders data
-  // Colors, sizes, and variations are scoped to the selected product
+  // Extract unique filter options from orders data.
+  // Dependent filters are scoped cumulatively:
+  // product -> color -> size -> variation
   useEffect(() => {
     if (!orders || orders.length === 0) return;
 
@@ -122,20 +130,43 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     const variationMap = new Map<string, number>();
 
     const selectedProduct = filters.product;
-    const filterType = filters.filterType || 'contains';
+    const selectedColor = filters.color;
+    const selectedSize = filters.size;
+    const normalizeValue = (value: string) => value.toLowerCase().trim();
 
-    // Helper to check if an item matches the selected product filter
+    const itemMatchesSelectedProductExactly = (itemName: string): boolean => {
+      return normalizeValue(itemName) === normalizeValue(selectedProduct);
+    };
+
     const itemMatchesProduct = (item: any): boolean => {
       if (selectedProduct === 'any') return true;
       if (!item.name) return false;
-      const itemName = item.name.toLowerCase();
-      const filter = selectedProduct.toLowerCase();
-      switch (filterType) {
-        case 'equals': return itemName === filter;
-        case 'starts': return itemName.startsWith(filter);
-        case 'contains':
-        default: return itemName.includes(filter);
-      }
+      return itemMatchesSelectedProductExactly(item.name);
+    };
+
+    const itemMatchesColor = (item: any): boolean => {
+      if (selectedColor === 'any') return true;
+      if (!item.color) return false;
+      return normalizeValue(item.color) === normalizeValue(selectedColor);
+    };
+
+    const itemMatchesSize = (item: any): boolean => {
+      if (selectedSize === 'any') return true;
+      if (!item.size) return false;
+      return normalizeValue(item.size) === normalizeValue(selectedSize);
+    };
+
+    const getItemsScopedForColors = (order: WooCommerceOrder) => {
+      const lineItems = Array.isArray(order.line_items) ? order.line_items : [];
+      return lineItems.filter(itemMatchesProduct);
+    };
+
+    const getItemsScopedForSizes = (order: WooCommerceOrder) => {
+      return getItemsScopedForColors(order).filter(itemMatchesColor);
+    };
+
+    const getItemsScopedForVariations = (order: WooCommerceOrder) => {
+      return getItemsScopedForSizes(order).filter(itemMatchesSize);
     };
 
     orders.forEach(order => {
@@ -146,45 +177,47 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
             const product = item.name.toLowerCase();
             productMap.set(product, (productMap.get(product) || 0) + 1);
           }
-
-          // Only extract colors/sizes/variations from items matching selected product
-          if (!itemMatchesProduct(item)) return;
-
-          // Extract colors
-          if (item.color) {
-            const color = item.color.toLowerCase();
-            colorMap.set(color, (colorMap.get(color) || 0) + 1);
-          }
-
-          // Extract sizes
-          if (item.size) {
-            const size = item.size.toUpperCase();
-            sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
-          }
-
-          // Extract variations (weight, material, etc.)
-          if (item.weight) {
-            const variation = item.weight.toLowerCase();
-            variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
-          }
-          if (item.material) {
-            const variation = item.material.toLowerCase();
-            variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
-          }
-          if (item.brand) {
-            const variation = item.brand.toLowerCase();
-            variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
-          }
-          if (item.meta_data && Array.isArray(item.meta_data)) {
-            item.meta_data.forEach((meta: any) => {
-              if (meta.display_value && meta.display_value !== item.name) {
-                const variation = meta.display_value.toLowerCase();
-                variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
-              }
-            });
-          }
         });
       }
+
+      getItemsScopedForColors(order).forEach((item: any) => {
+        if (item.color) {
+          const color = item.color.toLowerCase();
+          colorMap.set(color, (colorMap.get(color) || 0) + 1);
+        }
+      });
+
+      getItemsScopedForSizes(order).forEach((item: any) => {
+
+        if (item.size) {
+          const size = item.size.toUpperCase();
+          sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
+        }
+      });
+
+      getItemsScopedForVariations(order).forEach((item: any) => {
+
+        if (item.weight) {
+          const variation = item.weight.toLowerCase();
+          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+        }
+        if (item.material) {
+          const variation = item.material.toLowerCase();
+          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+        }
+        if (item.brand) {
+          const variation = item.brand.toLowerCase();
+          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+        }
+        if (item.meta_data && Array.isArray(item.meta_data)) {
+          item.meta_data.forEach((meta: any) => {
+            if (meta.display_value && meta.display_value !== item.name) {
+              const variation = meta.display_value.toLowerCase();
+              variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+            }
+          });
+        }
+      });
     });
 
     // Convert maps to sorted arrays
@@ -196,8 +229,6 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
           count
         }))
         .sort((a, b) => b.count - a.count));
-
-    const matchingItemCount = selectedProduct === 'any' ? orders.length : colorMap.size > 0 || sizeMap.size > 0 ? undefined : 0;
 
     const colors: FilterOption[] = [{ value: 'any', label: 'Any Color' }]
       .concat(Array.from(colorMap.entries())
@@ -236,7 +267,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
       sizes,
       variations
     });
-  }, [orders, filters.product, filters.filterType]);
+  }, [orders, filters.product, filters.color, filters.size]);
 
   return (
     <Card className="mb-6">

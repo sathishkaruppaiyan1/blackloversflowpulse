@@ -630,37 +630,57 @@ const PrintingPage = () => {
       }
     };
 
+    const normalizeValue = (value: string) => value.toLowerCase().trim();
+
+    const itemMatchesSelectedProduct = (item: any) => {
+      if (!filters.product || filters.product === 'any') return true;
+      return normalizeValue(item.name || '') === normalizeValue(filters.product);
+    };
+
+    const itemMatchesSelectedColor = (item: any) => {
+      if (!filters.color || filters.color === 'any') return true;
+      return !!item.color && normalizeValue(item.color) === normalizeValue(filters.color);
+    };
+
+    const itemMatchesSelectedSize = (item: any) => {
+      if (!filters.size || filters.size === 'any') return true;
+      return !!item.size && normalizeValue(item.size) === normalizeValue(filters.size);
+    };
+
+    const matchingItemsForOrder = (order: WooCommerceOrder) =>
+      (order.line_items || []).filter(item => itemMatchesSelectedProduct(item));
+
+    const matchingItemsForOrderAndColor = (order: WooCommerceOrder) =>
+      matchingItemsForOrder(order).filter(item => itemMatchesSelectedColor(item));
+
+    const matchingItemsForOrderAndColorAndSize = (order: WooCommerceOrder) =>
+      matchingItemsForOrderAndColor(order).filter(item => itemMatchesSelectedSize(item));
+
     // Apply product filter
     if (filters.product && filters.product !== 'any') {
       filtered = filtered.filter(order => 
-        order.line_items?.some(item => 
-          applyFilterType(item.name || '', filters.product, filters.filterType || 'contains')
-        )
+        matchingItemsForOrder(order).length > 0
       );
     }
 
     // Apply color filter
     if (filters.color && filters.color !== 'any') {
       filtered = filtered.filter(order => 
-        order.line_items?.some(item => 
-          item.color && applyFilterType(item.color, filters.color, filters.filterType || 'contains')
-        )
+        matchingItemsForOrderAndColor(order).length > 0
       );
     }
 
     // Apply size filter
     if (filters.size && filters.size !== 'any') {
       filtered = filtered.filter(order => 
-        order.line_items?.some(item => 
-          item.size && applyFilterType(item.size, filters.size, filters.filterType || 'contains')
-        )
+        matchingItemsForOrderAndColorAndSize(order).length > 0
       );
     }
 
     // Apply variation filter - check against variation_id or create combined variation from available properties
     if (filters.variation && filters.variation !== 'any') {
       filtered = filtered.filter(order => 
-        order.line_items?.some(item => {
+        matchingItemsForOrderAndColorAndSize(order).some(item => {
           // Check against weight
           if (item.weight && applyFilterType(item.weight, filters.variation, filters.filterType || 'contains')) {
             return true;
