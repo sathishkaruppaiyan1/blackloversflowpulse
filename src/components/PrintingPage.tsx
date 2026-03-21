@@ -632,9 +632,13 @@ const PrintingPage = () => {
 
     const normalizeValue = (value: string) => value.toLowerCase().trim();
 
+    const getBaseProductName = (name: string): string => {
+      return name.split(' - ')[0].trim();
+    };
+
     const itemMatchesSelectedProduct = (item: any) => {
       if (!filters.product || filters.product === 'any') return true;
-      return normalizeValue(item.name || '') === normalizeValue(filters.product);
+      return normalizeValue(getBaseProductName(item.name || '')) === normalizeValue(filters.product);
     };
 
     const itemMatchesSelectedColor = (item: any) => {

@@ -134,8 +134,13 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     const selectedSize = filters.size;
     const normalizeValue = (value: string) => value.toLowerCase().trim();
 
+    // Extract base product name without variation suffix (e.g., "T-Shirt - Red, Large" -> "T-Shirt")
+    const getBaseProductName = (name: string): string => {
+      return name.split(' - ')[0].trim();
+    };
+
     const itemMatchesSelectedProductExactly = (itemName: string): boolean => {
-      return normalizeValue(itemName) === normalizeValue(selectedProduct);
+      return normalizeValue(getBaseProductName(itemName)) === normalizeValue(selectedProduct);
     };
 
     const itemMatchesProduct = (item: any): boolean => {
@@ -172,9 +177,9 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     orders.forEach(order => {
       if (order.line_items && Array.isArray(order.line_items)) {
         order.line_items.forEach((item: any) => {
-          // Always extract all product names (not filtered by selection)
+          // Always extract base product names without variations (not filtered by selection)
           if (item.name) {
-            const product = item.name.toLowerCase();
+            const product = getBaseProductName(item.name).toLowerCase();
             productMap.set(product, (productMap.get(product) || 0) + 1);
           }
         });
