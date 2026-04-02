@@ -66,6 +66,26 @@ export const bulkOrderMovementService = {
         }
 
         const previousStage = currentOrder.status;
+
+        // HARD LOCK — orders with shipped_at or tracking_number have been physically dispatched.
+        // They can NEVER be moved back to printing/packing/packed, even with bypassValidation.
+        // This prevents duplicate printing, packing, and shipping of the same order.
+        const isPhysicallyShipped = !!(currentOrder.shipped_at || currentOrder.tracking_number);
+        const isBackwardToEarlierStage = ['processing', 'packing', 'packed'].includes(targetStage);
+
+        if (isPhysicallyShipped && isBackwardToEarlierStage) {
+          const trackingInfo = currentOrder.tracking_number ? ` — tracking: ${currentOrder.tracking_number}` : '';
+          const errorMsg = `Order #${currentOrder.order_number} is already shipped${trackingInfo}. Cannot move back to printing/packing.`;
+          console.error(`⛔ ${errorMsg}`);
+          errors.push(errorMsg);
+          failedCount++;
+          continue;
+        }
+
+        // NOTE: printed_at alone does NOT block moving back to Printing.
+        // Printer issues happen — reprinting from packing or packed stage is safe as long as
+        // the order has not been physically dispatched (no shipped_at, no tracking_number).
+
         const updateData: any = { status: targetStage };
 
         // Handle hold stage logic
@@ -206,10 +226,25 @@ export const bulkOrderMovementService = {
 
   // Get available target stages for a given current stage
   getAvailableStages(currentStage: OrderStage): OrderStage[] {
-    const allStages: OrderStage[] = ['processing', 'packing', 'packed', 'shipped', 'delivered', 'hold'];
-
-    // For bulk operations, allow movement to any stage except the current one
-    return allStages.filter(stage => stage !== currentStage);
+    switch (currentStage) {
+      case 'shipped':
+      case 'delivered':
+        // Shipped/delivered orders can only move forward — never back to printing or packing
+        return (['delivered', 'hold'] as OrderStage[]).filter(s => s !== currentStage);
+      case 'packed':
+        // Can go back to Printing or Packing if a printer/packing issue occurred (safe — not yet dispatched)
+        return ['processing', 'packing', 'shipped', 'delivered', 'hold'];
+      case 'packing':
+        // Can go back to Printing if there was a printer issue (safe — not yet dispatched)
+        return ['processing', 'packed', 'shipped', 'hold'];
+      case 'processing':
+        return ['packing', 'packed', 'shipped', 'hold'];
+      case 'hold':
+        return ['processing', 'packing', 'packed', 'shipped', 'delivered'];
+      default:
+        return (['processing', 'packing', 'packed', 'shipped', 'delivered', 'hold'] as OrderStage[])
+          .filter(s => s !== currentStage);
+    }
   },
 
   // Get stage display name

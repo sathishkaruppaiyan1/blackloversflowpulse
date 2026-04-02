@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BulkMovementTrigger } from './BulkMovementTrigger';
 import { syncCoordinator } from '@/services/syncCoordinator';
+import { supabase } from '@/integrations/supabase/client';
 
 const TrackingPage = () => {
   // NO CACHE - Always start empty and fetch fresh from database to prevent duplicates
@@ -178,6 +179,22 @@ const TrackingPage = () => {
         }
       }, 100);
     }
+  }, [user, fetchOrdersFromDB]);
+
+  // Realtime subscription — instantly reflect any order change from any page/user
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('tracking-page-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        () => { fetchOrdersFromDB(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [user, fetchOrdersFromDB]);
 
   // Load available couriers
@@ -397,7 +414,7 @@ const TrackingPage = () => {
     };
   }, []);
 
-  const handleOrderScan = () => {
+  const handleOrderScan = async () => {
     if (!orderIdInput.trim()) return;
     
     const cleanInput = orderIdInput.trim();
@@ -424,6 +441,29 @@ const TrackingPage = () => {
     if (looksLikeTrackingNumber(cleanInput)) {
       playErrorSound();
       toast.error("This looks like a tracking number, not an order ID. Please scan the order barcode first.");
+      setOrderIdInput('');
+      return;
+    }
+
+    // Check the database — this order might already be shipped
+    const normalizedInput = cleanInput.replace(/^#/, '');
+    const { data: shippedOrder } = await supabase
+      .from('orders')
+      .select('order_number, tracking_number, shipped_at, carrier, status')
+      .eq('user_id', user!.id)
+      .or(`order_number.eq.${cleanInput},order_number.eq.%23${normalizedInput},id.eq.${cleanInput}`)
+      .not('shipped_at', 'is', null)
+      .maybeSingle();
+
+    if (shippedOrder) {
+      playErrorSound();
+      const trackingInfo = shippedOrder.tracking_number
+        ? ` — Tracking: ${shippedOrder.tracking_number}`
+        : '';
+      toast.error(
+        `Order #${shippedOrder.order_number} is already shipped${trackingInfo}. Nothing to do.`,
+        { duration: 6000 }
+      );
       setOrderIdInput('');
       return;
     }
@@ -1139,7 +1179,13 @@ const TrackingPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge className="text-xs">Ready</Badge>
+                    {(order.tracking_number || order.shipped_at) ? (
+                      <Badge variant="destructive" className="text-xs">
+                        Already Shipped{order.tracking_number ? ` — ${order.tracking_number}` : ''}
+                      </Badge>
+                    ) : (
+                      <Badge className="text-xs">Ready</Badge>
+                    )}
                   </div>
                 </div>
               ))}

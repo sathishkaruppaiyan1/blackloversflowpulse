@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, AlertTriangle, Settings } from 'lucide-react';
+import { ArrowRight, AlertTriangle, Settings, Lock } from 'lucide-react';
 import { bulkOrderMovementService, OrderStage, BulkMoveOptions } from '@/services/bulkOrderMovementService';
 import { toast } from 'sonner';
 
@@ -39,12 +39,42 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const availableStages = currentStage 
+  // Determine which orders are locked for the selected target stage.
+  // Only the ship lock applies: shipped_at or tracking_number means the package left the warehouse.
+  // printed_at alone is NOT a lock — reprinting from packing/packed is safe.
+  const getLockedOrdersForTarget = (target: OrderStage | '') => {
+    if (!target) return [];
+    return selectedOrders.filter((order) => {
+      const isShippedLocked = !!(order.shipped_at || order.tracking_number);
+      if (isShippedLocked && ['processing', 'packing', 'packed'].includes(target)) return true;
+      return false;
+    });
+  };
+
+  const lockedOrders = getLockedOrdersForTarget(targetStage);
+  const unlockableOrderIds = selectedOrderIds.filter(
+    (id) => !lockedOrders.some((o) => o.id === id)
+  );
+  const allOrdersLocked = lockedOrders.length === selectedOrderIds.length && selectedOrderIds.length > 0;
+
+  const availableStages = currentStage
     ? bulkOrderMovementService.getAvailableStages(currentStage)
     : (['processing', 'packing', 'packed', 'shipped', 'delivered'] as OrderStage[]);
 
   const handleSubmit = async () => {
     if (!targetStage) return;
+
+    // Warn user if some orders are being skipped due to being locked
+    const idsToMove = unlockableOrderIds;
+    if (lockedOrders.length > 0) {
+      toast.warning(
+        `${lockedOrders.length} shipped/tracked order${lockedOrders.length > 1 ? 's' : ''} skipped — they cannot be moved back.`
+      );
+    }
+    if (idsToMove.length === 0) {
+      toast.error('All selected orders are shipped and locked. No orders were moved.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -56,7 +86,7 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
       };
 
       const result = await bulkOrderMovementService.bulkUpdateOrderStage(
-        selectedOrderIds,
+        idsToMove,
         targetStage as OrderStage,
         options
       );
@@ -96,7 +126,7 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
         <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <AlertTriangle className="w-4 h-4 text-amber-600" />
           <span className="text-sm text-amber-800">
-            Warning: Moving orders backwards in the workflow
+            Warning: Moving orders backwards in the workflow. This will reset stage timestamps.
           </span>
         </div>
       );
@@ -121,6 +151,11 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-blue-900">
                 {selectedOrderIds.length} orders selected
+                {lockedOrders.length > 0 && (
+                  <span className="ml-2 text-red-700 font-semibold">
+                    ({lockedOrders.length} locked)
+                  </span>
+                )}
               </span>
               {currentStage && (
                 <Badge variant="outline" className="text-xs">
@@ -135,6 +170,29 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
               </div>
             )}
           </div>
+
+          {/* Hard block banner for locked orders */}
+          {lockedOrders.length > 0 && (
+            <div className="flex flex-col gap-1 p-3 bg-red-50 border border-red-300 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Lock className="w-4 h-4 text-red-600 shrink-0" />
+                <span className="text-sm font-semibold text-red-800">
+                  {lockedOrders.length} order{lockedOrders.length > 1 ? 's' : ''} are locked — already shipped
+                </span>
+              </div>
+              <p className="text-xs text-red-700 pl-6">
+                These orders have already been printed or shipped and cannot be moved back to Printing. Moving them back causes duplicate printing, packing, and shipments.
+              </p>
+              <div className="mt-1 text-xs text-red-600 pl-6 font-medium">
+                Locked: {lockedOrders.map((o) => `#${o.order_number}`).join(', ')}
+              </div>
+              {!allOrdersLocked && (
+                <p className="text-xs text-red-700 pl-6 mt-1">
+                  The remaining {unlockableOrderIds.length} order{unlockableOrderIds.length > 1 ? 's' : ''} will still be moved.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Target Stage Selection */}
           <div>
@@ -213,7 +271,7 @@ export const BulkMovementDialog: React.FC<BulkMovementDialogProps> = ({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!targetStage || loading}
+              disabled={!targetStage || loading || allOrdersLocked}
               className="flex-1"
             >
               {loading ? (

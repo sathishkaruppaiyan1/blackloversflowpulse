@@ -677,14 +677,19 @@ export const wooCommerceOrderService = {
 
     const previousStage = currentOrder.status;
 
-    // SAFETY GUARD: never allow a shipped/delivered order to go backwards.
+    // SAFETY GUARD: never allow a shipped order to go backwards.
     // If it has shipped_at or tracking_number set, it is permanently locked to shipped+.
-    const isLockedShipped = currentOrder.shipped_at || currentOrder.tracking_number;
-    const isRegression = ['processing', 'packing', 'packed'].includes(stage);
-    if (isLockedShipped && isRegression) {
-      console.warn(`⛔ Blocked regression: order ${orderId} is shipped (has tracking/shipped_at) — cannot move to '${stage}'`);
-      throw new Error(`Order #${currentOrder.order_number} is already shipped and cannot be moved back to ${stage}.`);
+    const isPhysicallyShipped = !!(currentOrder.shipped_at || currentOrder.tracking_number);
+    const isRegressionToEarlierStage = ['processing', 'packing', 'packed'].includes(stage);
+    if (isPhysicallyShipped && isRegressionToEarlierStage) {
+      const trackingInfo = currentOrder.tracking_number ? ` (tracking: ${currentOrder.tracking_number})` : '';
+      console.warn(`⛔ Blocked regression: order ${currentOrder.order_number} is shipped${trackingInfo} — cannot move to '${stage}'`);
+      throw new Error(`Order #${currentOrder.order_number} is already shipped${trackingInfo} and cannot be moved back.`);
     }
+
+    // NOTE: printed_at alone does NOT block moving back to Printing.
+    // Printer issues happen — reprinting from packing or packed stage is safe as long as
+    // the order has not been physically dispatched (no shipped_at, no tracking_number).
 
     const updateData: any = { status: stage };
 

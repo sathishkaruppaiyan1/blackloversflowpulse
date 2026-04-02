@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { BulkMovementTrigger } from "./BulkMovementTrigger";
 import { useBypassPackingStage } from "@/hooks/useBypassPackingStage";
 import { syncCoordinator } from "@/services/syncCoordinator";
 import { getCachedOrdersByStage, setCachedOrders } from "@/services/orderCacheService";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ScannedProduct {
   id: string;
@@ -49,6 +51,7 @@ export const PackingPage = () => {
   const { toast } = useToast();
   const orderScannerRef = useRef<HTMLInputElement>(null);
   const { bypassPackingStage } = useBypassPackingStage();
+  const { user } = useAuth();
 
   // Filter orders by stages using the enhanced service
   const packingOrders = allOrders.filter(order => 
@@ -454,6 +457,22 @@ export const PackingPage = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Realtime subscription — instantly reflect any order change from any page/user
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('packing-page-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        () => { fetchOrders(true); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   useEffect(() => {
     if (orderScannerRef.current) {

@@ -830,6 +830,22 @@ const PrintingPage = () => {
     };
   }, [user, fetchProcessingOrdersFromDB]);
 
+  // Realtime subscription — instantly reflect any order change from any page/user
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('printing-page-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        () => { fetchProcessingOrdersFromDB(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchProcessingOrdersFromDB]);
+
   // Apply filters when search query changes
   useEffect(() => {
     handleFiltersChange({});
