@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { RefreshCw, ChevronLeft, ChevronRight, Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign } from 'lucide-react';
-import { wooCommerceOrderService, WooCommerceOrder } from '@/services/wooCommerceOrderService';
+import { RefreshCw, ChevronLeft, ChevronRight, ChevronDown, Printer, MapPin, Phone, Mail, Calendar, Weight, DollarSign, ImageIcon, X } from 'lucide-react';
+import { wooCommerceOrderService, WooCommerceOrder, WooCommerceOrderItem } from '@/services/wooCommerceOrderService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,7 @@ import PackingSlipTemplate from './PackingSlipTemplate';
 import { PrintingAnalytics } from './PrintingAnalytics';
 import { PrintingSearchBar } from './PrintingSearchBar';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { supabase } from '@/integrations/supabase/client';
 import { bulkOrderMovementService } from '@/services/bulkOrderMovementService';
@@ -25,27 +26,29 @@ import { syncCoordinator } from '@/services/syncCoordinator';
 import { getCachedOrdersByStage, setCachedOrders } from '@/services/orderCacheService';
 import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
-// Load cached orders for instant display in Printing page
+// Load cached orders for instant display in Printing page.
+// IMPORTANT: read this fresh on each mount (not module-level) so that after the
+// first DB fetch populates localStorage, subsequent visits to this page skip
+// the loading spinner and render instantly from cache.
 const loadCachedOrders = (): { processingOrders: WooCommerceOrder[]; allOrders: WooCommerceOrder[] } => {
+  if (typeof window === 'undefined') return { processingOrders: [], allOrders: [] };
   const cachedOrders = getCachedOrdersByStage('processing');
   const allCached = getCachedOrdersByStage(['processing', 'packing', 'packed', 'printed']);
-  
+
   if (cachedOrders.length > 0) {
     console.log(`📦 PrintingPage: Loading ${cachedOrders.length} cached processing orders for instant display`);
   }
-  
+
   return { processingOrders: cachedOrders, allOrders: allCached };
 };
 
-const initialCached = typeof window !== 'undefined'
-  ? loadCachedOrders()
-  : { processingOrders: [], allOrders: [] };
-
 const PrintingPage = () => {
-  const [orders, setOrders] = useState<WooCommerceOrder[]>(initialCached.processingOrders);
-  const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>(initialCached.processingOrders);
-  const [allOrdersForAnalytics, setAllOrdersForAnalytics] = useState<WooCommerceOrder[]>(initialCached.allOrders);
-  const [loading, setLoading] = useState(initialCached.processingOrders.length === 0);
+  // Read cache lazily on each mount so revisiting the page skips the loading
+  // spinner once the cache has been populated.
+  const [orders, setOrders] = useState<WooCommerceOrder[]>(() => loadCachedOrders().processingOrders);
+  const [filteredOrders, setFilteredOrders] = useState<WooCommerceOrder[]>(() => loadCachedOrders().processingOrders);
+  const [allOrdersForAnalytics, setAllOrdersForAnalytics] = useState<WooCommerceOrder[]>(() => loadCachedOrders().allOrders);
+  const [loading, setLoading] = useState(() => loadCachedOrders().processingOrders.length === 0);
   const [syncing, setSyncing] = useState(false);
   const { user } = useAuth();
   
@@ -56,21 +59,143 @@ const PrintingPage = () => {
   // Selection state
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(false);
+  const [expandedOrderIds, setExpandedOrderIds] = useState<Set<string>>(new Set());
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Lightbox state
+  const [lightboxImages, setLightboxImages] = useState<{ src: string; alt: string }[] | null>(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  const openLightbox = (images: { src: string; alt: string }[], index: number) => {
+    if (!images.length) return;
+    setLightboxImages(images);
+    setLightboxIndex(Math.max(0, Math.min(index, images.length - 1)));
+  };
+
+  const closeLightbox = () => setLightboxImages(null);
+
+  const showPrevImage = () => {
+    if (!lightboxImages) return;
+    setLightboxIndex((i) => (i - 1 + lightboxImages.length) % lightboxImages.length);
+  };
+
+  const showNextImage = () => {
+    if (!lightboxImages) return;
+    setLightboxIndex((i) => (i + 1) % lightboxImages.length);
+  };
+
   // Get bypass packing stage setting
   const { bypassPackingStage } = useBypassPackingStage();
+
+  const toggleOrderProducts = (orderId: string) => {
+    setExpandedOrderIds((current) => {
+      const next = new Set(current);
+      if (next.has(orderId)) {
+        next.delete(orderId);
+      } else {
+        next.add(orderId);
+      }
+      return next;
+    });
+  };
+
+  const getItemVariationDisplay = (item: WooCommerceOrderItem) => {
+    const variations = [item.color, item.size].filter(Boolean);
+
+    if (variations.length > 0) {
+      return variations.join(' / ');
+    }
+
+    const metaVariations = item.meta_data
+      ?.filter((meta) => meta.display_value)
+      .map((meta) => `${meta.display_key}: ${meta.display_value}`)
+      .slice(0, 2);
+
+    return metaVariations?.length ? metaVariations.join(' / ') : 'Standard';
+  };
+
+  const stripVariationFromName = (name: string, item: WooCommerceOrderItem) => {
+    if (!name) return 'Product Name';
+    // Split name at the first " - " — everything before is the base product name,
+    // everything after is treated as variation metadata (color, size, etc.).
+    const dashIdx = name.search(/\s+[-–—]\s+/);
+    if (dashIdx === -1) return name.trim() || 'Product Name';
+
+    const base = name.slice(0, dashIdx).trim();
+    const tail = name.slice(dashIdx).replace(/^\s+[-–—]\s+/, '');
+
+    // Tokenize the tail (comma or slash separated) and drop tokens that match
+    // the item's color/size. If every token matches, drop the whole tail.
+    const tokens = tail.split(/\s*[,/]\s*/).filter(Boolean);
+    const variationValues = [item.color, item.size].filter(Boolean).map(v => v!.toLowerCase());
+    const remaining = tokens.filter(token => !variationValues.includes(token.toLowerCase()));
+
+    if (remaining.length === 0) return base || 'Product Name';
+    return `${base} - ${remaining.join(', ')}`;
+  };
+
+  const getOrderProducts = (order: WooCommerceOrder) =>
+    (order.line_items || []).map((item, index) => ({
+      key: `${item.id || item.product_id || 'item'}-${index}`,
+      item,
+      image: resolveLineItemImage(item),
+      name: stripVariationFromName(item.name || 'Product Name', item),
+      quantity: Number(item.quantity) || 1,
+      variation: getItemVariationDisplay(item),
+      total: Number(item.total || item.price || 0)
+    }));
+
+  const calculateOrderWeight = (order: WooCommerceOrder) =>
+    (order.line_items || []).reduce((total, item) => {
+      const weight = Number(item.weight) || 0.5;
+      const quantity = Number(item.quantity) || 1;
+      return total + weight * quantity;
+    }, 0);
+
+  // Deduplicate orders by (order_number || id). Belt-and-suspenders guard
+  // against any backend duplicates so the same order can't appear twice on screen.
+  // Also filters out anything that has already left the printing stage so a
+  // printed/packed/shipped order can never reappear unless the user manually
+  // moves it back to processing (which clears those timestamps).
+  const dedupeAndFilterProcessing = (orders: WooCommerceOrder[]): WooCommerceOrder[] => {
+    const seen = new Map<string, WooCommerceOrder>();
+    for (const o of orders) {
+      const key = (o.order_number || o.id || '').toString();
+      if (!key) continue;
+      const alreadyMoved = !!(o.printed_at || o.packed_at || o.shipped_at || o.delivered_at);
+      const wrongStage = o.status && o.status !== 'processing';
+      if (alreadyMoved || wrongStage) continue;
+      if (!seen.has(key)) seen.set(key, o);
+    }
+    return Array.from(seen.values());
+  };
+
+  // Incrementally merge a fresh list of orders into existing state so the UI
+  // doesn't flicker or lose interactions for unchanged rows. Uses the fresh
+  // ordering but reuses existing object references when row data is unchanged.
+  const mergeOrders = (current: WooCommerceOrder[], fresh: WooCommerceOrder[]): WooCommerceOrder[] => {
+    const cleanFresh = dedupeAndFilterProcessing(fresh);
+    const currentById = new Map(current.map(o => [(o.order_number || o.id).toString(), o]));
+    return cleanFresh.map(freshOrder => {
+      const key = (freshOrder.order_number || freshOrder.id).toString();
+      const existing = currentById.get(key);
+      if (existing && JSON.stringify(existing) === JSON.stringify(freshOrder)) {
+        return existing;
+      }
+      return freshOrder;
+    });
+  };
 
   // Fast function to fetch from database without syncing
   const fetchProcessingOrdersFromDB = useCallback(async () => {
     if (!user) return;
-    
+
     try {
       const processingOrders = await wooCommerceOrderService.fetchOrdersByStage('processing');
-      setOrders(processingOrders);
-      setFilteredOrders(processingOrders);
+      setOrders(prev => mergeOrders(prev, processingOrders));
+      setFilteredOrders(prev => mergeOrders(prev, processingOrders));
       
       // Also fetch all orders for analytics calculation (including all stages)
       const allOrders = await wooCommerceOrderService.fetchOrders();
@@ -187,7 +312,22 @@ const PrintingPage = () => {
     // Don't move order here - wait for actual print confirmation
   };
 
+  // Remove order(s) from local state immediately so they vanish from Printing
+  // (and Products Pending via realtime) without waiting for the DB roundtrip.
+  const removeOrdersLocally = (orderIds: string[]) => {
+    const idSet = new Set(orderIds);
+    setOrders(prev => prev.filter(o => !idSet.has(o.id)));
+    setFilteredOrders(prev => prev.filter(o => !idSet.has(o.id)));
+    setSelectedOrderIds(prev => {
+      const next = new Set(prev);
+      for (const id of orderIds) next.delete(id);
+      return next;
+    });
+  };
+
   const moveToPackingStage = async (orderId: string) => {
+    // Optimistically remove from UI first
+    removeOrdersLocally([orderId]);
     try {
       const targetStage = bypassPackingStage ? 'packed' : 'packing';
       await wooCommerceOrderService.updateOrderStage(orderId, targetStage);
@@ -195,12 +335,8 @@ const PrintingPage = () => {
     } catch (error: any) {
       console.error('Error moving order:', error);
       toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
-    }
-    // Refresh order list separately - don't let refresh failure show as stage move failure
-    try {
-      await fetchProcessingOrdersFromDB();
-    } catch (error) {
-      console.error('Error refreshing orders:', error);
+      // On failure, refetch to restore correct state
+      try { await fetchProcessingOrdersFromDB(); } catch {}
     }
   };
 
@@ -540,8 +676,11 @@ const PrintingPage = () => {
               errors: result.errors
             });
             
+            // Optimistically remove the printed orders from local state so they
+            // disappear instantly. The realtime/fetch below will reconcile.
+            removeOrdersLocally(orderIdsToMove);
             await fetchProcessingOrdersFromDB(); // Fast fetch without syncing
-            
+
             // Check if all orders were moved successfully
             if (result.processedCount !== ordersCount) {
               const missingCount = ordersCount - result.processedCount;
@@ -774,16 +913,18 @@ const PrintingPage = () => {
     let isMounted = true;
 
     const loadInitial = async () => {
-      // If we don't have any cached processing orders, show loader until first DB load completes
-      if (initialCached.processingOrders.length === 0) {
+      // Only show the loader when we couldn't render anything from cache.
+      const hadCachedOrders = loadCachedOrders().processingOrders.length > 0;
+      if (!hadCachedOrders) {
         setLoading(true);
       }
 
       try {
-        // Always fetch from DB first (fast - instant from cache or DB)
+        // Always fetch from DB in the background (fast - DB query).
+        // If we had cache, the UI stays interactive while this refreshes silently.
         await fetchProcessingOrdersFromDB();
       } finally {
-        if (isMounted && initialCached.processingOrders.length === 0) {
+        if (isMounted && !hadCachedOrders) {
           setLoading(false);
         }
       }
@@ -808,16 +949,14 @@ const PrintingPage = () => {
       try {
         console.log('🔄 Starting background WooCommerce sync...');
         syncCoordinator.markSyncStarted();
-        
+
         await wooCommerceOrderService.syncOrdersFromWooCommerce();
-        
+
         syncCoordinator.markSyncCompleted();
-        console.log('✅ Background sync completed');
-        
-        // After sync, refresh from database
-        if (isMounted) {
-          await fetchProcessingOrdersFromDB();
-        }
+        console.log('✅ Background sync completed (UI not auto-refreshed — use Sync button to load new data)');
+        // Intentionally NOT calling fetchProcessingOrdersFromDB() here.
+        // Auto-refreshing the list while the user is interacting (selecting,
+        // expanding, scrolling) disrupts their work. Use the Sync button to pull updates.
       } catch (error) {
         console.error('Background sync error:', error);
         syncCoordinator.markSyncFailed();
@@ -834,6 +973,49 @@ const PrintingPage = () => {
   useEffect(() => {
     handleFiltersChange({});
   }, [searchQuery]);
+
+  // Realtime: subscribe to the orders table so new orders appear instantly,
+  // moved/printed orders disappear instantly, and edits update in place —
+  // all WITHOUT triggering a full page reload or loading spinner.
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`printing-page-orders-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` },
+        () => {
+          // Re-fetch silently and merge. The mergeOrders helper preserves
+          // identity for unchanged rows, so React only re-renders what changed.
+          fetchProcessingOrdersFromDB();
+        }
+      )
+      .subscribe();
+
+    // Refetch when the tab regains focus, in case realtime missed an event
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') fetchProcessingOrdersFromDB();
+    };
+    document.addEventListener('visibilitychange', handleVisible);
+
+    return () => {
+      supabase.removeChannel(channel);
+      document.removeEventListener('visibilitychange', handleVisible);
+    };
+  }, [user, fetchProcessingOrdersFromDB]);
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    if (!lightboxImages) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeLightbox();
+      else if (e.key === 'ArrowLeft') showPrevImage();
+      else if (e.key === 'ArrowRight') showNextImage();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImages]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -997,10 +1179,22 @@ const PrintingPage = () => {
         ) : (
           <div className="divide-y divide-gray-200">
             {paginatedOrders.map((order) => {
-              const firstOrderedImage = resolveLineItemImage(order.line_items?.[0]);
+              const products = getOrderProducts(order);
+              const visibleProducts = products.slice(0, 4);
+              const hiddenProductCount = Math.max(products.length - visibleProducts.length, 0);
+              const isExpanded = expandedOrderIds.has(order.id);
+              const totalWeight = calculateOrderWeight(order);
+              const orderImages = products
+                .filter(p => p.image)
+                .map(p => ({ src: p.image as string, alt: p.name }));
 
               return (
-              <div key={order.id} className="p-4 hover:bg-gray-50">
+              <Collapsible
+                key={order.id}
+                open={isExpanded}
+                onOpenChange={() => toggleOrderProducts(order.id)}
+              >
+              <div className="p-4 hover:bg-gray-50">
                 <div className="flex items-start justify-between">
                   {/* Left side - Checkbox and Order Info */}
                   <div className="flex items-start gap-3 flex-1">
@@ -1010,17 +1204,34 @@ const PrintingPage = () => {
                       className="mt-1"
                     />
 
-                    {/* First product image */}
-                    {firstOrderedImage ? (
-                      <img
-                        src={firstOrderedImage}
-                        alt="Product"
-                        className="w-10 h-10 rounded object-cover border border-gray-200 flex-shrink-0"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-gray-100 border border-gray-200 flex-shrink-0" />
-                    )}
+                    {/* Ordered product images */}
+                    <div className="flex w-[112px] flex-shrink-0 flex-wrap gap-1">
+                      {visibleProducts.length > 0 ? visibleProducts.map((product) => (
+                        product.image ? (
+                          <img
+                            key={product.key}
+                            src={product.image}
+                            alt={product.name}
+                            className="h-10 w-10 cursor-zoom-in rounded border border-gray-200 object-cover transition-transform hover:scale-105"
+                            onClick={() => openLightbox(orderImages, orderImages.findIndex(i => i.src === product.image))}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                        ) : (
+                          <div key={product.key} className="flex h-10 w-10 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )
+                      )) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
+                          <ImageIcon className="h-4 w-4" />
+                        </div>
+                      )}
+                      {hiddenProductCount > 0 && (
+                        <div className="flex h-10 w-10 items-center justify-center rounded border border-gray-200 bg-gray-900 text-xs font-semibold text-white">
+                          +{hiddenProductCount}
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start gap-8">
@@ -1028,26 +1239,47 @@ const PrintingPage = () => {
                         <div className="min-w-0 flex-shrink-0" style={{ width: '140px' }}>
                           <div className="font-semibold text-gray-900">#{order.order_number}</div>
                           <div className="text-sm text-gray-600 truncate">{order.customer_name}</div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {products.length} product{products.length !== 1 ? 's' : ''}
+                          </div>
                         </div>
                         
                         {/* Products */}
-                        <div className="flex-1 min-w-0" style={{ width: '200px' }}>
-                          <div className="text-sm font-medium text-gray-900 mb-1">Products:</div>
-                          {order.line_items?.map((item: any, index: number) => (
-                            <div key={index} className="text-sm">
-                              <div className="text-gray-900">{item.name || 'Product Name'}</div>
+                        <div className="flex-1 min-w-0" style={{ width: '240px' }}>
+                          <div className="mb-1 flex items-center gap-2">
+                            <div className="text-sm font-medium text-gray-900">Products:</div>
+                            <CollapsibleTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                              >
+                                {isExpanded ? 'Hide' : 'View all'}
+                                <ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </Button>
+                            </CollapsibleTrigger>
+                          </div>
+                          {products.slice(0, 2).map((product) => (
+                            <div key={product.key} className="text-sm">
+                              <div className="truncate text-gray-900">{product.name}</div>
                               <div className="text-blue-600">
-                                {item.color || 'Multi color'} / {item.size || '2XL'}
+                                Qty {product.quantity} / {product.variation}
                               </div>
                             </div>
                           ))}
+                          {products.length > 2 && (
+                            <div className="text-xs text-gray-500">
+                              {products.length - 2} more product{products.length - 2 !== 1 ? 's' : ''}
+                            </div>
+                          )}
                         </div>
                         
                         {/* Details */}
                         <div className="flex-shrink-0" style={{ width: '120px' }}>
                           <div className="text-sm font-medium text-gray-900 mb-1">Details:</div>
                           <div className="text-sm text-gray-600">
-                            {((Number(order.line_items?.[0]?.weight) || 0.5) * (Number(order.line_items?.[0]?.quantity) || 1)).toFixed(0)}g
+                            {totalWeight.toFixed(0)}g
                           </div>
                           <div className="text-sm text-gray-600">
                             ₹{order.total.toFixed(0)}
@@ -1104,20 +1336,16 @@ const PrintingPage = () => {
                           order={order}
                           showPrintButton={true}
                           onPrint={async () => {
-                            // Move order to appropriate stage after actual printing
+                            // Optimistically remove from UI first
+                            removeOrdersLocally([order.id]);
                             try {
                               const targetStage = bypassPackingStage ? 'packed' : 'packing';
                               await wooCommerceOrderService.updateOrderStage(order.id, targetStage);
-                              // updateOrderStage already shows success toast
                             } catch (error: any) {
                               console.error('Error moving order:', error);
                               toast.error(`Failed to move order to ${bypassPackingStage ? 'tracking' : 'packing'} stage`);
-                            }
-                            // Refresh order list separately - don't let refresh failure show as stage move failure
-                            try {
-                              await fetchProcessingOrdersFromDB();
-                            } catch (error) {
-                              console.error('Error refreshing orders:', error);
+                              // On failure, refetch to restore correct state
+                              try { await fetchProcessingOrdersFromDB(); } catch {}
                             }
                           }}
                         />
@@ -1125,11 +1353,107 @@ const PrintingPage = () => {
                     </Dialog>
                   </div>
                 </div>
+                <CollapsibleContent>
+                  <div className="ml-[156px] mt-4 rounded-md border border-gray-200 bg-white p-3">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {products.length > 0 ? products.map((product) => (
+                        <div key={product.key} className="flex gap-3 rounded border border-gray-100 bg-gray-50 p-2">
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="h-16 w-16 flex-shrink-0 cursor-zoom-in rounded border border-gray-200 object-cover transition-transform hover:scale-105"
+                              onClick={() => openLightbox(orderImages, orderImages.findIndex(i => i.src === product.image))}
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-100 text-gray-400">
+                              <ImageIcon className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="line-clamp-2 text-sm font-medium text-gray-900">{product.name}</div>
+                            <div className="mt-1 text-sm text-blue-600">{product.variation}</div>
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+                              <span>Qty: {product.quantity}</span>
+                              <span>Amount: Rs {product.total.toFixed(0)}</span>
+                              {product.item.sku && <span>SKU: {product.item.sku}</span>}
+                            </div>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="text-sm text-gray-500">No products found for this order.</div>
+                      )}
+                    </div>
+                  </div>
+                </CollapsibleContent>
               </div>
+              </Collapsible>
             )})}
           </div>
         )}
       </div>
+
+      {/* Image Lightbox */}
+      {lightboxImages && lightboxImages[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); closeLightbox(); }}
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+            aria-label="Close image"
+          >
+            <X className="h-6 w-6" />
+          </button>
+
+          {lightboxImages.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); showPrevImage(); }}
+                className="absolute left-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); showNextImage(); }}
+                className="absolute right-4 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-3 text-white transition hover:bg-white/20"
+                aria-label="Next image"
+              >
+                <ChevronRight className="h-6 w-6" />
+              </button>
+            </>
+          )}
+
+          <img
+            key={lightboxIndex}
+            src={lightboxImages[lightboxIndex].src}
+            alt={lightboxImages[lightboxIndex].alt}
+            className="max-h-[90vh] max-w-[90vw] rounded object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <div className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 flex-col items-center gap-1">
+            {lightboxImages[lightboxIndex].alt && (
+              <div className="max-w-full truncate rounded bg-black/60 px-4 py-2 text-sm text-white">
+                {lightboxImages[lightboxIndex].alt}
+              </div>
+            )}
+            {lightboxImages.length > 1 && (
+              <div className="rounded bg-black/60 px-3 py-1 text-xs text-white">
+                {lightboxIndex + 1} / {lightboxImages.length}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (

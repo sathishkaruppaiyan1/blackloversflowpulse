@@ -8,6 +8,7 @@ import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { AnalyticsPage } from '@/components/AnalyticsPage';
 import SettingsPage from '@/components/SettingsPage';
 import PrintingPage from '@/components/PrintingPage';
+import ProductsPendingPage from '@/components/ProductsPendingPage';
 import { PackingPage } from '@/components/PackingPage';
 import TrackingPage from '@/components/TrackingPage';
 import OrdersPage from '@/components/OrdersPage';
@@ -17,18 +18,19 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { useBypassPackingStage } from '@/hooks/useBypassPackingStage';
 import { useOrderCounts } from '@/hooks/useOrderCounts';
 import { 
-  Home, 
-  ShoppingCart, 
-  Printer, 
-  Package, 
-  Truck, 
-  BarChart3, 
-  Settings, 
+  Home,
+  ShoppingCart,
+  Printer,
+  Package,
+  Truck,
+  BarChart3,
+  Settings,
   LogOut,
   Search,
   User,
   CheckCircle,
-  PauseCircle
+  PauseCircle,
+  ClipboardList
 } from 'lucide-react';
 
 const Index = () => {
@@ -68,6 +70,7 @@ const Index = () => {
     { id: "dashboard", label: "Dashboard", icon: Home },
     { id: "orders", label: "Orders", icon: ShoppingCart },
     { id: "printing", label: "Printing", icon: Printer },
+    { id: "products-pending", label: "Products Pending", icon: ClipboardList },
     // Conditionally include packing stage based on bypass setting
     ...(bypassPackingStage ? [] : [{ id: "packing", label: "Packing", icon: Package, badge: counts.packing }]),
     { id: "tracking", label: "Tracking", icon: Truck, badge: counts.packed },
@@ -95,6 +98,8 @@ const Index = () => {
         return <BarcodeScanner />;
       case "printing":
         return <PrintingPage />;
+      case "products-pending":
+        return <ProductsPendingPage />;
       case "packing":
         // If bypass is enabled, show tracking page instead
         return bypassPackingStage ? <TrackingPage /> : <PackingPage />;
@@ -217,7 +222,11 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-foreground capitalize">
-                {activeTab === "dashboard" ? "Dashboard" : activeTab}
+                {activeTab === "dashboard"
+                  ? "Dashboard"
+                  : activeTab === "products-pending"
+                    ? "Products Pending"
+                    : activeTab}
               </h2>
             </div>
             <div className="flex items-center gap-4">

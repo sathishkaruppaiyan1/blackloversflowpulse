@@ -174,13 +174,17 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
       return getItemsScopedForSizes(order).filter(itemMatchesSize);
     };
 
+    // Count by actual UNITS (sum of item.quantity), not by line-item rows.
+    // This keeps the filter counts consistent with Products Pending totals.
+    const qtyOf = (item: any) => Number(item?.quantity) || 1;
+
     orders.forEach(order => {
       if (order.line_items && Array.isArray(order.line_items)) {
         order.line_items.forEach((item: any) => {
           // Always extract base product names without variations (not filtered by selection)
           if (item.name) {
             const product = getBaseProductName(item.name).toLowerCase();
-            productMap.set(product, (productMap.get(product) || 0) + 1);
+            productMap.set(product, (productMap.get(product) || 0) + qtyOf(item));
           }
         });
       }
@@ -188,7 +192,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
       getItemsScopedForColors(order).forEach((item: any) => {
         if (item.color) {
           const color = item.color.toLowerCase();
-          colorMap.set(color, (colorMap.get(color) || 0) + 1);
+          colorMap.set(color, (colorMap.get(color) || 0) + qtyOf(item));
         }
       });
 
@@ -196,7 +200,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
 
         if (item.size) {
           const size = item.size.toUpperCase();
-          sizeMap.set(size, (sizeMap.get(size) || 0) + 1);
+          sizeMap.set(size, (sizeMap.get(size) || 0) + qtyOf(item));
         }
       });
 
@@ -204,21 +208,21 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
 
         if (item.weight) {
           const variation = item.weight.toLowerCase();
-          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+          variationMap.set(variation, (variationMap.get(variation) || 0) + qtyOf(item));
         }
         if (item.material) {
           const variation = item.material.toLowerCase();
-          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+          variationMap.set(variation, (variationMap.get(variation) || 0) + qtyOf(item));
         }
         if (item.brand) {
           const variation = item.brand.toLowerCase();
-          variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+          variationMap.set(variation, (variationMap.get(variation) || 0) + qtyOf(item));
         }
         if (item.meta_data && Array.isArray(item.meta_data)) {
           item.meta_data.forEach((meta: any) => {
             if (meta.display_value && meta.display_value !== item.name) {
               const variation = meta.display_value.toLowerCase();
-              variationMap.set(variation, (variationMap.get(variation) || 0) + 1);
+              variationMap.set(variation, (variationMap.get(variation) || 0) + qtyOf(item));
             }
           });
         }
