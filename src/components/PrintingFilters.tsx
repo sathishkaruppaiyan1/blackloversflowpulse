@@ -12,6 +12,7 @@ import { CalendarIcon, Filter, X, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { WooCommerceOrder } from '@/services/wooCommerceOrderService';
+import { resolveLineItemImage } from '@/utils/printingImageResolver';
 
 interface FilterOptions {
   filterType: string;
@@ -33,6 +34,7 @@ interface FilterOption {
   value: string;
   label: string;
   count?: number;
+  image?: string;
 }
 
 export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChange, totalOrders, orders }) => {
@@ -125,6 +127,7 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
     if (!orders || orders.length === 0) return;
 
     const productMap = new Map<string, number>();
+    const productImageMap = new Map<string, string>();
     const colorMap = new Map<string, number>();
     const sizeMap = new Map<string, number>();
     const variationMap = new Map<string, number>();
@@ -185,6 +188,11 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
           if (item.name) {
             const product = getBaseProductName(item.name).toLowerCase();
             productMap.set(product, (productMap.get(product) || 0) + qtyOf(item));
+            // Capture the first available image for each base product
+            if (!productImageMap.get(product)) {
+              const image = resolveLineItemImage(item);
+              if (image) productImageMap.set(product, image);
+            }
           }
         });
       }
@@ -235,7 +243,8 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
         .map(([value, count]) => ({
           value,
           label: value.charAt(0).toUpperCase() + value.slice(1),
-          count
+          count,
+          image: productImageMap.get(value)
         }))
         .sort((a, b) => b.count - a.count));
 
@@ -342,6 +351,14 @@ export const PrintingFilters: React.FC<PrintingFiltersProps> = ({ onFiltersChang
                             handleDropdownClose('product');
                           }}
                         >
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.label}
+                              loading="lazy"
+                              className="mr-2 h-6 w-6 shrink-0 rounded object-cover border"
+                            />
+                          )}
                           {product.label}
                           {product.count && product.count > 0 && (
                             <span className="ml-auto text-xs text-muted-foreground">({product.count})</span>
